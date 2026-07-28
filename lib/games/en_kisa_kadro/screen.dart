@@ -270,11 +270,11 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                 decoration: BoxDecoration(
                   color: (secen == 0 ? GolrivaColors.p1 : GolrivaColors.p2)
-                      .withOpacity(.12),
+                      .withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(
                       color: (secen == 0 ? GolrivaColors.p1 : GolrivaColors.p2)
-                          .withOpacity(.4)),
+                          .withValues(alpha: .4)),
                 ),
                 child: Text(
                   '${adlar[secen]} seçiyor · Açık: ${acik.map((z) => slotAd[z]).join(" · ")}',
@@ -361,14 +361,16 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                     color: aktif ? GolrivaColors.ink : GolrivaColors.dim2)),
           ),
           const SizedBox(width: 8),
-          Text(
-              a.neden ??
-                  '${slotAd[o.poz]} · ${o.ulke}${o.dogumYili > 0 ? " · ${o.dogumYili}" : ""}',
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.figtree(
-                  fontSize: 10.5,
-                  fontWeight: aktif ? FontWeight.w500 : FontWeight.w800,
-                  color: aktif ? GolrivaColors.dim : GolrivaColors.bad)),
+          Flexible(
+            child: Text(
+                a.neden ??
+                    '${slotAd[o.poz]} · ${o.ulke}${o.dogumYili > 0 ? " · ${o.dogumYili}" : ""}',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.figtree(
+                    fontSize: 10.5,
+                    fontWeight: aktif ? FontWeight.w500 : FontWeight.w800,
+                    color: aktif ? GolrivaColors.dim : GolrivaColors.bad)),
+          ),
         ]),
       ),
     );

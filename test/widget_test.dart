@@ -22,6 +22,19 @@ void main() {
 
   Widget lobi() => MaterialApp(home: LobbyScreen(repos: repos));
 
+  /// GridView TEMBEL cizer: ekran disindaki kartlar test yuzeyinde kurulmaz.
+  /// Once kurulana kadar kaydir (scrollUntilVisible), sonra gercekten gorunur
+  /// yap (ensureVisible) — yoksa tap ekran disina gider ve bosa dokunur.
+  Future<void> kartaGit(WidgetTester tester, String kart) async {
+    final f = find.text(kart);
+    if (f.evaluate().isEmpty) {
+      await tester.scrollUntilVisible(f, 120,
+          scrollable: find.byType(Scrollable).first);
+    }
+    await tester.ensureVisible(f);
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+
   testWidgets('Lobi: marka + 10 oyun karti cizilir', (tester) async {
     await tester.pumpWidget(lobi());
     for (final ad in [
@@ -36,6 +49,7 @@ void main() {
       'MİLLİ GOL KRALLARI',
       'KARİYER İKİZİ',
     ]) {
+      await kartaGit(tester, ad);
       expect(find.text(ad), findsOneWidget, reason: '$ad karti eksik');
     }
     expect(find.textContaining('yakında'), findsNothing); // hepsi aktif!
@@ -43,8 +57,7 @@ void main() {
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {
     await tester.pumpWidget(lobi());
-    await tester.scrollUntilVisible(find.text(kart), 120,
-        scrollable: find.byType(Scrollable).first);
+    await kartaGit(tester, kart);
     await tester.tap(find.text(kart));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

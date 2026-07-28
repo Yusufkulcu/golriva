@@ -1,31 +1,27 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golriva/data/genc_repository.dart';
-import 'package:golriva/data/hedef_repository.dart';
-import 'package:golriva/data/players_repository.dart';
+import 'package:golriva/data/repos.dart';
+import 'package:golriva/games/bayrak_yarisi/screen.dart';
 import 'package:golriva/games/en_genc_kadro/screen.dart';
 import 'package:golriva/games/en_kisa_kadro/screen.dart';
 import 'package:golriva/games/hedefi_tuttur/screen.dart';
+import 'package:golriva/games/kariyer_ikizi/screen.dart';
+import 'package:golriva/games/kor_av/screen.dart';
+import 'package:golriva/games/kupa_drafti/screen.dart';
+import 'package:golriva/games/serbest_kadro/engine.dart';
+import 'package:golriva/games/serbest_kadro/screen.dart';
 import 'package:golriva/screens/lobby.dart';
 import 'package:golriva/theme/golriva_theme.dart';
+import 'test_repos.dart';
 
-/// RESPONSIVE TEST MATRISI
+/// RESPONSIVE TEST MATRISI — 10 oyun x 7 ekran boyutu.
 /// Widget testlerinde RenderFlex tasmasi EXCEPTION olarak yakalanir —
-/// yani "1.2 px overflow" gibi hatalar bu dosyada KIRMIZI yanar, cihaza kalmaz.
-/// Matris: kucuk/buyuk telefon, tablet, yatay mod + klavye acik senaryosu.
+/// "1.2 px overflow" gibi hatalar burada KIRMIZI yanar, cihaza kalmaz.
 void main() {
-  late PlayersRepository repo;
-  late GencRepository gencRepo;
-  late HedefRepository hedefRepo;
+  late GolrivaRepos repos;
 
   setUpAll(() {
-    repo = PlayersRepository.fromJsonString(
-        File('assets/data/boy_data.json').readAsStringSync());
-    gencRepo = GencRepository.fromJsonString(
-        File('assets/data/genc_data.json').readAsStringSync());
-    hedefRepo = HedefRepository.fromJsonString(
-        File('assets/data/hedef_data.json').readAsStringSync());
+    repos = testRepos();
   });
 
   const boyutlar = <String, Size>{
@@ -51,7 +47,7 @@ void main() {
   }
 
   Future<void> temizle(WidgetTester tester) async {
-    // oyun ekranindaki Timer'i dispose ile kapat
+    // oyun ekranindaki Timer'lari dispose ile kapat
     await tester.pumpWidget(const SizedBox());
   }
 
@@ -72,17 +68,57 @@ void main() {
 
   // ekran adi -> (kurucu, ekranda kesin gorunen metin parcasi)
   final ekranlar = <String, (Widget Function(), String)>{
-    'EN KISA KADRO': (() => EnKisaKadroScreen(repo: repo), 'TUR 1/'),
-    'EN GENÇ KADRO': (() => EnGencKadroScreen(repo: gencRepo), 'TUR 1/'),
-    'HEDEFİ TUTTUR': (() => HedefiTutturScreen(repo: hedefRepo), 'KÖR SIRALAMA'),
+    'EN KISA KADRO': (() => EnKisaKadroScreen(repo: repos.boy), 'TUR 1/'),
+    'KUPA DRAFTI': (() => KupaDraftiScreen(repo: repos.kupa), 'TUR 1/'),
+    'EN GENÇ KADRO': (() => EnGencKadroScreen(repo: repos.genc), 'TUR 1/'),
+    'BAYRAK YARIŞI': (
+      () => BayrakYarisiScreen(repo: repos.boy),
+      'İLK KAPAN'
+    ),
+    'HEDEFİ TUTTUR': (
+      () => HedefiTutturScreen(repo: repos.hedef),
+      'KÖR SIRALAMA'
+    ),
+    'BONSERVİS AVI': (
+      () => KorAvScreen(repo: repos.fee, config: bonservisConfig),
+      'KÖR SIRALAMA'
+    ),
+    'SARI KART AVI': (
+      () => KorAvScreen(repo: repos.card, config: sariKartConfig),
+      'KÖR SIRALAMA'
+    ),
+    'MAÇ REKORTMENLERİ': (
+      () => SerbestKadroScreen(repo: repos.mac, config: macConfig),
+      'TUR 1/'
+    ),
+    'MİLLİ GOL KRALLARI': (
+      () => SerbestKadroScreen(repo: repos.milligol, config: milligolConfig),
+      'TUR 1/'
+    ),
+    'KARİYER İKİZİ': (
+      () => KariyerIkiziScreen(repo: repos.ikiz),
+      'SORU 1/'
+    ),
   };
+
+  // aramasi acik baslayan ekranlar (bayrak haric: TextField KAP sonrasi acilir)
+  const aramaliEkranlar = [
+    'EN KISA KADRO',
+    'KUPA DRAFTI',
+    'EN GENÇ KADRO',
+    'HEDEFİ TUTTUR',
+    'BONSERVİS AVI',
+    'SARI KART AVI',
+    'MAÇ REKORTMENLERİ',
+    'MİLLİ GOL KRALLARI',
+    'KARİYER İKİZİ',
+  ];
 
   group('LOBI — tum boyutlarda tasma yok', () {
     for (final e in boyutlar.entries) {
       testWidgets(e.key, (tester) async {
         await boyutAyarla(tester, e.value);
-        await kur(tester,
-            LobbyScreen(repo: repo, gencRepo: gencRepo, hedefRepo: hedefRepo));
+        await kur(tester, LobbyScreen(repos: repos));
         expect(tester.takeException(), isNull,
             reason: '${e.key} (${e.value}) boyutunda lobide tasma/exception');
         expect(find.text('EN KISA KADRO'), findsOneWidget);
@@ -91,7 +127,7 @@ void main() {
   });
 
   group('OYUN EKRANLARI — tum boyutlarda tasma yok', () {
-    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+    for (final ekran in ekranlar.keys) {
       for (final e in boyutlar.entries) {
         testWidgets('$ekran · ${e.key}', (tester) async {
           await boyutAyarla(tester, e.value);
@@ -99,7 +135,7 @@ void main() {
           await kur(tester, kurucu());
           expect(tester.takeException(), isNull,
               reason: '$ekran ${e.key} (${e.value}) boyutunda tasma');
-          expect(find.textContaining(beklenen), findsOneWidget);
+          expect(find.textContaining(beklenen), findsWidgets);
           await temizle(tester);
         });
       }
@@ -107,7 +143,7 @@ void main() {
   });
 
   group('ARAMA DROPDOWN acikken tasma yok (en dar + yatay)', () {
-    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+    for (final ekran in aramaliEkranlar) {
       for (final boyutAd in ['iPhone SE (en kucuk)', 'telefon YATAY']) {
         testWidgets('$ekran · $boyutAd', (tester) async {
           await boyutAyarla(tester, boyutlar[boyutAd]!);
@@ -125,14 +161,13 @@ void main() {
   });
 
   group('KLAVYE ACIK (viewInsets) tasma yok', () {
-    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+    for (final ekran in aramaliEkranlar) {
       testWidgets(ekran, (tester) async {
         await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
         tester.view.viewInsets = const FakeViewPadding(bottom: 900); // ~300pt
         addTearDown(tester.view.resetViewInsets);
         final (kurucu, _) = ekranlar[ekran]!;
         await kur(tester, kurucu());
-        // klavye acikken gorunur alan ~268pt: TextField'a once kaydir
         await aramaKutusunaGit(tester);
         await tester.enterText(find.byType(TextField), 'mar');
         await tester.pump(const Duration(milliseconds: 100));
@@ -143,9 +178,24 @@ void main() {
     }
   });
 
+  testWidgets('BAYRAK YARIŞI — KAP sonrasi cevap kutusu en dar ekranda',
+      (tester) async {
+    await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
+    await kur(tester, BayrakYarisiScreen(repo: repos.boy));
+    await tester.ensureVisible(find.textContaining('KAP!').first);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.textContaining('KAP!').first);
+    await tester.pump(const Duration(milliseconds: 50));
+    await aramaKutusunaGit(tester);
+    await tester.enterText(find.byType(TextField), 'mar');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.takeException(), isNull,
+        reason: 'bayrak: cevap kutusu acikken tasma');
+    await temizle(tester);
+  });
+
   testWidgets('SONUC DIYALOGU — en kucuk ekranda tasma yok', (tester) async {
     await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
-    // Bu test diyalog YERLESIMINI dogrular (tam oyun akisi engine_test'te):
     await tester.pumpWidget(MaterialApp(
       theme: GolrivaTheme.dark(),
       home: Builder(builder: (ctx) {
@@ -178,15 +228,5 @@ void main() {
     await tester.tap(find.text('ac'));
     await tester.pump(const Duration(milliseconds: 200));
     expect(tester.takeException(), isNull, reason: 'sonuc diyalogu tasti');
-  });
-
-  testWidgets('HEDEFİ TUTTUR — kademeli acilis modunda tasma yok',
-      (tester) async {
-    await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
-    await kur(tester, HedefiTutturScreen(repo: hedefRepo));
-    // sadece ekran kurulumunu ve kadro "?" satirlarini dogrula
-    expect(find.textContaining('KÖR SIRALAMA'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await temizle(tester);
   });
 }

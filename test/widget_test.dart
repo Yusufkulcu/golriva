@@ -1,73 +1,104 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golriva/data/genc_repository.dart';
-import 'package:golriva/data/hedef_repository.dart';
-import 'package:golriva/data/players_repository.dart';
-import 'package:golriva/screens/lobby.dart';
+import 'package:golriva/data/repos.dart';
+import 'package:golriva/games/bayrak_yarisi/screen.dart';
 import 'package:golriva/games/en_genc_kadro/screen.dart';
 import 'package:golriva/games/en_kisa_kadro/screen.dart';
 import 'package:golriva/games/hedefi_tuttur/screen.dart';
+import 'package:golriva/games/kariyer_ikizi/screen.dart';
+import 'package:golriva/games/kor_av/screen.dart';
+import 'package:golriva/games/kupa_drafti/screen.dart';
+import 'package:golriva/games/serbest_kadro/screen.dart';
+import 'package:golriva/screens/lobby.dart';
+import 'test_repos.dart';
 
-/// Widget duman testleri.
+/// Widget duman testleri — 10 oyunun tamami.
 void main() {
-  late PlayersRepository repo;
-  late GencRepository gencRepo;
-  late HedefRepository hedefRepo;
+  late GolrivaRepos repos;
 
   setUpAll(() {
-    repo = PlayersRepository.fromJsonString(
-        File('assets/data/boy_data.json').readAsStringSync());
-    gencRepo = GencRepository.fromJsonString(
-        File('assets/data/genc_data.json').readAsStringSync());
-    hedefRepo = HedefRepository.fromJsonString(
-        File('assets/data/hedef_data.json').readAsStringSync());
+    repos = testRepos();
   });
 
-  Widget lobi() => MaterialApp(
-      home: LobbyScreen(repo: repo, gencRepo: gencRepo, hedefRepo: hedefRepo));
+  Widget lobi() => MaterialApp(home: LobbyScreen(repos: repos));
 
-  testWidgets('Lobi: marka + oyun kartlari cizilir', (tester) async {
+  testWidgets('Lobi: marka + 10 oyun karti cizilir', (tester) async {
     await tester.pumpWidget(lobi());
-    expect(find.text('EN KISA KADRO'), findsOneWidget);
-    expect(find.text('EN GENÇ KADRO'), findsOneWidget);
-    expect(find.text('HEDEFİ TUTTUR'), findsOneWidget);
-    expect(find.textContaining('yakında'), findsWidgets); // pasif oyunlar
+    for (final ad in [
+      'EN KISA KADRO',
+      'KUPA DRAFTI',
+      'EN GENÇ KADRO',
+      'BAYRAK YARIŞI',
+      'HEDEFİ TUTTUR',
+      'BONSERVİS AVI',
+      'SARI KART AVI',
+      'MAÇ REKORTMENLERİ',
+      'MİLLİ GOL KRALLARI',
+      'KARİYER İKİZİ',
+    ]) {
+      expect(find.text(ad), findsOneWidget, reason: '$ad karti eksik');
+    }
+    expect(find.textContaining('yakında'), findsNothing); // hepsi aktif!
   });
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {
     await tester.pumpWidget(lobi());
+    await tester.scrollUntilVisible(find.text(kart), 120,
+        scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text(kart));
-    await tester.pump(); // navigasyon
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(ekran), findsOneWidget);
-    // sayac timer'i calisiyor — testten temiz cikmak icin ekrani kapat
-    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(const SizedBox()); // timer temizligi
   }
 
-  testWidgets('Lobiden EN KISA KADRO gecisi', (tester) async {
-    await gecisTesti(tester, 'EN KISA KADRO', EnKisaKadroScreen);
+  testWidgets('Gecis: EN KISA KADRO', (t) async {
+    await gecisTesti(t, 'EN KISA KADRO', EnKisaKadroScreen);
   });
-
-  testWidgets('Lobiden EN GENÇ KADRO gecisi', (tester) async {
-    await gecisTesti(tester, 'EN GENÇ KADRO', EnGencKadroScreen);
+  testWidgets('Gecis: KUPA DRAFTI', (t) async {
+    await gecisTesti(t, 'KUPA DRAFTI', KupaDraftiScreen);
   });
-
-  testWidgets('Lobiden HEDEFİ TUTTUR gecisi', (tester) async {
-    await gecisTesti(tester, 'HEDEFİ TUTTUR', HedefiTutturScreen);
+  testWidgets('Gecis: EN GENÇ KADRO', (t) async {
+    await gecisTesti(t, 'EN GENÇ KADRO', EnGencKadroScreen);
+  });
+  testWidgets('Gecis: BAYRAK YARIŞI', (t) async {
+    await gecisTesti(t, 'BAYRAK YARIŞI', BayrakYarisiScreen);
+  });
+  testWidgets('Gecis: HEDEFİ TUTTUR', (t) async {
+    await gecisTesti(t, 'HEDEFİ TUTTUR', HedefiTutturScreen);
+  });
+  testWidgets('Gecis: BONSERVİS AVI', (t) async {
+    await gecisTesti(t, 'BONSERVİS AVI', KorAvScreen);
+  });
+  testWidgets('Gecis: MAÇ REKORTMENLERİ', (t) async {
+    await gecisTesti(t, 'MAÇ REKORTMENLERİ', SerbestKadroScreen);
+  });
+  testWidgets('Gecis: KARİYER İKİZİ', (t) async {
+    await gecisTesti(t, 'KARİYER İKİZİ', KariyerIkiziScreen);
   });
 
   testWidgets('HEDEFİ TUTTUR: kor mekanik — secimden sonra deger "?" kalir',
       (tester) async {
-    await tester.pumpWidget(
-        MaterialApp(home: HedefiTutturScreen(repo: hedefRepo)));
+    await tester
+        .pumpWidget(MaterialApp(home: HedefiTutturScreen(repo: repos.hedef)));
     await tester.pump(const Duration(milliseconds: 50));
     await tester.enterText(find.byType(TextField), 'messi');
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.text('Lionel Messi').first);
     await tester.pump(const Duration(milliseconds: 100));
-    // deger acilmadi: kadroda "?" var, gercek deger yok
     expect(find.text('?'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('BAYRAK YARIŞI: KAP → cevap kutusu acilir', (tester) async {
+    await tester
+        .pumpWidget(MaterialApp(home: BayrakYarisiScreen(repo: repos.boy)));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.textContaining('KAP!'), findsNWidgets(2));
+    await tester.tap(find.textContaining('KAP!').first);
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('PAS'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 }

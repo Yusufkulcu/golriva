@@ -55,6 +55,21 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }
 
+  /// Arama kutusuna guvenli kaydirma.
+  /// scrollUntilVisible KULLANMA: TextField kurulunca ekranda 2 Scrollable
+  /// olur (kok ListView + TextField ici) ve varsayilan finder "Too many
+  /// elements" ile patlar. Hedef Scrollable'i (ListView) acikca veriyoruz.
+  Future<void> aramaKutusunaGit(WidgetTester tester) async {
+    final tf = find.byType(TextField);
+    if (tf.evaluate().isEmpty) {
+      await tester.dragUntilVisible(
+          tf, find.byType(ListView), const Offset(0, -80));
+    } else {
+      await tester.ensureVisible(tf);
+    }
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+
   // ekran adi -> (kurucu, ekranda kesin gorunen metin parcasi)
   final ekranlar = <String, (Widget Function(), String)>{
     'EN KISA KADRO': (() => EnKisaKadroScreen(repo: repo), 'TUR 1/'),
@@ -98,7 +113,7 @@ void main() {
           await boyutAyarla(tester, boyutlar[boyutAd]!);
           final (kurucu, _) = ekranlar[ekran]!;
           await kur(tester, kurucu());
-          await tester.scrollUntilVisible(find.byType(TextField), 80);
+          await aramaKutusunaGit(tester);
           await tester.enterText(find.byType(TextField), 'mar');
           await tester.pump(const Duration(milliseconds: 100));
           expect(tester.takeException(), isNull,
@@ -118,7 +133,7 @@ void main() {
         final (kurucu, _) = ekranlar[ekran]!;
         await kur(tester, kurucu());
         // klavye acikken gorunur alan ~268pt: TextField'a once kaydir
-        await tester.scrollUntilVisible(find.byType(TextField), 80);
+        await aramaKutusunaGit(tester);
         await tester.enterText(find.byType(TextField), 'mar');
         await tester.pump(const Duration(milliseconds: 100));
         expect(tester.takeException(), isNull,

@@ -25,7 +25,7 @@ class LobbyScreen extends StatelessWidget {
       required this.gencRepo,
       required this.hedefRepo});
 
-  List<_OyunKarti> get oyunlar => [
+  List<_OyunKarti> get _oyunlar => [
         _OyunKarti('EN KISA KADRO', 'Draft · Boy',
             () => EnKisaKadroScreen(repo: repo)),
         _OyunKarti('EN GENÇ KADRO', 'Draft · Aktifler',
@@ -84,7 +84,7 @@ class LobbyScreen extends StatelessWidget {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 childAspectRatio: 1.55,
-                children: oyunlar.map((o) {
+                children: _oyunlar.map((o) {
                   final aktif = o.ekran != null;
                   return InkWell(
                     borderRadius: BorderRadius.circular(18),

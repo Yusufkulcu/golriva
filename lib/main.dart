@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
 import 'screens/lobby.dart';
 import 'theme/golriva_theme.dart';
@@ -49,8 +51,45 @@ class _LoaderState extends State<_Loader> {
       return Scaffold(body: Center(child: Text('Veri yüklenemedi: $hata')));
     }
     if (repos == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: GolrivaColors.gold)),
+      // ACILIS EKRANI — K1 Beyin-Top + marka (veri yuklenirken)
+      return Scaffold(
+        body: Center(
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            SvgPicture.asset('assets/brand/beyin_top.svg',
+                width: 96, height: 96),
+            const SizedBox(height: 18),
+            RichText(
+              text: TextSpan(
+                style: GoogleFonts.bigShouldersDisplay(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2),
+                children: const [
+                  TextSpan(
+                      text: 'GOL',
+                      style: TextStyle(color: GolrivaColors.gold)),
+                  TextSpan(
+                      text: 'RIVA',
+                      style: TextStyle(color: GolrivaColors.ink)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text('FUTBOL ZEKÂSI DÜELLOSU',
+                style: GoogleFonts.figtree(
+                    fontSize: 11,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w700,
+                    color: GolrivaColors.dim)),
+            const SizedBox(height: 26),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                  color: GolrivaColors.gold, strokeWidth: 2.5),
+            ),
+          ]),
+        ),
       );
     }
     return LobbyScreen(repos: repos!);

@@ -92,6 +92,9 @@ void main() {
     tester.view.viewInsets = const FakeViewPadding(bottom: 900); // ~300pt klavye
     addTearDown(tester.view.resetViewInsets);
     await kur(tester, EnKisaKadroScreen(repo: repo));
+    // klavye acikken gorunur alan ~268pt: TextField ListView'da asagida
+    // kaldigi icin once ona kaydir (gercek kullanicinin yapacagi gibi)
+    await tester.scrollUntilVisible(find.byType(TextField), 80);
     await tester.enterText(find.byType(TextField), 'mes');
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.takeException(), isNull,

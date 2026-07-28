@@ -10,6 +10,11 @@ on:
 permissions:
   contents: write
 
+# shell: bash → pipefail acik olur; "flutter test | tee" hatasi yutulamaz
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test-ve-derle:
     runs-on: ubuntu-latest

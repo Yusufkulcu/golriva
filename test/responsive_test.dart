@@ -1,8 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golriva/data/genc_repository.dart';
+import 'package:golriva/data/hedef_repository.dart';
 import 'package:golriva/data/players_repository.dart';
+import 'package:golriva/games/en_genc_kadro/screen.dart';
 import 'package:golriva/games/en_kisa_kadro/screen.dart';
+import 'package:golriva/games/hedefi_tuttur/screen.dart';
 import 'package:golriva/screens/lobby.dart';
 import 'package:golriva/theme/golriva_theme.dart';
 
@@ -12,10 +16,16 @@ import 'package:golriva/theme/golriva_theme.dart';
 /// Matris: kucuk/buyuk telefon, tablet, yatay mod + klavye acik senaryosu.
 void main() {
   late PlayersRepository repo;
+  late GencRepository gencRepo;
+  late HedefRepository hedefRepo;
 
   setUpAll(() {
-    final raw = File('assets/data/boy_data.json').readAsStringSync();
-    repo = PlayersRepository.fromJsonString(raw);
+    repo = PlayersRepository.fromJsonString(
+        File('assets/data/boy_data.json').readAsStringSync());
+    gencRepo = GencRepository.fromJsonString(
+        File('assets/data/genc_data.json').readAsStringSync());
+    hedefRepo = HedefRepository.fromJsonString(
+        File('assets/data/hedef_data.json').readAsStringSync());
   });
 
   const boyutlar = <String, Size>{
@@ -45,11 +55,19 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }
 
+  // ekran adi -> (kurucu, ekranda kesin gorunen metin parcasi)
+  final ekranlar = <String, (Widget Function(), String)>{
+    'EN KISA KADRO': (() => EnKisaKadroScreen(repo: repo), 'TUR 1/'),
+    'EN GENÇ KADRO': (() => EnGencKadroScreen(repo: gencRepo), 'TUR 1/'),
+    'HEDEFİ TUTTUR': (() => HedefiTutturScreen(repo: hedefRepo), 'KÖR SIRALAMA'),
+  };
+
   group('LOBI — tum boyutlarda tasma yok', () {
     for (final e in boyutlar.entries) {
       testWidgets(e.key, (tester) async {
         await boyutAyarla(tester, e.value);
-        await kur(tester, LobbyScreen(repo: repo));
+        await kur(tester,
+            LobbyScreen(repo: repo, gencRepo: gencRepo, hedefRepo: hedefRepo));
         expect(tester.takeException(), isNull,
             reason: '${e.key} (${e.value}) boyutunda lobide tasma/exception');
         expect(find.text('EN KISA KADRO'), findsOneWidget);
@@ -57,58 +75,62 @@ void main() {
     }
   });
 
-  group('OYUN EKRANI — tum boyutlarda tasma yok', () {
-    for (final e in boyutlar.entries) {
-      testWidgets(e.key, (tester) async {
-        await boyutAyarla(tester, e.value);
-        await kur(tester, EnKisaKadroScreen(repo: repo));
-        expect(tester.takeException(), isNull,
-            reason: '${e.key} (${e.value}) boyutunda oyun ekraninda tasma');
-        expect(find.textContaining('TUR 1/'), findsOneWidget);
-        await temizle(tester);
-      });
+  group('OYUN EKRANLARI — tum boyutlarda tasma yok', () {
+    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+      for (final e in boyutlar.entries) {
+        testWidgets('$ekran · ${e.key}', (tester) async {
+          await boyutAyarla(tester, e.value);
+          final (kurucu, beklenen) = ekranlar[ekran]!;
+          await kur(tester, kurucu());
+          expect(tester.takeException(), isNull,
+              reason: '$ekran ${e.key} (${e.value}) boyutunda tasma');
+          expect(find.textContaining(beklenen), findsOneWidget);
+          await temizle(tester);
+        });
+      }
     }
   });
 
-  group('OYUN EKRANI — arama dropdown acikken tasma yok', () {
-    for (final e in {
-      'iPhone SE (en kucuk)': boyutlar['iPhone SE (en kucuk)']!,
-      'telefon YATAY': boyutlar['telefon YATAY']!,
-    }.entries) {
-      testWidgets(e.key, (tester) async {
-        await boyutAyarla(tester, e.value);
-        await kur(tester, EnKisaKadroScreen(repo: repo));
-        await tester.enterText(find.byType(TextField), 'mus');
+  group('ARAMA DROPDOWN acikken tasma yok (en dar + yatay)', () {
+    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+      for (final boyutAd in ['iPhone SE (en kucuk)', 'telefon YATAY']) {
+        testWidgets('$ekran · $boyutAd', (tester) async {
+          await boyutAyarla(tester, boyutlar[boyutAd]!);
+          final (kurucu, _) = ekranlar[ekran]!;
+          await kur(tester, kurucu());
+          await tester.scrollUntilVisible(find.byType(TextField), 80);
+          await tester.enterText(find.byType(TextField), 'mar');
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(tester.takeException(), isNull,
+              reason: '$ekran $boyutAd: dropdown acikken tasma');
+          await temizle(tester);
+        });
+      }
+    }
+  });
+
+  group('KLAVYE ACIK (viewInsets) tasma yok', () {
+    for (final ekran in ['EN KISA KADRO', 'EN GENÇ KADRO', 'HEDEFİ TUTTUR']) {
+      testWidgets(ekran, (tester) async {
+        await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
+        tester.view.viewInsets = const FakeViewPadding(bottom: 900); // ~300pt
+        addTearDown(tester.view.resetViewInsets);
+        final (kurucu, _) = ekranlar[ekran]!;
+        await kur(tester, kurucu());
+        // klavye acikken gorunur alan ~268pt: TextField'a once kaydir
+        await tester.scrollUntilVisible(find.byType(TextField), 80);
+        await tester.enterText(find.byType(TextField), 'mar');
         await tester.pump(const Duration(milliseconds: 100));
         expect(tester.takeException(), isNull,
-            reason: '${e.key}: dropdown acikken tasma');
+            reason: '$ekran: klavye acikken en kucuk ekranda tasma');
         await temizle(tester);
       });
     }
-  });
-
-  testWidgets('OYUN EKRANI — KLAVYE ACIK (viewInsets) tasma yok', (tester) async {
-    await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
-    tester.view.viewInsets = const FakeViewPadding(bottom: 900); // ~300pt klavye
-    addTearDown(tester.view.resetViewInsets);
-    await kur(tester, EnKisaKadroScreen(repo: repo));
-    // klavye acikken gorunur alan ~268pt: TextField ListView'da asagida
-    // kaldigi icin once ona kaydir (gercek kullanicinin yapacagi gibi)
-    await tester.scrollUntilVisible(find.byType(TextField), 80);
-    await tester.enterText(find.byType(TextField), 'mes');
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(tester.takeException(), isNull,
-        reason: 'klavye acikken en kucuk ekranda tasma');
-    await temizle(tester);
   });
 
   testWidgets('SONUC DIYALOGU — en kucuk ekranda tasma yok', (tester) async {
     await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
-    await kur(tester, EnKisaKadroScreen(repo: repo));
-    // oyunu programatik bitir: state'e erisim yerine UI uzerinden hizli yol —
-    // motoru dogrudan kullanan ayri bir ekran kurmak yerine 12 fazlik akis
-    // engine_test'te; burada diyalogu tetiklemek icin sureleri akitmak cok
-    // yavas olurdu. Bu test diyalog YERLESIMINI dogrular:
+    // Bu test diyalog YERLESIMINI dogrular (tam oyun akisi engine_test'te):
     await tester.pumpWidget(MaterialApp(
       theme: GolrivaTheme.dark(),
       home: Builder(builder: (ctx) {
@@ -141,5 +163,15 @@ void main() {
     await tester.tap(find.text('ac'));
     await tester.pump(const Duration(milliseconds: 200));
     expect(tester.takeException(), isNull, reason: 'sonuc diyalogu tasti');
+  });
+
+  testWidgets('HEDEFİ TUTTUR — kademeli acilis modunda tasma yok',
+      (tester) async {
+    await boyutAyarla(tester, boyutlar['iPhone SE (en kucuk)']!);
+    await kur(tester, HedefiTutturScreen(repo: hedefRepo));
+    // sadece ekran kurulumunu ve kadro "?" satirlarini dogrula
+    expect(find.textContaining('KÖR SIRALAMA'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await temizle(tester);
   });
 }

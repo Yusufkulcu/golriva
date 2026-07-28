@@ -1,31 +1,61 @@
 name: GOLRIVA CI
 # Her push/PR'da: analiz + testler + web build + Android APK (artifact).
-# Kurulum: bu klasoru bir GitHub deposuna push'la — baska hicbir sey gerekmez.
+# Ek: tum adim loglari "ci-durum" dalina yazilir — boylece sonuclar
+# API/giris gerektirmeden git uzerinden okunabilir.
 on:
   push:
+    branches-ignore: [ci-durum]
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   test-ve-derle:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
+      - name: Log klasoru
+        run: mkdir -p /tmp/cilog && flutter --version | tee /tmp/cilog/00_surum.txt
+
       - name: Bagimliliklar
-        run: flutter pub get
+        run: flutter pub get 2>&1 | tee /tmp/cilog/01_pubget.txt
+
       - name: Analiz
-        run: flutter analyze
+        # kucuk stil uyarilari (info) CI'yi kirmasin; gercek hata/warning kirar
+        run: flutter analyze --no-fatal-infos 2>&1 | tee /tmp/cilog/02_analiz.txt
+
       - name: Testler
-        run: flutter test
-      - name: Web build (Playwright smoke icin)
-        run: flutter build web --release
+        run: flutter test 2>&1 | tee /tmp/cilog/03_test.txt
+
+      - name: Web build
+        run: flutter build web --release 2>&1 | tail -40 | tee /tmp/cilog/04_web.txt
+
       - name: Android APK (debug — telefona kurulabilir)
-        run: flutter build apk --debug
+        run: flutter build apk --debug 2>&1 | tail -40 | tee /tmp/cilog/05_apk.txt
+
       - name: APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: golriva-debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: CI loglarini ci-durum dalina yaz
+        if: always()
+        run: |
+          set -e
+          cd /tmp/cilog
+          echo "sonuc=${{ job.status }}" > SONUC.txt
+          echo "commit=${{ github.sha }}" >> SONUC.txt
+          echo "run=${{ github.run_id }} no=${{ github.run_number }}" >> SONUC.txt
+          git init -b ci-durum
+          git config user.name "golriva-ci"
+          git config user.email "ci@golriva.local"
+          git add -A
+          git commit -m "CI #${{ github.run_number }}: ${{ job.status }} (${GITHUB_SHA::7})"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-durum

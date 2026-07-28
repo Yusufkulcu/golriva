@@ -110,12 +110,20 @@ class LobbyScreen extends StatelessWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SvgPicture.asset('assets/icons/${o.ikon}.svg',
-                                width: 22,
-                                height: 22,
-                                colorFilter: const ColorFilter.mode(
-                                    GolrivaColors.gold, BlendMode.srcIn)),
-                            const Spacer(),
+                            // Expanded: ikon alani esner — en dar ekranda
+                            // metinler yer kazanir, tasma matematiksel olarak
+                            // imkansizlasir (0.143px dersi).
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.topLeft,
+                                child: SvgPicture.asset(
+                                    'assets/icons/${o.ikon}.svg',
+                                    width: 22,
+                                    height: 22,
+                                    colorFilter: const ColorFilter.mode(
+                                        GolrivaColors.gold, BlendMode.srcIn)),
+                              ),
+                            ),
                             Text(o.ad,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,

@@ -1,0 +1,31 @@
+name: GOLRIVA CI
+# Her push/PR'da: analiz + testler + web build + Android APK (artifact).
+# Kurulum: bu klasoru bir GitHub deposuna push'la — baska hicbir sey gerekmez.
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-ve-derle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Bagimliliklar
+        run: flutter pub get
+      - name: Analiz
+        run: flutter analyze
+      - name: Testler
+        run: flutter test
+      - name: Web build (Playwright smoke icin)
+        run: flutter build web --release
+      - name: Android APK (debug — telefona kurulabilir)
+        run: flutter build apk --debug
+      - name: APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: golriva-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

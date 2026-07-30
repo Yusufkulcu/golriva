@@ -191,15 +191,22 @@ void main() {
       }
     });
 
-    test('kap → yanlis ulke red → pas → hak gecer → bos tur', () {
+    test('kap → yanlis secim serbest ama tur kazandirmaz → pas → bos tur', () {
       final e = BayrakYarisiEngine(repos.boy, rng: Random(5));
       expect(e.kap(0), isTrue);
       expect(e.kap(0), isFalse); // zaten answer modunda
       expect(e.claimer, 0);
-      // yanlis ulkeden oyuncu reddedilir
-      final yanlis = e.kulup.havuz.firstWhere(
-          (i) => ulkeNorm(repos.boy.oyuncular[i].ulke) != e.cift.ulke);
-      expect(e.dogru(yanlis), isFalse);
+      // KURAL v2: yanlis ulkeden oyuncu dropdown'da SECILEBILIR (neden yok,
+      // "Ülkesi farklı" ASLA gorunmez) ama cevapVer false doner → hak duser.
+      final yanlis = e.kulup.havuz.firstWhere((i) =>
+          ulkeNorm(repos.boy.oyuncular[i].ulke) != e.cift.ulke &&
+          repos.boy.oyuncular[i].ad.length >= 4);
+      final adaySonuc = e.adaylar(repos.boy.oyuncular[yanlis].ad.substring(0, 4));
+      for (final a in adaySonuc) {
+        expect(a.neden, isNot('Ülkesi farklı'), reason: 'ulke sizintisi!');
+      }
+      expect(e.cevapVer(yanlis), isFalse);
+      expect(e.mod, BayrakMod.answer); // tur kapanmadi — UI hakDus cagirir
       // pas: hak digerine gecer
       expect(e.hakDus(), isTrue);
       expect(e.claimer, 1);
@@ -220,7 +227,7 @@ void main() {
         final dogru = e.kulup.havuz.firstWhere((i) =>
             ulkeNorm(repos.boy.oyuncular[i].ulke) == e.cift.ulke &&
             !e.alinan.contains(i));
-        expect(e.dogru(dogru), isTrue);
+        expect(e.cevapVer(dogru), isTrue);
         e.sonrakiTur();
       }
       expect(e.skor[0], bayrakTurSayisi);

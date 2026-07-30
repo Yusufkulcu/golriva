@@ -8,6 +8,7 @@ import 'package:golriva/games/hedefi_tuttur/screen.dart';
 import 'package:golriva/games/kariyer_ikizi/screen.dart';
 import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
+import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
 import 'package:golriva/screens/lobby.dart';
 import 'test_repos.dart';
@@ -112,6 +113,29 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.byType(TextField), findsOneWidget);
     expect(find.text('PAS'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('SAHA GORUNUMU: bos mevkiler adlariyla sahada gorunur',
+      (tester) async {
+    await tester
+        .pumpWidget(MaterialApp(home: EnKisaKadroScreen(repo: repos.boy)));
+    await tester.pump(const Duration(milliseconds: 50));
+    // iki sahada da bos slotlar mevki ADIYLA gorunur (kullanici kurali)
+    expect(find.text('Kaleci'), findsNWidgets(2));
+    expect(find.text('Forvet'), findsNWidgets(2));
+    expect(find.text('Defans'), findsNWidgets(4));
+    expect(find.text('Orta'), findsNWidgets(4));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('SAHA GORUNUMU: milli golde kaleci sirasi YOK', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home:
+            SerbestKadroScreen(repo: repos.milligol, config: milligolConfig)));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Kaleci'), findsNothing);
+    expect(find.text('Forvet'), findsNWidgets(4)); // 2 forvet x 2 saha
     await tester.pumpWidget(const SizedBox());
   });
 }

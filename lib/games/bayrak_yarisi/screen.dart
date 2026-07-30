@@ -92,7 +92,7 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
     if (a.neden != null) return;
     final kazananS = engine.claimer;
     final o = widget.repo.oyuncular[a.idx];
-    if (engine.dogru(a.idx)) {
+    if (engine.cevapVer(a.idx)) {
       sayac?.cancel();
       setState(() {
         turMesaji =
@@ -101,6 +101,9 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
         adaylar = [];
       });
       _turSonuGecis();
+    } else {
+      // KURAL (kullanici, 30 Tem): yanlis oyuncu = hak rakibe gecer
+      _hakDus('yanlış oyuncu seçti');
     }
   }
 
@@ -360,6 +363,12 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 4),
+                Center(
+                  child: Text('Dikkat: yanlış oyuncu seçersen hak rakibe geçer!',
+                      style: GoogleFonts.figtree(
+                          fontSize: 10.5, color: GolrivaColors.dim)),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: aramaCtrl,
@@ -498,8 +507,8 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-                a.neden ??
-                    '${ulkeTr(ulkeNorm(o.ulke))}${o.dogumYili > 0 ? " · ${o.dogumYili}" : ""}',
+                // ULKE GIZLI (kullanici kurali) — sadece dogum yili
+                a.neden ?? (o.dogumYili > 0 ? '${o.dogumYili}' : ''),
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5,

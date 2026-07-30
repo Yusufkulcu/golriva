@@ -149,24 +149,23 @@ class BayrakYarisiEngine {
         pos = o.normAlias.contains(nq) ? 1 : -1;
       }
       if (pos < 0) continue;
-      String? neden;
-      if (alinan.contains(i)) {
-        neden = 'Alındı';
-      } else if (ulkeNorm(o.ulke) != cift.ulke) {
-        neden = 'Ülkesi farklı';
-      }
+      // KURAL DEGISIKLIGI (kullanici, 30 Tem): ulke kontrolu SECIMDE yapilir —
+      // yanlis oyuncu secmek hak dusurur. Dropdown sadece "Alındı"yi engeller,
+      // ulke bilgisi ASLA sizdirilmaz.
+      final neden = alinan.contains(i) ? 'Alındı' : null;
       (pos == 0 ? basla : iceren).add(BayrakAday(i, neden));
     }
     return [...basla, ...iceren].take(8).toList();
   }
 
-  /// Dogru cevap secildi: turu claimer alir.
-  bool dogru(int idx) {
+  /// Cevap secildi. Donus: true = DOGRU (turu claimer alir),
+  /// false = YANLIS ulke (UI hakDus cagirmali) ya da gecersiz durum.
+  bool cevapVer(int idx) {
     if (mod != BayrakMod.answer) return false;
     final o = repo.oyuncular[idx];
     if (!kulup.havuz.contains(idx)) return false;
     if (alinan.contains(idx)) return false;
-    if (ulkeNorm(o.ulke) != cift.ulke) return false;
+    if (ulkeNorm(o.ulke) != cift.ulke) return false; // yanlis — hak dusecek
     alinan.add(idx);
     _turKapat(claimer);
     return true;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/genc_repository.dart';
 import '../../theme/golriva_theme.dart';
+import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
 
 /// EN GENC KADRO ekrani — hot-seat draft.
@@ -408,76 +409,26 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
     );
   }
 
+  /// SAHA GORUNUMU (kullanici istegi, 30 Tem): kadro futbol sahasinda.
   Widget _kadro(int s, Color renk) {
     final bySlot = <String, List<int>>{'K': [], 'D': [], 'O': [], 'F': []};
     for (final p in engine.kadrolar[s]) {
       bySlot[p.poz]!.add(p.idx);
     }
-    final sayim = {'K': 0, 'D': 0, 'O': 0, 'F': 0};
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: GolrivaColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: GolrivaColors.edge2),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Text(adlar[s].toUpperCase(),
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.figtree(
-                    color: renk,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11,
-                    letterSpacing: 1)),
-          ),
-          Text('${engine.kadrolar[s].length}/$gencTurSayisi',
-              style: GoogleFonts.spaceGrotesk(
-                  color: GolrivaColors.dim, fontSize: 11)),
-        ]),
-        const SizedBox(height: 6),
-        for (final z in gencSlotOrder) _slotSatir(s, z, bySlot, sayim),
-      ]),
-    );
-  }
-
-  Widget _slotSatir(int s, String z, Map<String, List<int>> bySlot,
-      Map<String, int> sayim) {
-    final list = bySlot[z]!;
-    final k = sayim[z]!;
-    sayim[z] = k + 1;
-    final i = k < list.length ? list[k] : -1;
-    final dolu = i >= 0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: GolrivaColors.card2,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(children: [
-        Text(z,
-            style: GoogleFonts.spaceGrotesk(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: GolrivaColors.gold)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(dolu ? widget.repo.oyuncular[i].ad : '—',
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.figtree(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: dolu ? GolrivaColors.ink : GolrivaColors.dim2)),
-        ),
-        const SizedBox(width: 6),
-        Text(dolu ? yasStr(engine.yas(i)) : '',
-            style: GoogleFonts.spaceGrotesk(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: GolrivaColors.goldHi)),
-      ]),
+    List<SahaSlot> sira(String z) => List.generate(gencFormation[z]!, (k) {
+          final list = bySlot[z]!;
+          final idx = k < list.length ? list[k] : null;
+          return SahaSlot(
+              poz: z,
+              pozAd: gencSlotAd[z]!,
+              ad: idx == null ? null : widget.repo.oyuncular[idx].ad,
+              deger: idx == null ? null : yasStr(engine.yas(idx)));
+        });
+    return SahaKadro(
+      baslik: adlar[s].toUpperCase(),
+      sagBilgi: '${engine.kadrolar[s].length}/$gencTurSayisi',
+      renk: renk,
+      siralar: [sira('F'), sira('O'), sira('D'), sira('K')],
     );
   }
 }

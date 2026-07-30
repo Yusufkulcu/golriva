@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/players_repository.dart';
 import '../../theme/golriva_theme.dart';
+import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
 
 /// DRAFT SABLONU ekrani — En Kisa Kadro (hot-seat).
@@ -376,63 +377,29 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
     );
   }
 
+  /// SAHA GORUNUMU (kullanici istegi, 30 Tem): kadro futbol sahasinda.
   Widget _kadro(int s, Color renk) {
     final bySlot = <String, List<int>>{'K': [], 'D': [], 'O': [], 'F': []};
     for (final p in engine.kadrolar[s]) {
       bySlot[p.poz]!.add(p.idx);
     }
-    final sayim = {'K': 0, 'D': 0, 'O': 0, 'F': 0};
     final araToplam = engine.kadrolar[s]
         .fold(0, (a, p) => a + widget.repo.oyuncular[p.idx].boyCm);
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('${adlar[s].toUpperCase()} · $araToplam cm',
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.figtree(
-              color: renk,
-              fontWeight: FontWeight.w800,
-              fontSize: 10,
-              letterSpacing: 1)),
-      const SizedBox(height: 5),
-      ...slotOrder.map((z) {
-        final list = bySlot[z]!;
-        final n = sayim[z]!;
-        sayim[z] = n + 1;
-        final idx = n < list.length ? list[n] : null;
-        final o = idx == null ? null : widget.repo.oyuncular[idx];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 5),
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-          decoration: BoxDecoration(
-              color: GolrivaColors.card,
-              borderRadius: BorderRadius.circular(11),
-              border: Border.all(color: GolrivaColors.edge2)),
-          child: Row(children: [
-            Text(z,
-                style: GoogleFonts.bigShouldersDisplay(
-                    color: GolrivaColors.dim2,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 11)),
-            const SizedBox(width: 8),
-            Expanded(
-                child: Text(o?.ad ?? '—',
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.figtree(
-                        fontSize: 11.5,
-                        fontWeight:
-                            o == null ? FontWeight.w400 : FontWeight.w600,
-                        fontStyle:
-                            o == null ? FontStyle.italic : FontStyle.normal,
-                        color:
-                            o == null ? GolrivaColors.dim2 : GolrivaColors.ink))),
-            if (o != null)
-              Text('${o.boyCm}',
-                  style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: GolrivaColors.goldHi)),
-          ]),
-        );
-      }),
-    ]);
+    List<SahaSlot> sira(String z) => List.generate(formation[z]!, (k) {
+          final list = bySlot[z]!;
+          final idx = k < list.length ? list[k] : null;
+          final o = idx == null ? null : widget.repo.oyuncular[idx];
+          return SahaSlot(
+              poz: z,
+              pozAd: slotAd[z]!,
+              ad: o?.ad,
+              deger: o == null ? null : '${o.boyCm}');
+        });
+    return SahaKadro(
+      baslik: '${adlar[s].toUpperCase()} · $araToplam cm',
+      sagBilgi: '${engine.kadrolar[s].length}/$turSayisi',
+      renk: renk,
+      siralar: [sira('F'), sira('O'), sira('D'), sira('K')],
+    );
   }
 }

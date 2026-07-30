@@ -108,6 +108,13 @@ class _KuyrukEkraniState extends State<KuyrukEkrani> {
   @override
   void dispose() {
     nabiz?.cancel();
+    // EKRANDAN AYRILMAK = KUYRUKTAN CIKMAK (kullanici kurali: eslesme
+    // yalnizca iki taraf da aktif bekliyorsa kurulur). Sunucudaki nabiz
+    // (son_gorulme) bunu ayrica garanti eder — uygulama olse bile kayit
+    // 12 sn icinde eslesme disinda kalir.
+    if (kuyrukta && eslesme == null) {
+      servis.kuyruktanCik().catchError((_) {});
+    }
     super.dispose();
   }
 

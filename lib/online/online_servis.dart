@@ -99,6 +99,12 @@ class OnlineServis {
   /// Donus: acik macin TAM kimligi (seed dahil) — motor bundan kurulur.
   Future<OnlineMacBilgi?> eslesmeKontrol() async {
     final sid = await _c.rpc('eslesme_dene');
+    // Fallback yalnizca TAZE serilere bakar (son 10 dk) — eski/yarim kalmis
+    // test serileri "hayalet eslesme" olarak geri donmesin.
+    final esik = DateTime.now()
+        .toUtc()
+        .subtract(const Duration(minutes: 10))
+        .toIso8601String();
     final seri = sid != null
         ? await _c.from('seriler').select().eq('id', sid).maybeSingle()
         : await _c
@@ -106,6 +112,7 @@ class OnlineServis {
             .select()
             .or('p1.eq.$uid,p2.eq.$uid')
             .eq('durum', 'oyunda')
+            .gte('created_at', esik)
             .order('created_at', ascending: false)
             .limit(1)
             .maybeSingle();

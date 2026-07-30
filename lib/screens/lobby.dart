@@ -52,7 +52,11 @@ class _OnlineSeritState extends State<OnlineSerit> {
       return;
     }
     try {
-      final p = await OnlineServis().profilGetir();
+      final servis = OnlineServis();
+      // Terk edilmis acik maclari hukmen kapat (terk eden maglup) —
+      // hem adalet hem "hayalet eslesme" kaynaklarinin temizligi.
+      await servis.terkEdilmisleriKapat();
+      final p = await servis.profilGetir();
       if (mounted) {
         setState(() {
           profil = p;

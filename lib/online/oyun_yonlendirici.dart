@@ -25,9 +25,9 @@ const onlineOyunAdlari = {
   'kariyer_ikizi': 'KARİYER İKİZİ',
 };
 
-/// oyun_kodu → cevrimici oyun akisi. Once HAZIRLIK ekrani gelir:
-/// iki taraf da HAZIR'a basinca 3-2-1 ile mac AYNI ANDA baslar
-/// (kullanici kurali: sayaclar es zamanli olmali).
+/// oyun_kodu → cevrimici oyun akisi. Once SENKRON BAGLANTI ekrani gelir:
+/// iki cihaz otomatik el sikisir, 3-2-1 sunucu saatiyle ayni anda maca girilir
+/// (kullanici kurali: tercih kullaniciya birakilmaz, sayaclar es zamanli).
 Widget onlineOyunEkrani(GolrivaRepos repos, OnlineMacBilgi bilgi) {
   final kanal = OnlineMacKanali(bilgi);
   kanal.sonrakiEkranKur = (b) => onlineOyunEkrani(repos, b);
@@ -67,7 +67,10 @@ Widget _oyunEkrani(GolrivaRepos repos, OnlineMacKanali kanal) {
 }
 
 /// Cekilme akisi: onay → rakibi kazanan bildir → seri akisi dialogu.
-Future<void> cekilAkisi(BuildContext context, OnlineMacKanali kanal) async {
+/// [onCekildi] onay VERILDIKTEN sonra cagrilir (ekran sayacini durdurmak
+/// icin) — vazgecilirse mac kesintisiz devam eder.
+Future<void> cekilAkisi(BuildContext context, OnlineMacKanali kanal,
+    {VoidCallback? onCekildi}) async {
   final onay = await showDialog<bool>(
     context: context,
     builder: (c) => AlertDialog(
@@ -89,6 +92,7 @@ Future<void> cekilAkisi(BuildContext context, OnlineMacKanali kanal) async {
     ),
   );
   if (onay != true || !context.mounted) return;
+  onCekildi?.call();
   // Rakibin ekrani ANINDA ogrensin diye kanala cekilme sinyali birak
   // (kanal ayrica mac durumunu da yoklar — cifte emniyet).
   kanal.gonder({'tip': 'cekildi'});
@@ -118,9 +122,9 @@ Future<void> cekilAkisi(BuildContext context, OnlineMacKanali kanal) async {
   );
 }
 
-/// HAZIRLIK EKRANI: iki taraf da HAZIR'a basana kadar mac baslamaz;
-/// ikisi de hazir olunca 3-2-1 geri sayimla oyun ekranina gecilir —
-/// boylece iki cihazin sayaci da ayni anda calismaya baslar.
+/// SENKRON BAGLANTI EKRANI: rakip bulununca iki cihaz OTOMATIK el sikisir
+/// (kullaniciya buton yok), iki sinyal de sunucuya dusunce 3-2-1 geri sayim
+/// SUNUCU saatiyle es zamanli baslar ve mac ayni anda acilir.
 class OnlineHazirlikEkrani extends StatefulWidget {
   final OnlineMacKanali kanal;
   final Widget Function() oyunEkraniKur;
@@ -144,12 +148,17 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   void initState() {
     super.initState();
     widget.kanal.basla(_hamle, onMacKapandi: _kapandi);
+    // OTOMATIK EL SIKISMA: ekran acilir acilmaz "buradayim" sinyali —
+    // kullanicidan HAZIR istenmez (kullanici kurali). Iki sinyal de
+    // sunucuya dusunce geri sayim sunucu saatiyle es zamanli baslar.
+    benHazir = true;
+    widget.kanal.gonder({'tip': 'hazir'});
   }
 
   void _hamle(Map<String, dynamic> h) {
     if (!mounted) return;
     if (h['tip'] == 'hazir') {
-      // rakibin HAZIR durumu ANINDA gosterilir (kullanici istegi)
+      // rakibin baglandigi ANINDA gosterilir (kullanici istegi)
       setState(() => rakipHazir = true);
       _kontrol();
     } else if (h['tip'] == 'cekildi') {
@@ -160,13 +169,6 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   void _kapandi() {
     if (!mounted || rakipCekildi || baslangicHedefi != null) return;
     setState(() => rakipCekildi = true);
-  }
-
-  void _hazirBas() {
-    if (benHazir) return;
-    setState(() => benHazir = true);
-    widget.kanal.gonder({'tip': 'hazir'});
-    _kontrol();
   }
 
   /// Iki taraf da hazirsa SUNUCU-SENKRON hedefi bul: baslangic ani
@@ -233,7 +235,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           automaticallyImplyLeading: false,
-          title: Text('MAÇ HAZIRLIĞI',
+          title: Text('MAÇ BULUNDU',
               style: GoogleFonts.bigShouldersDisplay(
                   fontWeight: FontWeight.w900, fontSize: 21, letterSpacing: 2)),
           centerTitle: true,
@@ -311,27 +313,9 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                             color: GolrivaColors.dim,
                             fontWeight: FontWeight.w700)),
                   ] else if (!rakipCekildi) ...[
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                          backgroundColor:
-                              benHazir ? GolrivaColors.card2 : GolrivaColors.gold,
-                          foregroundColor: benHazir
-                              ? GolrivaColors.dim
-                              : const Color(0xFF231A04),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 14)),
-                      onPressed: benHazir ? null : _hazirBas,
-                      child: Text(benHazir ? 'HAZIRSIN' : 'HAZIR',
-                          style: GoogleFonts.bigShouldersDisplay(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2,
-                              fontSize: 19)),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                        benHazir
-                            ? '${b.rakipAdi} bekleniyor…'
-                            : 'İki taraf da HAZIR deyince maç 3-2-1 ile aynı anda başlar.',
+                    // OTOMATIK EL SIKISMA (kullanici kurali): buton yok —
+                    // iki cihaz da baglandigi an geri sayim kendiliginden baslar.
+                    Text('${b.rakipAdi} bağlanıyor…',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.figtree(
                             fontSize: 11.5, color: GolrivaColors.dim)),
@@ -388,7 +372,7 @@ class _HazirKutu extends StatelessWidget {
                 letterSpacing: .5,
                 color: hazir ? renk : GolrivaColors.dim)),
         const SizedBox(height: 2),
-        Text(hazir ? 'HAZIR' : 'bekleniyor…',
+        Text(hazir ? 'BAĞLANDI' : 'bekleniyor…',
             style: GoogleFonts.figtree(
                 fontSize: 10,
                 fontWeight: hazir ? FontWeight.w800 : FontWeight.w500,

@@ -46,6 +46,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
   List<KorAvAday> adaylar = [];
   String? uyari;
   Timer? sayac;
+  Timer? _hukmenTimer; // rakip kayboldu mu? (hukmen)
   int kalanSn = 20;
   static const turSn = 20;
 
@@ -110,6 +111,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
 
   void _rakipHamle(Map<String, dynamic> h) {
     if (!mounted || engine.bitti) return;
+    _hukmenTimer?.cancel();
     if (h['tip'] == 'cekildi') {
       _macKapandi();
       return;
@@ -136,7 +138,16 @@ class _KorAvScreenState extends State<KorAvScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
-        if (!siraBende) return; // rakibin istemcisi bildirir
+        if (!siraBende) {
+          // Rakibin suresi rakibin istemcisinden bildirilir. 15 sn icinde
+          // HICBIR hamle gelmezse rakip ayrilmis demektir → HUKMEN kazanan
+          // biziz (kullanici kurali: oyundan/uygulamadan cikan maglup).
+          _hukmenTimer?.cancel();
+          _hukmenTimer = Timer(const Duration(seconds: 15), () {
+            if (mounted && !engine.bitti && !siraBende) _macKapandi();
+          });
+          return;
+        }
         widget.online?.gonder({'tip': 'sure'});
         setState(() {
           uyari = '${adlar[engine.sira]} — süre doldu, hak yandı (0 sayılır)';
@@ -318,6 +329,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
   @override
   void dispose() {
     sayac?.cancel();
+    _hukmenTimer?.cancel();
     acilisTimer?.cancel();
     widget.online?.kapat();
     aramaCtrl.dispose();
@@ -327,7 +339,19 @@ class _KorAvScreenState extends State<KorAvScreen> {
   @override
   Widget build(BuildContext context) {
     final secen = engine.bitti ? 0 : engine.sira;
-    return Scaffold(
+    return PopScope(
+      // ONLINE macta geri tusu sessiz kacis DEGIL: cekilme onayi acilir
+      // (kullanici kurali: oyundan cikan maglup sayilir).
+      canPop: widget.online == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && widget.online != null) {
+          cekilAkisi(context, widget.online!, onCekildi: () {
+            sayac?.cancel();
+            _hukmenTimer?.cancel();
+          });
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Column(children: [
@@ -351,10 +375,11 @@ class _KorAvScreenState extends State<KorAvScreen> {
                 tooltip: 'Maçtan çekil',
                 icon: const Icon(Icons.flag_outlined,
                     color: GolrivaColors.dim, size: 20),
-                onPressed: () {
-                  sayac?.cancel();
-                  cekilAkisi(context, widget.online!);
-                }),
+                onPressed: () => cekilAkisi(context, widget.online!,
+                    onCekildi: () {
+                      sayac?.cancel();
+                      _hukmenTimer?.cancel();
+                    })),
         ],
       ),
       body: SafeArea(
@@ -502,6 +527,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

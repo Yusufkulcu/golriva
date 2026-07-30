@@ -94,16 +94,66 @@ class OnlineServis {
 
   Future<void> kuyruktanCik() => _c.rpc('kuyruktan_cik');
 
+  /// Sunucu "simdi"si — kuyruk alt siniri ve senkron islerinde kullanilir.
+  Future<DateTime?> sunucuSaati() async {
+    try {
+      final r = await _c.rpc('sunucu_saati');
+      return DateTime.parse(r as String);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// TERK EDILMIS acik maclarimi hukmen kapat: son hamlesi (yoksa mac
+  /// baslangici) 3 dk'dan eskiyse terk eden benim demektir → rakip kazanir.
+  /// (Kullanici kurali: oyundan/uygulamadan cikan otomatik maglup.)
+  /// Ayrica bu, eski serilerin "hayalet eslesme" olarak donmesini de bitirir.
+  Future<void> terkEdilmisleriKapat() async {
+    if (!girisYapildi) return;
+    try {
+      final seriler = await _c
+          .from('seriler')
+          .select('id, p1, p2')
+          .or('p1.eq.$uid,p2.eq.$uid')
+          .eq('durum', 'oyunda');
+      final esik = DateTime.now().toUtc().subtract(const Duration(minutes: 3));
+      for (final s in (seriler as List)) {
+        final mac = await _c
+            .from('maclar')
+            .select('id, created_at')
+            .eq('seri_id', s['id'])
+            .eq('durum', 'oyunda')
+            .maybeSingle();
+        if (mac == null) continue;
+        final sonHamle = await _c
+            .from('hamleler')
+            .select('sunucu_ts')
+            .eq('mac_id', mac['id'])
+            .order('id', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        final sonTs = DateTime.parse(
+            (sonHamle?['sunucu_ts'] ?? mac['created_at']) as String);
+        if (sonTs.isBefore(esik)) {
+          final rakip = s['p1'] == uid ? s['p2'] : s['p1'];
+          await _c.rpc('mac_bitir',
+              params: {'mid': mac['id'], 'kazanan_p': rakip});
+        }
+      }
+    } catch (_) {
+      // temizlik firsatcidir; hata sessizce yutulur
+    }
+  }
+
   /// Eslesme dongusu adimi: once sunucuda eslesmeyi dene, olmadiysa
   /// baskasinin bizi eslestirmis olabilecegini kontrol et (seriler).
-  /// Donus: acik macin TAM kimligi (seed dahil) — motor bundan kurulur.
-  Future<OnlineMacBilgi?> eslesmeKontrol() async {
+  /// [seriAltSiniri]: SADECE bu andan sonra kurulan seriler kabul edilir —
+  /// kuyruga giris ani verilir; eski/yarim seriler ASLA eslesme sayilmaz
+  /// (kullanici kurali: hayalet eslesme hicbir kosulda olmayacak).
+  Future<OnlineMacBilgi?> eslesmeKontrol({DateTime? seriAltSiniri}) async {
     final sid = await _c.rpc('eslesme_dene');
-    // Fallback yalnizca TAZE serilere bakar (son 10 dk) — eski/yarim kalmis
-    // test serileri "hayalet eslesme" olarak geri donmesin.
-    final esik = DateTime.now()
-        .toUtc()
-        .subtract(const Duration(minutes: 10))
+    final esik = (seriAltSiniri ??
+            DateTime.now().toUtc().subtract(const Duration(minutes: 10)))
         .toIso8601String();
     final seri = sid != null
         ? await _c.from('seriler').select().eq('id', sid).maybeSingle()

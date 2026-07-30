@@ -377,20 +377,27 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
           padding: const EdgeInsets.symmetric(vertical: 9),
           decoration: secili ? gKartDekor() : kartDekor(),
           child: Column(children: [
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(m.kod.toUpperCase(),
-                  style: GoogleFonts.bigShouldersDisplay(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1,
-                      color: secili
-                          ? GolrivaColors.goldHi
-                          : GolrivaColors.ink)),
-              if (kilitli) ...[
-                const SizedBox(width: 3),
-                gIkon('kilit', 11, GolrivaColors.dim2),
-              ],
-            ]),
+            // FittedBox: dar ekranda chip adi + kilit ikonu kucularek sigar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(m.kod.toUpperCase(),
+                      style: GoogleFonts.bigShouldersDisplay(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                          color: secili
+                              ? GolrivaColors.goldHi
+                              : GolrivaColors.ink)),
+                  if (kilitli) ...[
+                    const SizedBox(width: 3),
+                    gIkon('kilit', 11, GolrivaColors.dim2),
+                  ],
+                ]),
+              ),
+            ),
             Text('${m.giris}',
                 style: GoogleFonts.spaceGrotesk(
                     fontSize: 11,

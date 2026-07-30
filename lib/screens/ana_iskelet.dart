@@ -39,14 +39,14 @@ class _AnaIskeletState extends State<AnaIskelet> {
         child: SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 10, 28, 8),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _sekmeButonu(0, 'nav_oyna', 'OYNA'),
-                _sekmeButonu(1, 'nav_siralama', 'SIRALAMA'),
-                _sekmeButonu(2, 'nav_duellolar', 'DÜELLOLAR'),
-                _sekmeButonu(3, 'nav_profil', 'PROFİL'),
+                // Expanded: en dar ekranda (320px) bile tasma imkansiz
+                Expanded(child: _sekmeButonu(0, 'nav_oyna', 'OYNA')),
+                Expanded(child: _sekmeButonu(1, 'nav_siralama', 'SIRALAMA')),
+                Expanded(child: _sekmeButonu(2, 'nav_duellolar', 'DÜELLOLAR')),
+                Expanded(child: _sekmeButonu(3, 'nav_profil', 'PROFİL')),
               ],
             ),
           ),
@@ -74,6 +74,9 @@ class _AnaIskeletState extends State<AnaIskelet> {
           ),
           const SizedBox(height: 4),
           Text(ad,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: GoogleFonts.figtree(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,

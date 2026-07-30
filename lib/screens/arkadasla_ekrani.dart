@@ -114,9 +114,18 @@ class ArkadaslaEkrani extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                       letterSpacing: 2)),
               const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 1),
-                child: etiket('· YA DA RULETE BIRAK'),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 1),
+                  child: Text('· YA DA RULETE BIRAK',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.figtree(
+                          fontSize: 9,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w700,
+                          color: GolrivaColors.dim)),
+                ),
               ),
             ]),
             const SizedBox(height: 8),
@@ -126,7 +135,7 @@ class ArkadaslaEkrani extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 7,
               crossAxisSpacing: 7,
-              childAspectRatio: 2.9,
+              childAspectRatio: 2.7, // dar ekranda dikey tasmaya pay birak
               children: [
                 // RULET: rastgele oyun ac
                 InkWell(
@@ -134,7 +143,8 @@ class ArkadaslaEkrani extends StatelessWidget {
                   onTap: () =>
                       _ac(context, oyunlar[Random().nextInt(oyunlar.length)].$4),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
                     decoration: gKartDekor(r: 14),
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,14 +153,20 @@ class ArkadaslaEkrani extends StatelessWidget {
                           Row(children: [
                             gIkon('rulet', 13, GolrivaColors.goldHi),
                             const SizedBox(width: 4),
-                            Text('RULET',
-                                style: GoogleFonts.bigShouldersDisplay(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: .5,
-                                    color: GolrivaColors.goldHi)),
+                            Flexible(
+                              child: Text('RULET',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.bigShouldersDisplay(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: .5,
+                                      color: GolrivaColors.goldHi)),
+                            ),
                           ]),
                           Text('Rastgele seçsin',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.figtree(
                                   fontSize: 9, color: GolrivaColors.dim)),
                         ]),
@@ -161,7 +177,8 @@ class ArkadaslaEkrani extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                     onTap: () => _ac(context, o.$4),
                     child: Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: kartDekor(r: 14),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,6 +192,8 @@ class ArkadaslaEkrani extends StatelessWidget {
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: .5)),
                             Text(o.$3,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.figtree(
                                     fontSize: 9, color: GolrivaColors.dim)),
                           ]),

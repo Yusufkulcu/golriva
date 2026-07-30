@@ -141,6 +141,34 @@ class OnlineMacKanali {
   Future<OnlineSeriDurumu> cekil() =>
       sonucBildir(bilgi.benimSiram == 0 ? 1 : 0);
 
+  /// SUNUCU-SENKRON GERI SAYIM: iki 'hazir' sinyali de sunucuya dustukten
+  /// sonra ortak baslangic ani = max(hazir sunucu_ts) + 4 sn. Bu fonksiyon
+  /// o ana kalan sureyi SUNUCU saatiyle hesaplar — iki cihaz da ayni mutlak
+  /// ani hedefledigi icin geri sayim es zamanli biter (kullanici kurali).
+  /// Iki hazir kaydi henuz gorunmuyorsa null doner (tekrar dene).
+  Future<Duration?> hazirGeriSayimKalan() async {
+    final t0 = DateTime.now();
+    final rows = await _c
+        .from('hamleler')
+        .select('sunucu_ts, icerik')
+        .eq('mac_id', bilgi.macId);
+    final hazirTs = <DateTime>[];
+    for (final r in (rows as List)) {
+      final ic = r['icerik'];
+      if (ic is Map && ic['tip'] == 'hazir') {
+        hazirTs.add(DateTime.parse(r['sunucu_ts'] as String));
+      }
+    }
+    if (hazirTs.length < 2) return null;
+    hazirTs.sort();
+    final hedef = hazirTs.last.add(const Duration(seconds: 4));
+    final simdiStr = await _c.rpc('sunucu_saati');
+    final gidisDonus = DateTime.now().difference(t0);
+    final sunucuSimdi = DateTime.parse(simdiStr as String)
+        .add(Duration(milliseconds: gidisDonus.inMilliseconds ~/ 2));
+    return hedef.difference(sunucuSimdi);
+  }
+
   Future<OnlineSeriDurumu> seriDurumu() async {
     final s = await _c
         .from('seriler')

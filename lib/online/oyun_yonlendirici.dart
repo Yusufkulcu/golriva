@@ -134,9 +134,11 @@ class OnlineHazirlikEkrani extends StatefulWidget {
 class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   bool benHazir = false;
   bool rakipHazir = false;
+  bool rakipCekildi = false;
+  bool hedefAraniyor = false;
+  DateTime? baslangicHedefi; // yerel saate cevrilmis SUNUCU hedefi
   int? geriSayim;
   Timer? sayimTimer;
-  bool rakipCekildi = false;
 
   @override
   void initState() {
@@ -147,6 +149,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   void _hamle(Map<String, dynamic> h) {
     if (!mounted) return;
     if (h['tip'] == 'hazir') {
+      // rakibin HAZIR durumu ANINDA gosterilir (kullanici istegi)
       setState(() => rakipHazir = true);
       _kontrol();
     } else if (h['tip'] == 'cekildi') {
@@ -155,7 +158,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   }
 
   void _kapandi() {
-    if (!mounted || rakipCekildi || geriSayim != null) return;
+    if (!mounted || rakipCekildi || baslangicHedefi != null) return;
     setState(() => rakipCekildi = true);
   }
 
@@ -166,19 +169,52 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
     _kontrol();
   }
 
+  /// Iki taraf da hazirsa SUNUCU-SENKRON hedefi bul: baslangic ani
+  /// = ikinci hazir'in sunucu zamani + 4 sn. Iki cihaz da ayni mutlak
+  /// ani hedefler → geri sayim es zamanli biter (kullanici kurali).
   void _kontrol() {
-    if (!benHazir || !rakipHazir || geriSayim != null) return;
-    setState(() => geriSayim = 3);
-    sayimTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      if (geriSayim! <= 1) {
-        t.cancel();
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => widget.oyunEkraniKur()));
-      } else {
-        setState(() => geriSayim = geriSayim! - 1);
-      }
-    });
+    if (!benHazir || !rakipHazir || hedefAraniyor) return;
+    hedefAraniyor = true;
+    _hedefiBul();
+  }
+
+  Future<void> _hedefiBul() async {
+    for (var deneme = 0; deneme < 12 && mounted; deneme++) {
+      try {
+        final kalan = await widget.kanal.hazirGeriSayimKalan();
+        if (kalan != null) {
+          _sayimiBaslat(kalan.inMilliseconds < 300
+              ? const Duration(milliseconds: 300)
+              : kalan);
+          return;
+        }
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 400));
+    }
+    // sunucu saati alinamadiysa yerel 3 sn ile yine de basla
+    if (mounted) _sayimiBaslat(const Duration(seconds: 3));
+  }
+
+  void _sayimiBaslat(Duration kalan) {
+    if (!mounted || baslangicHedefi != null) return;
+    setState(() => baslangicHedefi = DateTime.now().add(kalan));
+    _sayimTikla();
+    sayimTimer = Timer.periodic(
+        const Duration(milliseconds: 100), (_) => _sayimTikla());
+  }
+
+  void _sayimTikla() {
+    if (!mounted || baslangicHedefi == null) return;
+    final kalanMs =
+        baslangicHedefi!.difference(DateTime.now()).inMilliseconds;
+    if (kalanMs <= 0) {
+      sayimTimer?.cancel();
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => widget.oyunEkraniKur()));
+    } else {
+      final s = (kalanMs / 1000).ceil();
+      if (s != geriSayim) setState(() => geriSayim = s);
+    }
   }
 
   @override
@@ -244,8 +280,26 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                     const SizedBox(height: 10),
                     OnlineSonucButonlari(
                         kanal: widget.kanal, kazananSeat: b.benimSiram),
-                  ] else if (geriSayim != null) ...[
-                    Text('$geriSayim',
+                  ] else ...[
+                    // HAZIR DURUM GOSTERGESI (kullanici istegi): iki kisi
+                    // figuru — hazir olan takim renginde dolar.
+                    Row(children: [
+                      Expanded(
+                          child: _HazirKutu(
+                              ad: 'SEN',
+                              hazir: benHazir,
+                              renk: GolrivaColors.p1)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: _HazirKutu(
+                              ad: b.rakipAdi.toUpperCase(),
+                              hazir: rakipHazir,
+                              renk: GolrivaColors.p2)),
+                    ]),
+                    const SizedBox(height: 16),
+                  ],
+                  if (!rakipCekildi && baslangicHedefi != null) ...[
+                    Text('${geriSayim ?? ""}',
                         style: GoogleFonts.spaceGrotesk(
                             fontSize: 64,
                             fontWeight: FontWeight.w700,
@@ -256,7 +310,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                             letterSpacing: 2,
                             color: GolrivaColors.dim,
                             fontWeight: FontWeight.w700)),
-                  ] else ...[
+                  ] else if (!rakipCekildi) ...[
                     FilledButton(
                       style: FilledButton.styleFrom(
                           backgroundColor:
@@ -300,6 +354,86 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
       ),
     );
   }
+}
+
+/// Hazir durum kutusu: kisi figuru (vektorel cizim — GOLRIVA kurali) +
+/// ad + HAZIR/bekleniyor durumu. Hazir olunca takim rengine boyanir.
+class _HazirKutu extends StatelessWidget {
+  final String ad;
+  final bool hazir;
+  final Color renk;
+  const _HazirKutu({required this.ad, required this.hazir, required this.renk});
+
+  @override
+  Widget build(BuildContext context) {
+    final aktifRenk = hazir ? renk : GolrivaColors.dim2;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: hazir ? renk.withValues(alpha: .10) : GolrivaColors.card2,
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: hazir ? renk : GolrivaColors.edge2, width: 1.5),
+      ),
+      child: Column(children: [
+        CustomPaint(
+            size: const Size(34, 34), painter: _KisiFiguru(aktifRenk, hazir)),
+        const SizedBox(height: 6),
+        Text(ad,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.figtree(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: .5,
+                color: hazir ? renk : GolrivaColors.dim)),
+        const SizedBox(height: 2),
+        Text(hazir ? 'HAZIR' : 'bekleniyor…',
+            style: GoogleFonts.figtree(
+                fontSize: 10,
+                fontWeight: hazir ? FontWeight.w800 : FontWeight.w500,
+                fontStyle: hazir ? FontStyle.normal : FontStyle.italic,
+                letterSpacing: hazir ? 1.5 : 0,
+                color: hazir ? GolrivaColors.ok : GolrivaColors.dim2)),
+      ]),
+    );
+  }
+}
+
+/// Basit kisi silueti: kafa + omuz yayi (stroke 1.8, yuvarlak uc).
+class _KisiFiguru extends CustomPainter {
+  final Color renk;
+  final bool dolu;
+  _KisiFiguru(this.renk, this.dolu);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = renk
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..style = dolu ? PaintingStyle.fill : PaintingStyle.stroke;
+    final cizgi = Paint()
+      ..color = renk
+      ..strokeWidth = 1.8
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    // kafa
+    canvas.drawCircle(
+        Offset(size.width / 2, size.height * .30), size.width * .17, p);
+    // omuzlar / govde yayi
+    final govde = Rect.fromLTRB(size.width * .16, size.height * .52,
+        size.width * .84, size.height * 1.30);
+    if (dolu) {
+      canvas.drawArc(govde, 3.14159, 3.14159, true, p);
+    } else {
+      canvas.drawArc(govde, 3.14159, 3.14159, false, cizgi);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _KisiFiguru old) =>
+      old.renk != renk || old.dolu != dolu;
 }
 
 /// Mac sonu ONLINE butonlari: sonucu sunucuya bildirir, seri durumuna gore

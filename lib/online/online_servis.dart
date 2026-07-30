@@ -187,7 +187,9 @@ class OnlineServis {
   /// PROFIL ISTATISTIGI: seri sayisi, galibiyet %, oyun bazinda kazanma.
   Future<({int seri, int galibiyet, Map<String, (int, int)> oyunlar})>
       istatistik() async {
-    if (!girisYapildi) return (seri: 0, galibiyet: 0, oyunlar: {});
+    if (!girisYapildi) {
+      return (seri: 0, galibiyet: 0, oyunlar: <String, (int, int)>{});
+    }
     final seriler = await _c
         .from('seriler')
         .select('id, kazanan')

@@ -35,8 +35,16 @@ class OnlineServis {
 
   static Future<void> baslat() async {
     if (!SupabaseAyar.yapilandirildi) return;
-    await Supabase.initialize(
-        url: SupabaseAyar.url, anonKey: SupabaseAyar.anonKey);
+    if (SupabaseAyar.yeniAnahtarSistemi) {
+      // Yeni API anahtarlari (sb_publishable_...)
+      await Supabase.initialize(
+          url: SupabaseAyar.url, publishableKey: SupabaseAyar.anahtar);
+    } else {
+      // Eski "anon public" JWT anahtarlari (geriye uyumluluk)
+      // ignore: deprecated_member_use
+      await Supabase.initialize(
+          url: SupabaseAyar.url, anonKey: SupabaseAyar.anahtar);
+    }
   }
 
   bool get girisYapildi =>

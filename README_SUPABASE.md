@@ -9,10 +9,11 @@ ayağa kaldırır. Uygulama Supabase YAPILANDIRILMADAN da tamamen çalışır
 1. https://supabase.com → ücretsiz hesap → **New project**
    - İsim: `golriva` · Region: **Frankfurt (eu-central-1)** (TR'ye en yakın)
    - Database şifresini bir yere kaydet.
-2. Proje açılınca **Project Settings → API**'den iki değeri kopyala:
+2. Proje açılınca **Project Settings → API Keys**'den iki değeri kopyala:
    - `Project URL` (https://xxxx.supabase.co)
-   - `anon public` anahtarı
-   - ⚠️ `service_role` anahtarına DOKUNMA — o yalnızca yerel admin paneli için.
+   - **Publishable key** (`sb_publishable_...`) — yeni projelerde görünen anahtar budur.
+     (Eski projelerde "Legacy API Keys" sekmesindeki `anon public` da çalışır.)
+   - ⚠️ **Secret key / service_role**'e DOKUNMA — o yalnızca yerel admin paneli için.
 
 ## 2. Şemayı kur (SQL Editor)
 
@@ -36,15 +37,18 @@ Anahtarlar koda gömülmez, derlerken verilir:
 ```bash
 cd ~/Desktop/futgame-flutter
 flutter run --dart-define=SUPABASE_URL=https://XXXX.supabase.co \
-            --dart-define=SUPABASE_ANON_KEY=eyJ...
+            --dart-define=SUPABASE_KEY=sb_publishable_...
 ```
+
+(Eski tip `anon` JWT anahtarın varsa `--dart-define=SUPABASE_ANON_KEY=eyJ...`
+olarak vermeye devam edebilirsin — ikisi de kabul edilir.)
 
 APK için:
 
 ```bash
 flutter build apk --debug \
   --dart-define=SUPABASE_URL=https://XXXX.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=eyJ...
+  --dart-define=SUPABASE_KEY=sb_publishable_...
 ```
 
 ## 5. Dene
@@ -64,7 +68,7 @@ flutter build apk --debug \
 
 ## Güvenlik ilkeleri (değişmez)
 
-- İstemcide yalnızca **anon** anahtar; tüm yazma işlemleri SECURITY DEFINER RPC'lerden.
+- İstemcide yalnızca **publishable/anon** anahtar; tüm yazma işlemleri SECURITY DEFINER RPC'lerden.
 - `service_role` anahtarı yalnızca YEREL admin panelinde; asla repoya/uygulamaya girmez.
 - Cüzdan tek gerçek kaynaktan beslenir: `defter` + trigger. İstemci bakiye YAZAMAZ.
 - Elo ve lig satın alınamaz; rulet sunucuda döner, istemci oyun seçemez.

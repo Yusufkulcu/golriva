@@ -35,9 +35,10 @@ class OnlineServis {
           url: SupabaseAyar.url, publishableKey: SupabaseAyar.anahtar);
     } else {
       // Eski "anon public" JWT anahtarlari (geriye uyumluluk)
-      // ignore: deprecated_member_use
       await Supabase.initialize(
-          url: SupabaseAyar.url, anonKey: SupabaseAyar.anahtar);
+          url: SupabaseAyar.url,
+          // ignore: deprecated_member_use
+          anonKey: SupabaseAyar.anahtar);
     }
   }
 

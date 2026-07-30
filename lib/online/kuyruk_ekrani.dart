@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
-import 'mac_kanali.dart';
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart';
 

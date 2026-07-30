@@ -11,6 +11,10 @@ import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
 import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
+import '../online/kayit_ekrani.dart';
+import '../online/kuyruk_ekrani.dart';
+import '../online/online_servis.dart';
+import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
 
 class _OyunKarti {
@@ -19,6 +23,125 @@ class _OyunKarti {
   final String ikon; // assets/icons/*.svg
   final Widget Function() ekran;
   const _OyunKarti(this.ad, this.etiket, this.ikon, this.ekran);
+}
+
+/// FAZ 2 cevrimici seridi: hesap yoksa "ÇEVRİMİÇİ OYNA", varsa
+/// kullanici adi + RIVA bakiyesi + RANKED butonu. Supabase yapilandirilmamis
+/// derlemelerde HIC gorunmez (tam cevrimdisi calisma korunur).
+class OnlineSerit extends StatefulWidget {
+  const OnlineSerit({super.key});
+
+  @override
+  State<OnlineSerit> createState() => _OnlineSeritState();
+}
+
+class _OnlineSeritState extends State<OnlineSerit> {
+  OnlineProfil? profil;
+  bool yuklendi = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _yenile();
+  }
+
+  Future<void> _yenile() async {
+    if (!SupabaseAyar.yapilandirildi) {
+      setState(() => yuklendi = true);
+      return;
+    }
+    try {
+      final p = await OnlineServis().profilGetir();
+      if (mounted) {
+        setState(() {
+          profil = p;
+          yuklendi = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => yuklendi = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!SupabaseAyar.yapilandirildi || !yuklendi) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x18D4AF37), GolrivaColors.card]),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: GolrivaColors.edge),
+      ),
+      child: profil == null
+          ? Row(children: [
+              Expanded(
+                child: Text('Çevrimiçi maçlar için hesap aç',
+                    style: GoogleFonts.figtree(
+                        fontSize: 12, color: GolrivaColors.dim)),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: GolrivaColors.gold,
+                    foregroundColor: const Color(0xFF231A04),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8)),
+                onPressed: () async {
+                  await Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const KayitEkrani()));
+                  _yenile();
+                },
+                child: Text('+500 RIVA',
+                    style: GoogleFonts.bigShouldersDisplay(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        fontSize: 14)),
+              ),
+            ])
+          : Row(children: [
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(profil!.kullaniciAdi,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.figtree(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: GolrivaColors.ink)),
+                      Text('${profil!.bakiye} RIVA · Elo ${profil!.elo}',
+                          style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11, color: GolrivaColors.goldHi)),
+                    ]),
+              ),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: GolrivaColors.goldHi,
+                    side: const BorderSide(color: GolrivaColors.edge),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8)),
+                onPressed: () async {
+                  await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => KuyrukEkrani(profil: profil!)));
+                  _yenile();
+                },
+                child: Text('RANKED',
+                    style: GoogleFonts.bigShouldersDisplay(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        fontSize: 14)),
+              ),
+            ]),
+    );
+  }
 }
 
 class LobbyScreen extends StatelessWidget {
@@ -79,7 +202,10 @@ class LobbyScreen extends StatelessWidget {
                 ),
               ),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            // FAZ 2: cevrimici serit — Supabase yapilandirilmadiysa gorunmez
+            const OnlineSerit(),
+            const SizedBox(height: 4),
             Text('İyi oyunlar',
                 style: GoogleFonts.figtree(fontSize: 13, color: GolrivaColors.dim)),
             Text('HOT-SEAT MVP · 10 OYUN',

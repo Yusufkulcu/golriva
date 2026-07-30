@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
+import 'online/online_servis.dart';
 import 'screens/lobby.dart';
 import 'theme/golriva_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // FAZ 2: Supabase yalnizca --dart-define ile yapilandirildiysa baslar;
+  // aksi halde uygulama tamamen cevrimdisi (hot-seat) calisir.
+  await OnlineServis.baslat();
   runApp(const GolrivaApp());
 }
 

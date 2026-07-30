@@ -7,7 +7,7 @@ import 'package:golriva/games/hedefi_tuttur/engine.dart';
 import 'package:golriva/games/kor_av/engine.dart';
 import 'package:golriva/games/kupa_drafti/engine.dart';
 import 'package:golriva/online/supabase_ayar.dart';
-import 'package:golriva/screens/lobby.dart';
+import 'package:golriva/screens/ana_iskelet.dart';
 import 'test_repos.dart';
 
 /// FAZ 2 cevrimdisi guvenlik testleri: Supabase yapilandirilmamis derlemede
@@ -17,15 +17,23 @@ void main() {
     expect(SupabaseAyar.yapilandirildi, isFalse);
   });
 
-  testWidgets('cevrimdisi derlemede lobide online serit YOK', (tester) async {
+  testWidgets('cevrimdisi derlemede iskelet AGA CIKMADAN calisir',
+      (tester) async {
     final repos = testRepos();
-    await tester.pumpWidget(MaterialApp(home: LobbyScreen(repos: repos)));
+    await tester.pumpWidget(MaterialApp(home: AnaIskelet(repos: repos)));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.text('RANKED'), findsNothing);
-    expect(find.textContaining('hesap aç'), findsNothing);
-    expect(find.textContaining('+500'), findsNothing);
-    // 10 oyun hala yerli yerinde
-    expect(find.text('EN KISA KADRO'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    // profil yok → misafir gorunumu; cevrimici degerler tire kalir
+    expect(find.text('MİSAFİR'), findsOneWidget);
+    expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+    // cevrimici sekmeler kibarca aciklama gosterir, istek atmaz
+    // (IndexedStack'te gizli sekmeler offstage kurulur → skipOffstage: false)
+    expect(find.text('Sıralama çevrimiçi bir özellik.', skipOffstage: false),
+        findsOneWidget);
+    expect(
+        find.text('Düello geçmişi çevrimiçi bir özellik.',
+            skipOffstage: false),
+        findsOneWidget);
   });
 
   // FAZ 2.2: cevrimici oynanisin temeli — AYNI SEED, iki istemcide AYNI oyun.

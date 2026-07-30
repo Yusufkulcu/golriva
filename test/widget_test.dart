@@ -10,10 +10,13 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
-import 'package:golriva/screens/lobby.dart';
+import 'package:golriva/screens/ana_iskelet.dart';
+import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'test_repos.dart';
 
-/// Widget duman testleri — 10 oyunun tamami.
+/// Widget duman testleri — 4 sekmeli iskelet + 10 oyunun tamami.
+/// (Tasarim seti golriva_ekranlar_v1.html: oyun listesi RANKED lobide YOK,
+/// yalniz ARKADAŞLA OYNA ekraninda — rulet kurali.)
 void main() {
   late GolrivaRepos repos;
 
@@ -21,24 +24,50 @@ void main() {
     repos = testRepos();
   });
 
-  Widget lobi() => MaterialApp(home: LobbyScreen(repos: repos));
+  Widget iskelet() => MaterialApp(home: AnaIskelet(repos: repos));
+  Widget arkadasla() => MaterialApp(home: ArkadaslaEkrani(repos: repos));
 
-  /// GridView TEMBEL cizer: ekran disindaki kartlar test yuzeyinde kurulmaz.
-  /// Once kurulana kadar kaydir (scrollUntilVisible), sonra gercekten gorunur
-  /// yap (ensureVisible) — yoksa tap ekran disina gider ve bosa dokunur.
+  /// Ekran disinda kalan karta guvenli kaydirma (dis ListView uzerinden).
   Future<void> kartaGit(WidgetTester tester, String kart) async {
     final f = find.text(kart);
     if (f.evaluate().isEmpty) {
-      await tester.scrollUntilVisible(f, 120,
-          scrollable: find.byType(Scrollable).first);
+      await tester.dragUntilVisible(
+          f, find.byType(ListView).first, const Offset(0, -100));
     }
     await tester.ensureVisible(f);
     await tester.pump(const Duration(milliseconds: 50));
   }
 
-  testWidgets('Lobi: marka + 10 oyun karti cizilir', (tester) async {
-    await tester.pumpWidget(lobi());
+  testWidgets('Iskelet: 4 sekme + lobide HIZLI DÜELLO ve MASALAR',
+      (tester) async {
+    await tester.pumpWidget(iskelet());
+    await tester.pump(const Duration(milliseconds: 100));
+    for (final s in ['OYNA', 'SIRALAMA', 'DÜELLOLAR', 'PROFİL']) {
+      expect(find.text(s), findsWidgets, reason: '$s sekmesi eksik');
+    }
+    expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+    expect(find.text('MASALAR'), findsOneWidget);
+    expect(find.text('BO3 SERİ'), findsOneWidget);
+    expect(find.text('ARKADAŞLA'), findsOneWidget);
+    // tasarim kurali: ranked lobide oyun listesi OLMAZ (rulet secer)
+    expect(find.text('EN KISA KADRO'), findsNothing);
+  });
+
+  testWidgets('Iskelet: ARKADAŞLA → oyun secim ekrani acilir', (tester) async {
+    await tester.pumpWidget(iskelet());
+    await tester.pump(const Duration(milliseconds: 100));
+    await kartaGit(tester, 'ARKADAŞLA');
+    await tester.tap(find.text('ARKADAŞLA'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(ArkadaslaEkrani), findsOneWidget);
+    expect(find.text('RULET'), findsOneWidget);
+  });
+
+  testWidgets('Arkadasla: RULET + 10 oyun karti cizilir', (tester) async {
+    await tester.pumpWidget(arkadasla());
     for (final ad in [
+      'RULET',
       'EN KISA KADRO',
       'KUPA DRAFTI',
       'EN GENÇ KADRO',
@@ -53,11 +82,10 @@ void main() {
       await kartaGit(tester, ad);
       expect(find.text(ad), findsOneWidget, reason: '$ad karti eksik');
     }
-    expect(find.textContaining('yakında'), findsNothing); // hepsi aktif!
   });
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {
-    await tester.pumpWidget(lobi());
+    await tester.pumpWidget(arkadasla());
     await kartaGit(tester, kart);
     await tester.tap(find.text(kart));
     await tester.pump();

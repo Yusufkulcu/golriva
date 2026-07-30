@@ -7,8 +7,11 @@ class OnlineProfil {
   final String kullaniciAdi;
   final int elo;
   final String ligKod;
+  final int ligPuan;
   final int bakiye;
-  OnlineProfil(this.kullaniciAdi, this.elo, this.ligKod, this.bakiye);
+  final DateTime? uyelik;
+  OnlineProfil(this.kullaniciAdi, this.elo, this.ligKod, this.ligPuan,
+      this.bakiye, this.uyelik);
 }
 
 /// Masa bilgisi (masalar tablosundan).
@@ -63,7 +66,7 @@ class OnlineServis {
     if (!girisYapildi) return null;
     final p = await _c
         .from('profiller')
-        .select('kullanici_adi, elo, lig_kod')
+        .select('kullanici_adi, elo, lig_kod, lig_puan, created_at')
         .eq('id', uid!)
         .maybeSingle();
     if (p == null) return null;
@@ -72,8 +75,15 @@ class OnlineServis {
         .select('bakiye')
         .eq('user_id', uid!)
         .maybeSingle();
-    return OnlineProfil(p['kullanici_adi'] as String, (p['elo'] as num).toInt(),
-        p['lig_kod'] as String, ((c?['bakiye'] ?? 0) as num).toInt());
+    return OnlineProfil(
+        p['kullanici_adi'] as String,
+        (p['elo'] as num).toInt(),
+        p['lig_kod'] as String,
+        ((p['lig_puan'] ?? 0) as num).toInt(),
+        ((c?['bakiye'] ?? 0) as num).toInt(),
+        p['created_at'] == null
+            ? null
+            : DateTime.parse(p['created_at'] as String));
   }
 
   Future<List<Masa>> masalar() async {
@@ -146,6 +156,101 @@ class OnlineServis {
     }
   }
 
+  /// SIRALAMA: Elo'ya gore ilk 50 + benim siram.
+  Future<(List<(String, int)>, int?)> siralama() async {
+    final r = await _c
+        .from('profiller')
+        .select('kullanici_adi, elo')
+        .order('elo', ascending: false)
+        .limit(50);
+    final liste = (r as List)
+        .map((p) => (p['kullanici_adi'] as String, (p['elo'] as num).toInt()))
+        .toList();
+    int? benimSiram;
+    if (girisYapildi) {
+      final ben = await _c
+          .from('profiller')
+          .select('elo')
+          .eq('id', uid!)
+          .maybeSingle();
+      if (ben != null) {
+        final ustum = await _c
+            .from('profiller')
+            .count()
+            .gt('elo', (ben['elo'] as num).toInt());
+        benimSiram = ustum + 1;
+      }
+    }
+    return (liste, benimSiram);
+  }
+
+  /// PROFIL ISTATISTIGI: seri sayisi, galibiyet %, oyun bazinda kazanma.
+  Future<({int seri, int galibiyet, Map<String, (int, int)> oyunlar})>
+      istatistik() async {
+    if (!girisYapildi) return (seri: 0, galibiyet: 0, oyunlar: {});
+    final seriler = await _c
+        .from('seriler')
+        .select('id, kazanan')
+        .or('p1.eq.$uid,p2.eq.$uid')
+        .eq('durum', 'bitti');
+    final ids = (seriler as List).map((s) => s['id'] as String).toList();
+    final toplam = ids.length;
+    final kazandigim =
+        seriler.where((s) => s['kazanan'] == uid).length;
+    final oyunlar = <String, (int, int)>{}; // kod → (kazanilan, toplam)
+    if (ids.isNotEmpty) {
+      final maclar = await _c
+          .from('maclar')
+          .select('oyun_kodu, kazanan')
+          .inFilter('seri_id', ids)
+          .eq('durum', 'bitti');
+      for (final m in (maclar as List)) {
+        final k = m['oyun_kodu'] as String;
+        final o = oyunlar[k] ?? (0, 0);
+        oyunlar[k] = (o.$1 + (m['kazanan'] == uid ? 1 : 0), o.$2 + 1);
+      }
+    }
+    return (
+      seri: toplam,
+      galibiyet: toplam == 0 ? 0 : (100 * kazandigim / toplam).round(),
+      oyunlar: oyunlar,
+    );
+  }
+
+  /// DUELLOLAR: son seriler (rakip adi, skor, kazandim mi, tarih, mod).
+  Future<List<({String rakip, int s1, int s2, bool? kazandim, String mod,
+      DateTime tarih, bool benP1})>> macGecmisi() async {
+    if (!girisYapildi) return [];
+    final r = await _c
+        .from('seriler')
+        .select('p1, p2, skor1, skor2, kazanan, mod, created_at, durum')
+        .or('p1.eq.$uid,p2.eq.$uid')
+        .eq('durum', 'bitti')
+        .order('created_at', ascending: false)
+        .limit(30);
+    final sonuc = <({String rakip, int s1, int s2, bool? kazandim, String mod,
+        DateTime tarih, bool benP1})>[];
+    for (final s in (r as List)) {
+      final benP1 = s['p1'] == uid;
+      final rakipId = benP1 ? s['p2'] : s['p1'];
+      final rp = await _c
+          .from('profiller')
+          .select('kullanici_adi')
+          .eq('id', rakipId)
+          .maybeSingle();
+      sonuc.add((
+        rakip: (rp?['kullanici_adi'] ?? '?') as String,
+        s1: (s['skor1'] as num).toInt(),
+        s2: (s['skor2'] as num).toInt(),
+        kazandim: s['kazanan'] == null ? null : s['kazanan'] == uid,
+        mod: s['mod'] as String,
+        tarih: DateTime.parse(s['created_at'] as String),
+        benP1: benP1,
+      ));
+    }
+    return sonuc;
+  }
+
   /// Eslesme dongusu adimi: once sunucuda eslesmeyi dene, olmadiysa
   /// baskasinin bizi eslestirmis olabilecegini kontrol et (seriler).
   /// [seriAltSiniri]: SADECE bu andan sonra kurulan seriler kabul edilir —
@@ -194,6 +299,57 @@ class OnlineServis {
       benimSiram: seri['p1'] == uid ? 0 : 1,
       rakipAdi: (rakip?['kullanici_adi'] ?? '?') as String,
       mod: seri['mod'] as String,
+      masaKod: (seri['masa_kod'] ?? '') as String,
+    );
+  }
+
+  /// Herkese acik profil ozeti (VS ekrani: rakibin elo + ligi).
+  Future<({String ad, int elo, String ligKod})?> kamuProfil(
+      String hedefUid) async {
+    final p = await _c
+        .from('profiller')
+        .select('kullanici_adi, elo, lig_kod')
+        .eq('id', hedefUid)
+        .maybeSingle();
+    if (p == null) return null;
+    return (
+      ad: p['kullanici_adi'] as String,
+      elo: (p['elo'] as num).toInt(),
+      ligKod: p['lig_kod'] as String,
+    );
+  }
+
+  /// Serideki maclar (sirali): VS ekrani seri noktalari + seri sonucu
+  /// "Oyunlar: X ✓ · Y ✗" listesi icin.
+  Future<List<({String oyunKodu, String? kazananUid, String durum})>>
+      seriMaclari(String seriId) async {
+    final r = await _c
+        .from('maclar')
+        .select('oyun_kodu, kazanan, durum, seri_sira')
+        .eq('seri_id', seriId)
+        .order('seri_sira', ascending: true);
+    return (r as List)
+        .map((m) => (
+              oyunKodu: m['oyun_kodu'] as String,
+              kazananUid: m['kazanan'] as String?,
+              durum: m['durum'] as String,
+            ))
+        .toList();
+  }
+
+  /// Masanin giris ucreti + kazanana NET odul (mod'a gore).
+  Future<({int giris, int net})?> masaOdul(String masaKod, String mod) async {
+    if (masaKod.isEmpty) return null;
+    final m = await _c
+        .from('masalar')
+        .select('giris, giris_bo3, kazanan_net, kazanan_net_bo3')
+        .eq('kod', masaKod)
+        .maybeSingle();
+    if (m == null) return null;
+    final bo3 = mod == 'bo3';
+    return (
+      giris: ((bo3 ? m['giris_bo3'] : m['giris']) as num).toInt(),
+      net: ((bo3 ? m['kazanan_net_bo3'] : m['kazanan_net']) as num).toInt(),
     );
   }
 }

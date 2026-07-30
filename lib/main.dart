@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
 import 'online/online_servis.dart';
-import 'screens/lobby.dart';
+import 'screens/ana_iskelet.dart';
 import 'theme/golriva_theme.dart';
 
 Future<void> main() async {
@@ -96,6 +96,6 @@ class _LoaderState extends State<_Loader> {
         ),
       );
     }
-    return LobbyScreen(repos: repos!);
+    return AnaIskelet(repos: repos!);
   }
 }

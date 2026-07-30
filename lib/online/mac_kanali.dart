@@ -17,6 +17,7 @@ class OnlineMacBilgi {
   final int benimSiram; // 0 = p1 (motor koltugu 0), 1 = p2
   final String rakipAdi;
   final String mod; // bo1 / bo3
+  final String masaKod; // caylak/klasik/yuksek/elit ('' = bilinmiyor)
 
   OnlineMacBilgi(
       {required this.macId,
@@ -28,7 +29,8 @@ class OnlineMacBilgi {
       required this.p2Uid,
       required this.benimSiram,
       required this.rakipAdi,
-      required this.mod});
+      required this.mod,
+      this.masaKod = ''});
 
   String seatUid(int seat) => seat == 0 ? p1Uid : p2Uid;
 }
@@ -60,6 +62,10 @@ class OnlineMacKanali {
   /// bo3'te "SONRAKİ MAÇ" ekranini kuran geri cagri
   /// (oyun_yonlendirici.onlineOyunEkrani baglar — repos kapanisi tasir).
   Widget Function(OnlineMacBilgi bilgi)? sonrakiEkranKur;
+
+  /// Seri sonucu ekranindaki RÖVANŞ butonu icin yeni arama ekranini kuran
+  /// geri cagri (ayni masa + ayni mod; repos kapanisi tasir).
+  Widget Function()? rovansEkranKur;
 
   OnlineMacKanali(this.bilgi);
 
@@ -198,6 +204,7 @@ class OnlineMacKanali {
           benimSiram: bilgi.benimSiram,
           rakipAdi: bilgi.rakipAdi,
           mod: bilgi.mod,
+          masaKod: bilgi.masaKod,
         );
       }
     }

@@ -10,7 +10,8 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
-import 'package:golriva/screens/lobby.dart';
+import 'package:golriva/screens/ana_iskelet.dart';
+import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/theme/golriva_theme.dart';
 import 'test_repos.dart';
 
@@ -114,14 +115,27 @@ void main() {
     'KARİYER İKİZİ',
   ];
 
-  group('LOBI — tum boyutlarda tasma yok', () {
+  group('ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok', () {
     for (final e in boyutlar.entries) {
       testWidgets(e.key, (tester) async {
         await boyutAyarla(tester, e.value);
-        await kur(tester, LobbyScreen(repos: repos));
+        await kur(tester, AnaIskelet(repos: repos));
         expect(tester.takeException(), isNull,
             reason: '${e.key} (${e.value}) boyutunda lobide tasma/exception');
-        expect(find.text('EN KISA KADRO'), findsOneWidget);
+        expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+      });
+    }
+  });
+
+  group('ARKADAŞLA OYNA — tum boyutlarda tasma yok', () {
+    for (final e in boyutlar.entries) {
+      testWidgets(e.key, (tester) async {
+        await boyutAyarla(tester, e.value);
+        await kur(tester, ArkadaslaEkrani(repos: repos));
+        expect(tester.takeException(), isNull,
+            reason:
+                '${e.key} (${e.value}) boyutunda oyun secim ekraninda tasma');
+        expect(find.text('RULET'), findsOneWidget);
       });
     }
   });

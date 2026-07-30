@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:golriva/screens/lobby.dart';
+import 'package:golriva/screens/ana_iskelet.dart';
 import 'test_repos.dart';
 
 /// Gorsel varlik testleri: marka + 10 oyun ikonu SVG'leri bundle'da var,
@@ -28,6 +28,24 @@ void main() {
     }
   });
 
+  // golriva_ekranlar_v1.html tasarim setinin arayuz ikonlari
+  const arayuzIkonlari = [
+    'nav_oyna',
+    'nav_siralama',
+    'nav_duellolar',
+    'nav_profil',
+    'simsek',
+    'riva',
+    'oynat',
+    'kupa_kucuk',
+    'alev',
+    'tac',
+    'rulet',
+    'kilit',
+    'onay',
+    'carpi',
+  ];
+
   test('10 oyun ikonu mevcut, 24x24 ve stroke 1.8 kuralinda', () {
     for (final f in ikonlar) {
       final icerik = File('assets/icons/$f.svg').readAsStringSync();
@@ -37,9 +55,17 @@ void main() {
     }
   });
 
-  testWidgets('lobi: logo + 10 ikon SVG olarak cizilir', (tester) async {
+  test('14 arayuz ikonu (tasarim seti) mevcut ve 24x24 kuralinda', () {
+    for (final f in arayuzIkonlari) {
+      final icerik = File('assets/icons/$f.svg').readAsStringSync();
+      expect(icerik, contains('<svg'), reason: '$f gecersiz');
+      expect(icerik, contains('viewBox="0 0 24 24"'), reason: '$f boyut');
+    }
+  });
+
+  testWidgets('iskelet: logo + arayuz SVG ikonlari cizilir', (tester) async {
     final repos = testRepos();
-    await tester.pumpWidget(MaterialApp(home: LobbyScreen(repos: repos)));
+    await tester.pumpWidget(MaterialApp(home: AnaIskelet(repos: repos)));
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.takeException(), isNull,
         reason: 'SVG varliklari yuklenemedi/parse edilemedi');

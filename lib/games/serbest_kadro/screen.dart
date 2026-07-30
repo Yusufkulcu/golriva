@@ -373,7 +373,7 @@ class _SerbestKadroScreenState extends State<SerbestKadroScreen> {
                                 .withValues(alpha: .4)),
                   ),
                   child: Text(
-                    '${adlar[secen]} seçiyor · Açık: ${acik.map((z) => serbestSlotAd[z]).join(" · ")}',
+                    '${adlar[secen]} ${adlar[secen] == "Sen" ? "seçiyorsun" : "seçiyor"} · Açık: ${acik.map((z) => serbestSlotAd[z]).join(" · ")}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.figtree(
                         fontSize: 12,

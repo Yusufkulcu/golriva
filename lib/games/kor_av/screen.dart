@@ -454,7 +454,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
                                   .withValues(alpha: .4)),
                     ),
                     child: Text(
-                      '${adlar[secen]} yazıyor · kalan hak: ${engine.kalanHak(secen)}',
+                      '${adlar[secen]} ${adlar[secen] == "Sen" ? "yazıyorsun" : "yazıyor"} · kalan hak: ${engine.kalanHak(secen)}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(
                           fontSize: 12,

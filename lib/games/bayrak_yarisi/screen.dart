@@ -353,7 +353,7 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
                               .withValues(alpha: .4)),
                     ),
                     child: Text(
-                      '${adlar[engine.claimer]} yazıyor — $bayrakCevapSn saniye!',
+                      '${adlar[engine.claimer]} ${adlar[engine.claimer] == "Sen" ? "yazıyorsun" : "yazıyor"} — $bayrakCevapSn saniye!',
                       style: GoogleFonts.figtree(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,

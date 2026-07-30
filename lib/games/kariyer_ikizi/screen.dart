@@ -292,7 +292,7 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
                                 .withValues(alpha: .4)),
                   ),
                   child: Text(
-                    '${adlar[yazan]} yazıyor${engine.faz == 0 ? " (önce o)" : ""}',
+                    '${adlar[yazan]} ${adlar[yazan] == "Sen" ? "yazıyorsun" : "yazıyor"}${engine.faz == 0 ? (adlar[yazan] == "Sen" ? " (önce sen)" : " (önce o)") : ""}',
                     style: GoogleFonts.figtree(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

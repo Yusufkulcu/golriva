@@ -410,7 +410,7 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
                                 .withValues(alpha: .4)),
                   ),
                   child: Text(
-                    '${adlar[secen]} seçiyor · Açık: ${acik.map((z) => gencSlotAd[z]).join(" · ")}',
+                    '${adlar[secen]} ${adlar[secen] == "Sen" ? "seçiyorsun" : "seçiyor"} · Açık: ${acik.map((z) => gencSlotAd[z]).join(" · ")}',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.figtree(
                         fontSize: 12,

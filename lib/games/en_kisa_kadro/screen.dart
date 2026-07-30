@@ -400,7 +400,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                           .withValues(alpha: .4)),
                 ),
                 child: Text(
-                  '${adlar[secen]} seçiyor · Açık: ${acik.map((z) => slotAd[z]).join(" · ")}',
+                  '${adlar[secen]} ${adlar[secen] == "Sen" ? "seçiyorsun" : "seçiyor"} · Açık: ${acik.map((z) => slotAd[z]).join(" · ")}',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.figtree(
                       fontSize: 12,

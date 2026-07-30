@@ -48,12 +48,53 @@ class _SerbestKadroScreenState extends State<SerbestKadroScreen> {
             : [o.bilgi.rakipAdi, 'Sen']);
     engine = SerbestKadroEngine(widget.repo, widget.config,
         rng: o == null ? null : Random(o.bilgi.seed));
-    o?.basla(_rakipHamle);
+    o?.basla(_rakipHamle, onMacKapandi: _macKapandi);
     _sayacBaslat();
+  }
+
+  bool _kapanisIslendi = false;
+
+  /// Rakip cekildi ya da mac sunucuda kapandi: hukmen kazanan biziz —
+  /// oyunu durdur, seri akisina gec (kullanici kurali: rakip cihazda
+  /// oyun DEVAM ETMEMELI).
+  void _macKapandi() {
+    if (!mounted || engine.bitti || _kapanisIslendi) return;
+    _kapanisIslendi = true;
+    sayac?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        backgroundColor: GolrivaColors.card,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: GolrivaColors.edge)),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('RAKİP ÇEKİLDİ',
+                style: GoogleFonts.bigShouldersDisplay(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: GolrivaColors.goldHi,
+                    letterSpacing: 1.5)),
+            const SizedBox(height: 12),
+            OnlineSonucButonlari(
+                kanal: widget.online!,
+                kazananSeat: widget.online!.bilgi.benimSiram),
+          ]),
+        ),
+      ),
+    );
   }
 
   void _rakipHamle(Map<String, dynamic> h) {
     if (!mounted || engine.bitti) return;
+    if (h['tip'] == 'cekildi') {
+      _macKapandi();
+      return;
+    }
+    if (h['tip'] != 'sec' && h['tip'] != 'sure') return;
     setState(() {
       if (h['tip'] == 'sec') {
         final idx = (h['idx'] as num).toInt();

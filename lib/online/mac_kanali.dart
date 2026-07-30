@@ -63,9 +63,18 @@ class OnlineMacKanali {
 
   OnlineMacKanali(this.bilgi);
 
-  void basla(void Function(Map<String, dynamic>) onRakipHamle) {
+  void Function()? _onMacKapandi;
+  int _yoklamaSayisi = 0;
+
+  /// Dinlemeye basla / dinleyicileri degistir. Ayni kanal hazirlik
+  /// ekranindan oyun ekranina DEVREDILIR: timer bir kez kurulur,
+  /// geri cagrilar her basla() cagrisinda guncellenir.
+  void basla(void Function(Map<String, dynamic>) onRakipHamle,
+      {void Function()? onMacKapandi}) {
     _onRakipHamle = onRakipHamle;
-    _nabiz = Timer.periodic(const Duration(milliseconds: 1500), (_) => _yokla());
+    _onMacKapandi = onMacKapandi;
+    _nabiz ??=
+        Timer.periodic(const Duration(milliseconds: 1500), (_) => _yokla());
   }
 
   Future<void> _yokla() async {
@@ -82,6 +91,16 @@ class OnlineMacKanali {
         if (h['user_id'] != _benimUid) {
           _onRakipHamle?.call(Map<String, dynamic>.from(h['icerik'] as Map));
         }
+      }
+      // EMNIYET AGI: rakip cekildi/mac sunucuda kapandiysa (sinyal kacsa
+      // bile) her 4. yoklamada mac durumunu kontrol et.
+      if (++_yoklamaSayisi % 4 == 0 && _onMacKapandi != null && !kapandi) {
+        final m = await _c
+            .from('maclar')
+            .select('durum')
+            .eq('id', bilgi.macId)
+            .maybeSingle();
+        if (m != null && m['durum'] == 'bitti') _onMacKapandi!.call();
       }
     } catch (_) {
       // gecici ag hatasi: sonraki yoklamada telafi edilir

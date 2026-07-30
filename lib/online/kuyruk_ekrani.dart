@@ -7,19 +7,6 @@ import 'mac_kanali.dart';
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart';
 
-const _oyunAdlari = {
-  'en_kisa_kadro': 'EN KISA KADRO',
-  'kupa_drafti': 'KUPA DRAFTI',
-  'en_genc_kadro': 'EN GENÇ KADRO',
-  'bayrak_yarisi': 'BAYRAK YARIŞI',
-  'hedefi_tuttur': 'HEDEFİ TUTTUR',
-  'bonservis_avi': 'BONSERVİS AVI',
-  'sari_kart_avi': 'SARI KART AVI',
-  'mac_rekortmenleri': 'MAÇ REKORTMENLERİ',
-  'milli_gol_krallari': 'MİLLİ GOL KRALLARI',
-  'kariyer_ikizi': 'KARİYER İKİZİ',
-};
-
 /// RANKED kuyruk: masa + mod sec, kuyruga gir, eslesmeyi bekle.
 /// Oyun SECILMEZ — rulet sunucuda doner, eslesince ogrenilir (kullanici kurali).
 class KuyrukEkrani extends StatefulWidget {
@@ -338,7 +325,7 @@ class _KuyrukEkraniState extends State<KuyrukEkrani> {
                   letterSpacing: 2.5,
                   color: GolrivaColors.dim,
                   fontWeight: FontWeight.w700)),
-          Text(_oyunAdlari[eslesme!.oyunKodu] ?? eslesme!.oyunKodu,
+          Text(onlineOyunAdlari[eslesme!.oyunKodu] ?? eslesme!.oyunKodu,
               style: GoogleFonts.bigShouldersDisplay(
                   fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1)),
           const SizedBox(height: 14),

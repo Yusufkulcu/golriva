@@ -29,7 +29,8 @@ class _OyunKarti {
 /// kullanici adi + RIVA bakiyesi + RANKED butonu. Supabase yapilandirilmamis
 /// derlemelerde HIC gorunmez (tam cevrimdisi calisma korunur).
 class OnlineSerit extends StatefulWidget {
-  const OnlineSerit({super.key});
+  final GolrivaRepos repos;
+  const OnlineSerit({super.key, required this.repos});
 
   @override
   State<OnlineSerit> createState() => _OnlineSeritState();
@@ -130,7 +131,8 @@ class _OnlineSeritState extends State<OnlineSerit> {
                   await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => KuyrukEkrani(profil: profil!)));
+                          builder: (_) => KuyrukEkrani(
+                              profil: profil!, repos: widget.repos)));
                   _yenile();
                 },
                 child: Text('RANKED',
@@ -204,7 +206,7 @@ class LobbyScreen extends StatelessWidget {
             ]),
             const SizedBox(height: 12),
             // FAZ 2: cevrimici serit — Supabase yapilandirilmadiysa gorunmez
-            const OnlineSerit(),
+            OnlineSerit(repos: repos),
             const SizedBox(height: 4),
             Text('İyi oyunlar',
                 style: GoogleFonts.figtree(fontSize: 13, color: GolrivaColors.dim)),

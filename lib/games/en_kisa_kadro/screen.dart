@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/players_repository.dart';
+import '../../online/mac_kanali.dart';
+import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
 import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
@@ -11,7 +14,8 @@ import 'engine.dart';
 /// acik klavyede tasma OLMAZ; sabit yukseklik varsayimi yok.
 class EnKisaKadroScreen extends StatefulWidget {
   final PlayersRepository repo;
-  const EnKisaKadroScreen({super.key, required this.repo});
+  final OnlineMacKanali? online; // null = hot-seat
+  const EnKisaKadroScreen({super.key, required this.repo, this.online});
 
   @override
   State<EnKisaKadroScreen> createState() => _EnKisaKadroScreenState();
@@ -19,7 +23,7 @@ class EnKisaKadroScreen extends StatefulWidget {
 
 class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
   late EnKisaKadroEngine engine;
-  final adlar = ['Sen', 'Rakip'];
+  late final List<String> adlar;
   final aramaCtrl = TextEditingController();
   List<Aday> adaylar = [];
   String? sonAcilan;
@@ -27,11 +31,45 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
   int kalanSn = 20;
   static const turSn = 20;
 
+  /// ONLINE: benim koltugum mu? (hot-seat'te her zaman true)
+  bool get siraBende =>
+      widget.online == null ||
+      engine.simdiSecen == widget.online!.bilgi.benimSiram;
+
   @override
   void initState() {
     super.initState();
-    engine = EnKisaKadroEngine(widget.repo);
+    final o = widget.online;
+    adlar = o == null
+        ? ['Sen', 'Rakip']
+        : (o.bilgi.benimSiram == 0
+            ? ['Sen', o.bilgi.rakipAdi]
+            : [o.bilgi.rakipAdi, 'Sen']);
+    // ONLINE: sunucu seed'i → iki istemcide de AYNI tur/kulup dizisi
+    engine = EnKisaKadroEngine(widget.repo,
+        rng: o == null ? null : Random(o.bilgi.seed));
+    o?.basla(_rakipHamle);
     _sayacBaslat();
+  }
+
+  /// Rakibin hamlesi (yoklama kanalindan): motor ayni adimlari uygular.
+  void _rakipHamle(Map<String, dynamic> h) {
+    if (!mounted || engine.bitti) return;
+    setState(() {
+      if (h['tip'] == 'sec') {
+        final idx = (h['idx'] as num).toInt();
+        final o = widget.repo.oyuncular[idx];
+        if (engine.sec(idx)) {
+          sonAcilan = '${o.ad} — ${o.boyCm} cm';
+        }
+      } else if (h['tip'] == 'sure') {
+        engine.sureDoldu();
+        sonAcilan = 'Süre doldu — slot boş (+$bosCeza cm ceza)';
+      }
+      aramaCtrl.clear();
+      adaylar = [];
+    });
+    _sonrakiAdim();
   }
 
   void _sayacBaslat() {
@@ -42,6 +80,9 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
+        // ONLINE: rakibin suresi rakibin istemcisinden bildirilir — bekle
+        if (!siraBende) return;
+        widget.online?.gonder({'tip': 'sure'});
         setState(() {
           engine.sureDoldu();
           sonAcilan = 'Süre doldu — slot boş (+$bosCeza cm ceza)';
@@ -63,10 +104,11 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
   }
 
   void _sec(Aday a) {
-    if (a.neden != null) return;
+    if (a.neden != null || !siraBende) return;
     final o = widget.repo.oyuncular[a.idx];
     setState(() {
       if (engine.sec(a.idx)) {
+        widget.online?.gonder({'tip': 'sec', 'idx': a.idx});
         sonAcilan = '${o.ad} — ${o.boyCm} cm'; // boy ANINDA aciklanir
         aramaCtrl.clear();
         adaylar = [];
@@ -115,47 +157,50 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                   style:
                       GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 13)),
               const SizedBox(height: 16),
-              Row(children: [
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: GolrivaColors.gold,
-                        foregroundColor: const Color(0xFF231A04),
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        engine = EnKisaKadroEngine(widget.repo);
-                        sonAcilan = null;
-                      });
-                      _sayacBaslat();
-                    },
-                    child: Text('YENİ DRAFT',
-                        style: GoogleFonts.bigShouldersDisplay(
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
-                            fontSize: 17)),
+              if (widget.online != null)
+                OnlineSonucButonlari(kanal: widget.online!, kazananSeat: k)
+              else
+                Row(children: [
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: GolrivaColors.gold,
+                          foregroundColor: const Color(0xFF231A04),
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        setState(() {
+                          engine = EnKisaKadroEngine(widget.repo);
+                          sonAcilan = null;
+                        });
+                        _sayacBaslat();
+                      },
+                      child: Text('YENİ DRAFT',
+                          style: GoogleFonts.bigShouldersDisplay(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
+                              fontSize: 17)),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                        foregroundColor: GolrivaColors.ink,
-                        side: const BorderSide(color: GolrivaColors.edge2),
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context);
-                    },
-                    child: Text('LOBİ',
-                        style: GoogleFonts.bigShouldersDisplay(
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2,
-                            fontSize: 17)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: GolrivaColors.ink,
+                          side: const BorderSide(color: GolrivaColors.edge2),
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pop(context);
+                      },
+                      child: Text('LOBİ',
+                          style: GoogleFonts.bigShouldersDisplay(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2,
+                              fontSize: 17)),
+                    ),
                   ),
-                ),
-              ]),
+                ]),
             ]),
           ),
         ),
@@ -182,6 +227,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
   @override
   void dispose() {
     sayac?.cancel();
+    widget.online?.kapat();
     aramaCtrl.dispose();
     super.dispose();
   }
@@ -206,6 +252,17 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                   letterSpacing: 2)),
         ]),
         centerTitle: true,
+        actions: [
+          if (widget.online != null)
+            IconButton(
+                tooltip: 'Maçtan çekil',
+                icon: const Icon(Icons.flag_outlined,
+                    color: GolrivaColors.dim, size: 20),
+                onPressed: () {
+                  sayac?.cancel();
+                  cekilAkisi(context, widget.online!);
+                }),
+        ],
       ),
       body: SafeArea(
         // KOK: ListView — her ekran boyutunda ve klavye acikken tasma yok.
@@ -302,12 +359,14 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: aramaCtrl,
-              enabled: !engine.bitti,
+              enabled: !engine.bitti && siraBende,
               onChanged: (v) => setState(() => adaylar = engine.adaylar(v)),
-              decoration: const InputDecoration(
-                  hintText: 'Futbolcu adı yaz… (en az 3 harf)',
-                  prefixIcon:
-                      Icon(Icons.search, color: GolrivaColors.gold, size: 20)),
+              decoration: InputDecoration(
+                  hintText: siraBende
+                      ? 'Futbolcu adı yaz… (en az 3 harf)'
+                      : '${adlar[engine.bitti ? 0 : engine.simdiSecen]} oynuyor…',
+                  prefixIcon: const Icon(Icons.search,
+                      color: GolrivaColors.gold, size: 20)),
             ),
             if (adaylar.isNotEmpty)
               Container(

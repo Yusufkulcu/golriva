@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
+import 'mac_kanali.dart';
 import 'online_servis.dart';
+import 'oyun_yonlendirici.dart';
 
 const _oyunAdlari = {
   'en_kisa_kadro': 'EN KISA KADRO',
@@ -21,7 +24,8 @@ const _oyunAdlari = {
 /// Oyun SECILMEZ — rulet sunucuda doner, eslesince ogrenilir (kullanici kurali).
 class KuyrukEkrani extends StatefulWidget {
   final OnlineProfil profil;
-  const KuyrukEkrani({super.key, required this.profil});
+  final GolrivaRepos repos;
+  const KuyrukEkrani({super.key, required this.profil, required this.repos});
 
   @override
   State<KuyrukEkrani> createState() => _KuyrukEkraniState();
@@ -36,7 +40,7 @@ class _KuyrukEkraniState extends State<KuyrukEkrani> {
   int beklemeSn = 0;
   Timer? nabiz;
   String? hata;
-  EslesmeSonucu? eslesme;
+  OnlineMacBilgi? eslesme;
 
   @override
   void initState() {
@@ -330,24 +334,30 @@ class _KuyrukEkraniState extends State<KuyrukEkrani> {
           Text(_oyunAdlari[eslesme!.oyunKodu] ?? eslesme!.oyunKodu,
               style: GoogleFonts.bigShouldersDisplay(
                   fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1)),
-          const SizedBox(height: 12),
-          Text(
-              'Çevrimiçi oynanış Faz 2.2 ile geliyor — bu sürüm eşleştirme '
-              'altyapısının kanıtı: seri açıldı, giriş RIVA\'ları düştü, '
-              'oyun ruletle seçildi.',
+          const SizedBox(height: 14),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: GolrivaColors.gold,
+                foregroundColor: const Color(0xFF231A04),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 13)),
+            onPressed: () {
+              final b = eslesme!;
+              Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (_) => onlineOyunEkrani(widget.repos, b)));
+            },
+            child: Text('MAÇA BAŞLA',
+                style: GoogleFonts.bigShouldersDisplay(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
+                    fontSize: 18)),
+          ),
+          const SizedBox(height: 8),
+          Text('${eslesme!.mod == "bo3" ? "3 maçlık seri" : "Tek maç"} · '
+              'sıra tabanlı senkron · yanlış anda hamle yapılamaz',
               textAlign: TextAlign.center,
               style:
-                  GoogleFonts.figtree(fontSize: 11, color: GolrivaColors.dim)),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-                foregroundColor: GolrivaColors.ink,
-                side: const BorderSide(color: GolrivaColors.edge2)),
-            onPressed: () => Navigator.pop(context),
-            child: Text('LOBİYE DÖN',
-                style: GoogleFonts.bigShouldersDisplay(
-                    fontWeight: FontWeight.w800, letterSpacing: 2)),
-          ),
+                  GoogleFonts.figtree(fontSize: 10.5, color: GolrivaColors.dim)),
         ]),
       );
 }

@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/kupa_repository.dart';
+import '../../online/mac_kanali.dart';
+import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
 import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
@@ -10,7 +13,8 @@ import 'engine.dart';
 /// toplam ustte birikir, YUKSEK kazanir. RESPONSIVE KURAL: kok ListView.
 class KupaDraftiScreen extends StatefulWidget {
   final KupaRepository repo;
-  const KupaDraftiScreen({super.key, required this.repo});
+  final OnlineMacKanali? online; // null = hot-seat
+  const KupaDraftiScreen({super.key, required this.repo, this.online});
 
   @override
   State<KupaDraftiScreen> createState() => _KupaDraftiScreenState();
@@ -18,7 +22,7 @@ class KupaDraftiScreen extends StatefulWidget {
 
 class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
   late KupaDraftEngine engine;
-  final adlar = ['Sen', 'Rakip'];
+  late final List<String> adlar;
   final aramaCtrl = TextEditingController();
   List<KupaAday> adaylar = [];
   String? sonAcilan;
@@ -26,11 +30,42 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
   int kalanSn = 20;
   static const turSn = 20;
 
+  bool get siraBende =>
+      widget.online == null ||
+      engine.simdiSecen == widget.online!.bilgi.benimSiram;
+
   @override
   void initState() {
     super.initState();
-    engine = KupaDraftEngine(widget.repo);
+    final o = widget.online;
+    adlar = o == null
+        ? ['Sen', 'Rakip']
+        : (o.bilgi.benimSiram == 0
+            ? ['Sen', o.bilgi.rakipAdi]
+            : [o.bilgi.rakipAdi, 'Sen']);
+    engine = KupaDraftEngine(widget.repo,
+        rng: o == null ? null : Random(o.bilgi.seed));
+    o?.basla(_rakipHamle);
     _sayacBaslat();
+  }
+
+  void _rakipHamle(Map<String, dynamic> h) {
+    if (!mounted || engine.bitti) return;
+    setState(() {
+      if (h['tip'] == 'sec') {
+        final idx = (h['idx'] as num).toInt();
+        final o = widget.repo.oyuncular[idx];
+        if (engine.sec(idx)) {
+          sonAcilan = '${o.ad} — ${o.kupa} kupa';
+        }
+      } else if (h['tip'] == 'sure') {
+        engine.sureDoldu();
+        sonAcilan = 'Süre doldu — etap boş geçti';
+      }
+      aramaCtrl.clear();
+      adaylar = [];
+    });
+    _sonrakiAdim();
   }
 
   void _sayacBaslat() {
@@ -41,6 +76,8 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
+        if (!siraBende) return; // rakibin istemcisi bildirir
+        widget.online?.gonder({'tip': 'sure'});
         setState(() {
           engine.sureDoldu();
           sonAcilan = 'Süre doldu — etap boş geçti';
@@ -62,10 +99,11 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
   }
 
   void _sec(KupaAday a) {
-    if (a.neden != null) return;
+    if (a.neden != null || !siraBende) return;
     final o = widget.repo.oyuncular[a.idx];
     setState(() {
       if (engine.sec(a.idx)) {
+        widget.online?.gonder({'tip': 'sec', 'idx': a.idx});
         sonAcilan = '${o.ad} — ${o.kupa} kupa';
         aramaCtrl.clear();
         adaylar = [];
@@ -113,6 +151,9 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
                   style: GoogleFonts.figtree(
                       color: GolrivaColors.dim, fontSize: 13)),
               const SizedBox(height: 16),
+              if (widget.online != null)
+                OnlineSonucButonlari(kanal: widget.online!, kazananSeat: k)
+              else
               Row(children: [
                 Expanded(
                   child: FilledButton(
@@ -180,6 +221,7 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
   @override
   void dispose() {
     sayac?.cancel();
+    widget.online?.kapat();
     aramaCtrl.dispose();
     super.dispose();
   }
@@ -203,6 +245,17 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
                   letterSpacing: 2)),
         ]),
         centerTitle: true,
+        actions: [
+          if (widget.online != null)
+            IconButton(
+                tooltip: 'Maçtan çekil',
+                icon: const Icon(Icons.flag_outlined,
+                    color: GolrivaColors.dim, size: 20),
+                onPressed: () {
+                  sayac?.cancel();
+                  cekilAkisi(context, widget.online!);
+                }),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -307,10 +360,13 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: aramaCtrl,
+                enabled: !engine.bitti && siraBende,
                 onChanged: (v) => setState(() => adaylar = engine.adaylar(v)),
-                decoration: const InputDecoration(
-                    hintText: 'Futbolcu adı yaz… (en az 3 harf)',
-                    prefixIcon: Icon(Icons.search,
+                decoration: InputDecoration(
+                    hintText: siraBende
+                        ? 'Futbolcu adı yaz… (en az 3 harf)'
+                        : '${adlar[engine.bitti ? 0 : engine.simdiSecen]} oynuyor…',
+                    prefixIcon: const Icon(Icons.search,
                         color: GolrivaColors.gold, size: 20)),
               ),
               if (adaylar.isNotEmpty)

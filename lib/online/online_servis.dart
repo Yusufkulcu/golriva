@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'mac_kanali.dart';
 import 'supabase_ayar.dart';
 
 /// Cevrimici profil ozeti.
@@ -19,14 +20,7 @@ class Masa {
   Masa(this.kod, this.giris, this.girisBo3, this.minBakiyeKilit);
 }
 
-/// Eslesme sonucu.
-class EslesmeSonucu {
-  final String seriId;
-  final String rakipAdi;
-  final String oyunKodu; // ilk macin RASTGELE oyunu — sunucu secti
-  final String mod;
-  EslesmeSonucu(this.seriId, this.rakipAdi, this.oyunKodu, this.mod);
-}
+// (Eslesme sonucu artik OnlineMacBilgi olarak doner — mac_kanali.dart)
 
 /// Supabase erisim katmani. SADECE SupabaseAyar.yapilandirildi ise kullanilir;
 /// tum oyun mantigi sunucuda (SECURITY DEFINER RPC), istemciye guvenilmez.
@@ -102,7 +96,8 @@ class OnlineServis {
 
   /// Eslesme dongusu adimi: once sunucuda eslesmeyi dene, olmadiysa
   /// baskasinin bizi eslestirmis olabilecegini kontrol et (seriler).
-  Future<EslesmeSonucu?> eslesmeKontrol() async {
+  /// Donus: acik macin TAM kimligi (seed dahil) — motor bundan kurulur.
+  Future<OnlineMacBilgi?> eslesmeKontrol() async {
     final sid = await _c.rpc('eslesme_dene');
     final seri = sid != null
         ? await _c.from('seriler').select().eq('id', sid).maybeSingle()
@@ -123,14 +118,24 @@ class OnlineServis {
         .maybeSingle();
     final mac = await _c
         .from('maclar')
-        .select('oyun_kodu')
+        .select('id, oyun_kodu, seed, created_at')
         .eq('seri_id', seri['id'])
-        .eq('seri_sira', 1)
+        .eq('durum', 'oyunda')
+        .order('seri_sira', ascending: false)
+        .limit(1)
         .maybeSingle();
-    return EslesmeSonucu(
-        seri['id'] as String,
-        (rakip?['kullanici_adi'] ?? '?') as String,
-        (mac?['oyun_kodu'] ?? '?') as String,
-        seri['mod'] as String);
+    if (mac == null) return null;
+    return OnlineMacBilgi(
+      macId: mac['id'] as String,
+      seriId: seri['id'] as String,
+      oyunKodu: mac['oyun_kodu'] as String,
+      seed: (mac['seed'] as num).toInt(),
+      baslangic: DateTime.parse(mac['created_at'] as String),
+      p1Uid: seri['p1'] as String,
+      p2Uid: seri['p2'] as String,
+      benimSiram: seri['p1'] == uid ? 0 : 1,
+      rakipAdi: (rakip?['kullanici_adi'] ?? '?') as String,
+      mod: seri['mod'] as String,
+    );
   }
 }

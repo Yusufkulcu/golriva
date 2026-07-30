@@ -23,7 +23,8 @@ ayağa kaldırır. Uygulama Supabase YAPILANDIRILMADAN da tamamen çalışır
 1. `supabase_sema_v2.sql` — tablolar, RLS, ekonomi, seri/rulet RPC'leri
 2. `admin_ek.sql` — yasaklar, veri itirazları, özet görünümler
 3. `lig_ek.sql` — 7 kademeli lig sistemi
-4. `faz2_ek.sql` — kuyruktan çıkış + istemci eşleşme RPC'si (YENİ)
+4. `faz2_ek.sql` — kuyruktan çıkış + istemci eşleşme RPC'si
+5. `faz2_2_ek.sql` — ÇEVRİMİÇİ OYNANIŞ: hamle senkronu + maç sonucu RPC'leri (YENİ)
 
 ## 3. Misafir girişini aç
 
@@ -60,9 +61,14 @@ flutter build apk --debug \
    birkaç saniyede **RAKİP BULUNDU**: seri açılır, iki taraftan giriş RIVA'sı düşer,
    ruletin seçtiği oyun ikinize de gösterilir.
 
-> Not: Bu fazda (2.1) eşleşme altyapısı kanıtlanır; maçın kendisinin çevrimiçi
-> oynanışı (hamle senkronu + skor işleme + Elo/lig güncellemesi) Faz 2.2'dedir.
-> Test eşleşmelerinde düşen giriş ücretleri test verisidir; SQL Editor'dan
+5. **RAKİP BULUNDU → MAÇA BAŞLA**: maç iki cihazda eşzamanlı oynanır —
+   sıra sende değilken yazamazsın, hamleler 1-2 saniyede karşıya geçer,
+   maç bitince sonuç sunucuda işlenir (ödül RIVA + Elo + lig puanı).
+   Bo3'te "SONRAKİ MAÇ" ile seri devam eder; bayrak direği simgesi = çekilme.
+
+> Not: Faz 2.2 rulet havuzu sıra tabanlı 8 oyundur; Bayrak Yarışı ve
+> Kariyer İkizi çevrimiçi havuza Faz 2.3'te girer (hot-seat'te oynanmaya
+> devam ederler). Test verisi temizliği: SQL Editor'dan
 > `truncate seriler, maclar, defter, eslestirme_kuyrugu cascade;` ile sıfırlanabilir
 > (profiller kalır) — ya da kullanıcıyı silip yeniden kayıt olunur.
 

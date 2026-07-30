@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/hedef_repository.dart';
+import '../../online/mac_kanali.dart';
+import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
 import 'engine.dart';
 
@@ -11,7 +14,8 @@ import 'engine.dart';
 /// RESPONSIVE KURAL: kok yerlesim ListView — tasma yok.
 class HedefiTutturScreen extends StatefulWidget {
   final HedefRepository repo;
-  const HedefiTutturScreen({super.key, required this.repo});
+  final OnlineMacKanali? online; // null = hot-seat
+  const HedefiTutturScreen({super.key, required this.repo, this.online});
 
   @override
   State<HedefiTutturScreen> createState() => _HedefiTutturScreenState();
@@ -19,7 +23,7 @@ class HedefiTutturScreen extends StatefulWidget {
 
 class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
   late HedefiTutturEngine engine;
-  final adlar = ['Sen', 'Rakip'];
+  late final List<String> adlar;
   final aramaCtrl = TextEditingController();
   List<HedefAday> adaylar = [];
   String? uyari;
@@ -33,11 +37,37 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
   (int, int)? sonAcilanHucre;
   Timer? acilisTimer;
 
+  bool get siraBende =>
+      widget.online == null || engine.sira == widget.online!.bilgi.benimSiram;
+
   @override
   void initState() {
     super.initState();
-    engine = HedefiTutturEngine(widget.repo);
+    final o = widget.online;
+    adlar = o == null
+        ? ['Sen', 'Rakip']
+        : (o.bilgi.benimSiram == 0
+            ? ['Sen', o.bilgi.rakipAdi]
+            : [o.bilgi.rakipAdi, 'Sen']);
+    engine = HedefiTutturEngine(widget.repo,
+        rng: o == null ? null : Random(o.bilgi.seed));
+    o?.basla(_rakipHamle);
     _sayacBaslat();
+  }
+
+  void _rakipHamle(Map<String, dynamic> h) {
+    if (!mounted || engine.bitti) return;
+    setState(() {
+      if (h['tip'] == 'sec') {
+        if (engine.sec((h['idx'] as num).toInt())) uyari = null;
+      } else if (h['tip'] == 'sure') {
+        uyari = '${adlar[engine.sira]} — süre doldu, hak yandı (0 sayılır)';
+        engine.sureDoldu();
+      }
+      aramaCtrl.clear();
+      adaylar = [];
+    });
+    _sonrakiAdim();
   }
 
   void _sayacBaslat() {
@@ -48,6 +78,8 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
+        if (!siraBende) return; // rakibin istemcisi bildirir
+        widget.online?.gonder({'tip': 'sure'});
         setState(() {
           uyari = '${adlar[engine.sira]} — süre doldu, hak yandı (0 sayılır)';
           engine.sureDoldu();
@@ -69,9 +101,10 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
   }
 
   void _sec(HedefAday a) {
-    if (a.neden != null) return;
+    if (a.neden != null || !siraBende) return;
     setState(() {
       if (engine.sec(a.idx)) {
+        widget.online?.gonder({'tip': 'sec', 'idx': a.idx});
         uyari = null;
         aramaCtrl.clear();
         adaylar = [];
@@ -160,6 +193,9 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
                   style: GoogleFonts.figtree(
                       color: GolrivaColors.dim, fontSize: 13)),
               const SizedBox(height: 16),
+              if (widget.online != null)
+                OnlineSonucButonlari(kanal: widget.online!, kazananSeat: k)
+              else
               Row(children: [
                 Expanded(
                   child: FilledButton(
@@ -232,6 +268,7 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
   void dispose() {
     sayac?.cancel();
     acilisTimer?.cancel();
+    widget.online?.kapat();
     aramaCtrl.dispose();
     super.dispose();
   }
@@ -257,6 +294,17 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
                   letterSpacing: 2)),
         ]),
         centerTitle: true,
+        actions: [
+          if (widget.online != null)
+            IconButton(
+                tooltip: 'Maçtan çekil',
+                icon: const Icon(Icons.flag_outlined,
+                    color: GolrivaColors.dim, size: 20),
+                onPressed: () {
+                  sayac?.cancel();
+                  cekilAkisi(context, widget.online!);
+                }),
+        ],
       ),
       body: SafeArea(
         // acilis modunda ekrana dokunmak acilisi atlar
@@ -326,11 +374,14 @@ class _HedefiTutturScreenState extends State<HedefiTutturScreen> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: aramaCtrl,
+                  enabled: !engine.bitti && siraBende,
                   onChanged: (v) =>
                       setState(() => adaylar = engine.adaylar(v)),
-                  decoration: const InputDecoration(
-                      hintText: 'Futbolcu adı yaz… (en az 3 harf)',
-                      prefixIcon: Icon(Icons.search,
+                  decoration: InputDecoration(
+                      hintText: siraBende
+                          ? 'Futbolcu adı yaz… (en az 3 harf)'
+                          : '${adlar[engine.bitti ? 0 : engine.sira]} oynuyor…',
+                      prefixIcon: const Icon(Icons.search,
                           color: GolrivaColors.gold, size: 20)),
                 ),
                 if (adaylar.isNotEmpty)

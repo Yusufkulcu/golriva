@@ -1,5 +1,11 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golriva/games/en_kisa_kadro/engine.dart';
+import 'package:golriva/games/en_genc_kadro/engine.dart';
+import 'package:golriva/games/hedefi_tuttur/engine.dart';
+import 'package:golriva/games/kor_av/engine.dart';
+import 'package:golriva/games/kupa_drafti/engine.dart';
 import 'package:golriva/online/supabase_ayar.dart';
 import 'package:golriva/screens/lobby.dart';
 import 'test_repos.dart';
@@ -20,5 +26,63 @@ void main() {
     expect(find.textContaining('+500'), findsNothing);
     // 10 oyun hala yerli yerinde
     expect(find.text('EN KISA KADRO'), findsOneWidget);
+  });
+
+  // FAZ 2.2: cevrimici oynanisin temeli — AYNI SEED, iki istemcide AYNI oyun.
+  group('DETERMINIZM (online senkronun temeli)', () {
+    test('ayni seed → ayni kurulum (tum motorlar)', () {
+      final repos = testRepos();
+      final an = DateTime(2026, 7, 30, 12); // mac baslangici (sunucudan gelir)
+      for (final seed in [1, 42, 987654321]) {
+        final k1 = EnKisaKadroEngine(repos.boy, rng: Random(seed));
+        final k2 = EnKisaKadroEngine(repos.boy, rng: Random(seed));
+        for (var t = 0; t < turSayisi; t++) {
+          expect(k1.turlar[t].ligMi, k2.turlar[t].ligMi);
+          expect(k1.turlar[t].index, k2.turlar[t].index);
+        }
+        final g1 = GencKadroEngine(repos.genc, rng: Random(seed), simdi: an);
+        final g2 = GencKadroEngine(repos.genc, rng: Random(seed), simdi: an);
+        expect(g1.kulupSirasi, g2.kulupSirasi);
+        final kd1 = KupaDraftEngine(repos.kupa, rng: Random(seed));
+        final kd2 = KupaDraftEngine(repos.kupa, rng: Random(seed));
+        expect(kd1.kulupSirasi, kd2.kulupSirasi);
+        final h1 = HedefiTutturEngine(repos.hedef, rng: Random(seed));
+        final h2 = HedefiTutturEngine(repos.hedef, rng: Random(seed));
+        expect([h1.katIdx, h1.kadroN, h1.hedef, h1.sira],
+            [h2.katIdx, h2.kadroN, h2.hedef, h2.sira]);
+        final f1 = KorAvEngine(repos.fee, rng: Random(seed));
+        final f2 = KorAvEngine(repos.fee, rng: Random(seed));
+        expect([f1.kadroN, f1.hedef, f1.sira], [f2.kadroN, f2.hedef, f2.sira]);
+      }
+    });
+
+    test('hamle aynasi: iki motor ayni akisla ayni sonuca ulasir', () {
+      final repos = testRepos();
+      final surucu = Random(7);
+      final a = EnKisaKadroEngine(repos.boy, rng: Random(123));
+      final b = EnKisaKadroEngine(repos.boy, rng: Random(123));
+      var adim = 0;
+      while (!a.bitti && adim++ < 50) {
+        final acik = a.acikMevkiler(a.simdiSecen);
+        final gecerli = a.havuz
+            .where((i) =>
+                !a.alinan.contains(i) &&
+                acik.contains(repos.boy.oyuncular[i].poz) &&
+                repos.boy.oyuncular[i].boyCm > 0)
+            .toList();
+        if (gecerli.isEmpty || surucu.nextInt(8) == 0) {
+          a.sureDoldu();
+          b.sureDoldu(); // "sure" hamlesi karsiya boyle tasinir
+        } else {
+          final i = gecerli[surucu.nextInt(gecerli.length)];
+          expect(a.sec(i), isTrue);
+          expect(b.sec(i), isTrue); // "sec" hamlesi karsiya boyle tasinir
+        }
+      }
+      expect(b.bitti, isTrue);
+      expect(a.toplam(0), b.toplam(0));
+      expect(a.toplam(1), b.toplam(1));
+      expect(a.kazanan(), b.kazanan());
+    });
   });
 }

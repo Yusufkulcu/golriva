@@ -10,8 +10,11 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
+import 'package:golriva/online/davet_ekrani.dart';
 import 'package:golriva/screens/ana_iskelet.dart';
 import 'package:golriva/screens/arkadasla_ekrani.dart';
+import 'package:golriva/screens/arkadaslar_ekrani.dart';
+import 'package:golriva/screens/ligler_ekrani.dart';
 import 'test_repos.dart';
 
 /// Widget duman testleri — 4 sekmeli iskelet + 10 oyunun tamami.
@@ -82,6 +85,45 @@ void main() {
       await kartaGit(tester, ad);
       expect(find.text(ad), findsOneWidget, reason: '$ad karti eksik');
     }
+  });
+
+  testWidgets('Arkadasla: davet kur + kodla katil butonlari var',
+      (tester) async {
+    await tester.pumpWidget(arkadasla());
+    expect(find.text('DAVET KUR'), findsOneWidget);
+    expect(find.text('KODLA KATIL'), findsOneWidget);
+    expect(find.textContaining('Arkadaşlarım'), findsOneWidget);
+  });
+
+  testWidgets('Davet kur: oyun secimi + mod + olustur butonu', (tester) async {
+    await tester
+        .pumpWidget(MaterialApp(home: DavetKurEkrani(repos: repos)));
+    expect(find.text('RULET'), findsOneWidget);
+    expect(find.text('TEK MAÇ'), findsOneWidget);
+    expect(find.text('3 MAÇLIK SERİ'), findsOneWidget);
+    await tester.dragUntilVisible(find.text('DAVET KODU OLUŞTUR'),
+        find.byType(ListView).first, const Offset(0, -100));
+    expect(find.text('DAVET KODU OLUŞTUR'), findsOneWidget);
+    // sabit oyun secilebilir
+    await tester.tap(find.text('KUPA DRAFTI'));
+    await tester.pump();
+  });
+
+  testWidgets('Ligler: 7 kademe cevrimdisi yedekle cizilir', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: LiglerEkrani()));
+    await tester.pump(const Duration(milliseconds: 50));
+    // ekran zirveden asagi listeler — test de ayni yonde kaydirir
+    for (final ad in ['ŞAMPİYONLAR LİGİ', 'SÜPER LİG', 'AMATÖR KÜME']) {
+      await tester.dragUntilVisible(
+          find.text(ad), find.byType(ListView).first, const Offset(0, -120));
+      expect(find.text(ad), findsOneWidget, reason: '$ad eksik');
+    }
+  });
+
+  testWidgets('Arkadaslar: cevrimdisi kibarca aciklar', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ArkadaslarEkrani()));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.textContaining('çevrimiçi hesap gerekli'), findsOneWidget);
   });
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {

@@ -6,6 +6,7 @@ import '../online/oyun_yonlendirici.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'ligler_ekrani.dart';
 import 'oyna_sekmesi.dart';
 
 const _aylar = [
@@ -108,7 +109,12 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
                 renk: GolrivaColors.ok),
           ]),
           const SizedBox(height: 9),
-          Container(
+          // lig kartı → LİGLER sayfası
+          InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const LiglerEkrani())),
+            child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: gKartDekor(),
             child: Row(children: [
@@ -132,6 +138,7 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
                   style: GoogleFonts.spaceGrotesk(
                       fontSize: 13, color: GolrivaColors.goldHi)),
             ]),
+            ),
           ),
           const SizedBox(height: 15),
           Text('OYUN PERFORMANSI',

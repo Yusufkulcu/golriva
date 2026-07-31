@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
+import '../online/davet_ekrani.dart';
+import '../online/supabase_ayar.dart';
 import '../games/bayrak_yarisi/screen.dart';
 import '../games/en_genc_kadro/screen.dart';
 import '../games/en_kisa_kadro/screen.dart';
@@ -13,10 +15,11 @@ import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'arkadaslar_ekrani.dart';
 
 /// EKRAN 12 · ARKADAŞLA OYNA — dostluk maci: oyun secimi BURADA serbest
-/// (ranked'da rulet zorunlu, tasarim kurali). Su an ayni cihazda hot-seat;
-/// davet koduyla uzaktan dostluk maci Faz 2.4'te.
+/// (ranked'da rulet zorunlu, tasarim kurali). Iki yol:
+/// UZAKTAN (davet koduyla, Riva'siz/Elo'suz) ya da AYNI CIHAZDA (hot-seat).
 class ArkadaslaEkrani extends StatelessWidget {
   final GolrivaRepos repos;
   const ArkadaslaEkrani({super.key, required this.repos});
@@ -48,6 +51,15 @@ class ArkadaslaEkrani extends StatelessWidget {
   void _ac(BuildContext context, Widget Function() ekran) =>
       Navigator.push(context, MaterialPageRoute(builder: (_) => ekran()));
 
+  /// Davet akisi cevrimici ister; degilse kibarca soyle ve false don.
+  bool _cevrimiciGerekli(BuildContext context) {
+    if (SupabaseAyar.yapilandirildi) return true;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Uzaktan oynamak için çevrimiçi yapılandırma gerekli '
+            '(README_SUPABASE.md). Aynı cihazda oynamaya devam edebilirsin.')));
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final oyunlar = _oyunlar();
@@ -71,42 +83,101 @@ class ArkadaslaEkrani extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
           children: [
-            // davet kodu — uzaktan dostluk maci Faz 2.4'te
-            Opacity(
-              opacity: .55,
-              child: Container(
-                padding: const EdgeInsets.all(13),
-                decoration: gKartDekor(),
-                child: Row(children: [
-                  Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          etiket('DAVET KODU · YAKINDA'),
-                          Text('GLR-····',
-                              style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 4,
-                                  color: GolrivaColors.goldHi)),
-                        ]),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                        gradient: GolrivaColors.goldGradient,
-                        borderRadius: BorderRadius.circular(12)),
-                    child: Text('KOPYALA',
+            // ── UZAKTAN OYNA: davet kodu (dostluk — Riva'siz/Elo'suz) ──
+            Container(
+              padding: const EdgeInsets.all(13),
+              decoration: gKartDekor(),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    etiket('UZAKTAN OYNA · DAVET KODUYLA'),
+                    const SizedBox(height: 3),
+                    Text('İki telefon, tek kod — Riva ve Elo işlemez.',
                         style: GoogleFonts.figtree(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF231A04))),
+                            fontSize: 10.5, color: GolrivaColors.dim)),
+                    const SizedBox(height: 9),
+                    Row(children: [
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _cevrimiciGerekli(context)
+                              ? Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => DavetKurEkrani(
+                                          repos: repos)))
+                              : null,
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                                gradient: GolrivaColors.goldGradient,
+                                borderRadius: BorderRadius.circular(12)),
+                            child: Text('DAVET KUR',
+                                style: GoogleFonts.bigShouldersDisplay(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.5,
+                                    color: const Color(0xFF231A04))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _cevrimiciGerekli(context)
+                              ? davetKatilDialog(context, repos)
+                              : null,
+                          child: Container(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 10),
+                            alignment: Alignment.center,
+                            decoration: kartDekor(r: 12).copyWith(
+                                border:
+                                    Border.all(color: GolrivaColors.edge)),
+                            child: Text('KODLA KATIL',
+                                style: GoogleFonts.bigShouldersDisplay(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.5,
+                                    color: GolrivaColors.goldHi)),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ]),
+            ),
+            const SizedBox(height: 9),
+            // arkadas listesi kisayolu
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ArkadaslarEkrani())),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 13, vertical: 10),
+                decoration: kartDekor(r: 14),
+                child: Row(children: [
+                  gIkon('nav_profil', 16, GolrivaColors.dim),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text('Arkadaşlarım — listele, ekle, çıkar',
+                        style: GoogleFonts.figtree(
+                            fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
+                  Text('›',
+                      style: GoogleFonts.figtree(
+                          fontSize: 16, color: GolrivaColors.dim2)),
                 ]),
               ),
             ),
             const SizedBox(height: 14),
+            etiket('AYNI CİHAZDA (SIRAYLA)'),
+            const SizedBox(height: 4),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Text('OYUN SEÇ',
                   style: GoogleFonts.bigShouldersDisplay(
@@ -203,8 +274,8 @@ class ArkadaslaEkrani extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-                'Şimdilik aynı cihazda sırayla oynanır (hot-seat). '
-                'Davet koduyla uzaktan dostluk maçı yakında.',
+                'Aynı cihazda sırayla oynanır (hot-seat) · '
+                'uzaktan oynamak için üstten davet kur.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5, color: GolrivaColors.dim2)),

@@ -270,11 +270,17 @@ class OnlineServis {
             .select()
             .or('p1.eq.$uid,p2.eq.$uid')
             .eq('durum', 'oyunda')
+            .eq('dostluk', false) // ranked arama dostluk serisini almaz
             .gte('created_at', esik)
             .order('created_at', ascending: false)
             .limit(1)
             .maybeSingle();
     if (seri == null) return null;
+    return _bilgiKur(seri);
+  }
+
+  /// Seri satirindan OnlineMacBilgi kur (rakip adi + acik mac sorgulanir).
+  Future<OnlineMacBilgi?> _bilgiKur(Map<String, dynamic> seri) async {
     final rakipId = seri['p1'] == uid ? seri['p2'] : seri['p1'];
     final rakip = await _c
         .from('profiller')
@@ -302,7 +308,120 @@ class OnlineServis {
       rakipAdi: (rakip?['kullanici_adi'] ?? '?') as String,
       mod: seri['mod'] as String,
       masaKod: (seri['masa_kod'] ?? '') as String,
+      dostluk: (seri['dostluk'] ?? false) as bool,
     );
+  }
+
+  /// Seri id'sinden mac bilgisi (davet akisi: katilan + kurucu kullanir).
+  Future<OnlineMacBilgi?> seridenBilgi(String seriId) async {
+    final seri =
+        await _c.from('seriler').select().eq('id', seriId).maybeSingle();
+    if (seri == null) return null;
+    return _bilgiKur(seri);
+  }
+
+  // ---------- FAZ 2.4: ARKADAŞLAR ----------
+
+  Future<void> arkadasEkle(String ad) =>
+      _c.rpc('arkadas_ekle', params: {'ad': ad.trim()});
+
+  Future<void> arkadasSil(String ad) =>
+      _c.rpc('arkadas_sil', params: {'ad': ad});
+
+  Future<List<({String ad, int elo, String ligKod})>> arkadasListesi() async {
+    final r = await _c.rpc('arkadas_listesi');
+    return (r as List)
+        .map((p) => (
+              ad: p['kullanici_adi'] as String,
+              elo: (p['elo'] as num).toInt(),
+              ligKod: p['lig_kod'] as String,
+            ))
+        .toList();
+  }
+
+  // ---------- FAZ 2.4: HAFTALIK SIRALAMA ----------
+
+  /// Son 7 gunde kazanilan ranked seri sayisina gore ilk 50.
+  Future<List<(String, int)>> haftalikSiralama() async {
+    final r = await _c.rpc('haftalik_siralama');
+    return (r as List)
+        .map((p) =>
+            (p['kullanici_adi'] as String, (p['sayi'] as num).toInt()))
+        .toList();
+  }
+
+  // ---------- FAZ 2.4: DAVET KODU (uzaktan dostluk maci) ----------
+
+  /// Davet kur; GLR-XXXX kodu doner. [oyunKodu] null = rulet.
+  Future<String> davetOlustur(String mod, String? oyunKodu) async {
+    final r = await _c
+        .rpc('davet_olustur', params: {'md': mod, 'oyun': oyunKodu});
+    return r as String;
+  }
+
+  /// Koda katil; kurulan dostluk serisinin mac bilgisi doner.
+  Future<OnlineMacBilgi?> davetKatil(String kod) async {
+    final sid = await _c.rpc('davet_katil', params: {'k': kod});
+    return seridenBilgi(sid as String);
+  }
+
+  /// Kurucu yoklamasi: davet eslesti mi? Eslestiyse mac bilgisi doner.
+  Future<OnlineMacBilgi?> davetDurum(String kod) async {
+    final d = await _c
+        .from('davetler')
+        .select('seri_id, durum')
+        .eq('kod', kod)
+        .maybeSingle();
+    final sid = d?['seri_id'] as String?;
+    if (sid == null) return null;
+    return seridenBilgi(sid);
+  }
+
+  Future<void> davetIptal() => _c.rpc('davet_iptal');
+
+  // ---------- FAZ 2.4: CÜZDAN GEÇMİŞİ ----------
+
+  /// Kendi defter kayitlarim (RLS: yalniz kendi satirlarim) — son 50.
+  Future<List<({String tip, int miktar, String? aciklama, DateTime tarih})>>
+      defterGecmisi() async {
+    if (!girisYapildi) return [];
+    final r = await _c
+        .from('defter')
+        .select('tip, miktar, aciklama, created_at')
+        .eq('user_id', uid!)
+        .order('created_at', ascending: false)
+        .limit(50);
+    return (r as List)
+        .map((d) => (
+              tip: d['tip'] as String,
+              miktar: (d['miktar'] as num).toInt(),
+              aciklama: d['aciklama'] as String?,
+              tarih: DateTime.parse(d['created_at'] as String),
+            ))
+        .toList();
+  }
+
+  // ---------- FAZ 2.4: LİG KONFİGÜRASYONU ----------
+
+  /// Lig merdiveni (herkese acik): sira, ad, terfi esigi, puan tablosu.
+  Future<List<({String kod, String ad, int sira, int terfiEsigi,
+      int gBo1, int kBo1, int gBo3, int kBo3})>> ligler() async {
+    final r = await _c
+        .from('ligler')
+        .select('kod, ad, sira, terfi_esigi, g_bo1, k_bo1, g_bo3, k_bo3')
+        .order('sira');
+    return (r as List)
+        .map((l) => (
+              kod: l['kod'] as String,
+              ad: l['ad'] as String,
+              sira: (l['sira'] as num).toInt(),
+              terfiEsigi: (l['terfi_esigi'] as num).toInt(),
+              gBo1: (l['g_bo1'] as num).toInt(),
+              kBo1: (l['k_bo1'] as num).toInt(),
+              gBo3: (l['g_bo3'] as num).toInt(),
+              kBo3: (l['k_bo3'] as num).toInt(),
+            ))
+        .toList();
   }
 
   /// Herkese acik profil ozeti (VS ekrani: rakibin elo + ligi).

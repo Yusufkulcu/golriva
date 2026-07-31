@@ -15,13 +15,32 @@ class CuzdanEkrani extends StatefulWidget {
 
 class _CuzdanEkraniState extends State<CuzdanEkrani> {
   int? bakiye;
+  List<({String tip, int miktar, String? aciklama, DateTime tarih})>? gecmis;
+
+  static const _aylar = [
+    '', 'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
+    'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'
+  ];
+  static const _tipAdlari = {
+    'baslangic': 'Hoş geldin hediyesi',
+    'seri_giris': 'Seri girişi',
+    'seri_odul': 'Seri ödülü',
+    'berabere_iade': 'Berabere iadesi',
+    'reklam': 'Reklam ödülü',
+    'paket': 'Paket alımı',
+    'duzeltme': 'Düzeltme',
+  };
 
   @override
   void initState() {
     super.initState();
     if (SupabaseAyar.yapilandirildi) {
-      OnlineServis().profilGetir().then((p) {
+      final servis = OnlineServis();
+      servis.profilGetir().then((p) {
         if (mounted) setState(() => bakiye = p?.bakiye);
+      }).catchError((_) {});
+      servis.defterGecmisi().then((g) {
+        if (mounted) setState(() => gecmis = g);
       }).catchError((_) {});
     }
   }
@@ -146,6 +165,26 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
               const SizedBox(width: 8),
               _paket('5.000', 'Riva'),
             ]),
+            // ── GEÇMİŞ: harcamalar + kazanımlar (defter) ──
+            if (gecmis != null) ...[
+              const SizedBox(height: 15),
+              Text('GEÇMİŞ',
+                  style: GoogleFonts.bigShouldersDisplay(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2)),
+              const SizedBox(height: 8),
+              if (gecmis!.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: kartDekor(),
+                  child: Text('Henüz hareket yok.',
+                      style: GoogleFonts.figtree(
+                          fontSize: 12, color: GolrivaColors.dim)),
+                )
+              else
+                for (final h in gecmis!) _hareket(h),
+            ],
             const SizedBox(height: 30),
             Text('Riva yalnız oyun girişinde kullanılır · Elo satın alınamaz',
                 textAlign: TextAlign.center,
@@ -154,6 +193,38 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _hareket(
+      ({String tip, int miktar, String? aciklama, DateTime tarih}) h) {
+    final arti = h.miktar >= 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      decoration: kartDekor(r: 14),
+      child: Row(children: [
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(_tipAdlari[h.tip] ?? h.tip,
+                style: GoogleFonts.figtree(
+                    fontSize: 12, fontWeight: FontWeight.w700)),
+            Text(
+                '${h.tarih.day} ${_aylar[h.tarih.month]}'
+                '${h.aciklama == null ? "" : " · ${h.aciklama}"}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.figtree(
+                    fontSize: 9.5, color: GolrivaColors.dim)),
+          ]),
+        ),
+        Text('${arti ? "+" : ""}${h.miktar}',
+            style: GoogleFonts.spaceGrotesk(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: arti ? GolrivaColors.ok : GolrivaColors.bad)),
+      ]),
     );
   }
 

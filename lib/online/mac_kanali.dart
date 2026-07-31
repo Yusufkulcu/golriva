@@ -18,6 +18,7 @@ class OnlineMacBilgi {
   final String rakipAdi;
   final String mod; // bo1 / bo3
   final String masaKod; // caylak/klasik/yuksek/elit ('' = bilinmiyor)
+  final bool dostluk; // true: Riva'sız + Elo'suz davet maçı
 
   OnlineMacBilgi(
       {required this.macId,
@@ -30,7 +31,8 @@ class OnlineMacBilgi {
       required this.benimSiram,
       required this.rakipAdi,
       required this.mod,
-      this.masaKod = ''});
+      this.masaKod = '',
+      this.dostluk = false});
 
   String seatUid(int seat) => seat == 0 ? p1Uid : p2Uid;
 }
@@ -205,6 +207,7 @@ class OnlineMacKanali {
           rakipAdi: bilgi.rakipAdi,
           mod: bilgi.mod,
           masaKod: bilgi.masaKod,
+          dostluk: bilgi.dostluk,
         );
       }
     }

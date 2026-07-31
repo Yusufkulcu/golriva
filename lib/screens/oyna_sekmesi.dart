@@ -10,6 +10,7 @@ import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'arkadasla_ekrani.dart';
 import 'cuzdan_ekrani.dart';
+import 'ligler_ekrani.dart';
 
 const ligAdlari = {
   'amator': 'AMATÖR',
@@ -34,7 +35,8 @@ const sonrakiLig = {
 /// HIZLI DÜELLO, BO3 SERİ / ARKADAŞLA, MASALAR, reklam kartı.
 class OynaSekmesi extends StatefulWidget {
   final GolrivaRepos repos;
-  const OynaSekmesi({super.key, required this.repos});
+  final VoidCallback? onProfil; // sag ust avatar → PROFİL sekmesi
+  const OynaSekmesi({super.key, required this.repos, this.onProfil});
 
   @override
   State<OynaSekmesi> createState() => _OynaSekmesiState();
@@ -183,7 +185,12 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
                     color: GolrivaColors.ink)),
           ]),
           const Spacer(),
-          avatar(ad, 36),
+          // avatar → PROFİL sekmesi (kullanici istegi)
+          InkWell(
+            customBorder: const CircleBorder(),
+            onTap: widget.onProfil,
+            child: avatar(ad, 36),
+          ),
         ]),
         const SizedBox(height: 13),
         // selamlama + lig ilerlemesi
@@ -196,19 +203,26 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
         if (profil != null) ...[
           const SizedBox(height: 6),
           Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0x24D4AF37),
-                border: Border.all(color: GolrivaColors.edge),
-                borderRadius: BorderRadius.circular(30),
+            // lig hapı → LİGLER sayfası
+            InkWell(
+              borderRadius: BorderRadius.circular(30),
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const LiglerEkrani())),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0x24D4AF37),
+                  border: Border.all(color: GolrivaColors.edge),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(ligAdlari[profil!.ligKod] ?? profil!.ligKod,
+                    style: GoogleFonts.bigShouldersDisplay(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                        color: GolrivaColors.goldHi)),
               ),
-              child: Text(ligAdlari[profil!.ligKod] ?? profil!.ligKod,
-                  style: GoogleFonts.bigShouldersDisplay(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.5,
-                      color: GolrivaColors.goldHi)),
             ),
             const SizedBox(width: 8),
             SizedBox(width: 90, child: ilerleme(profil!.ligPuan / 30)),

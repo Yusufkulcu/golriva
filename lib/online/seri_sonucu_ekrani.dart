@@ -43,7 +43,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   Future<void> _yukle() async {
     final servis = OnlineServis();
     try {
-      final m = await servis.masaOdul(b.masaKod, b.mod);
+      final m = b.dostluk ? null : await servis.masaOdul(b.masaKod, b.mod);
       final p = await servis.profilGetir();
       final maclarL = await servis.seriMaclari(b.seriId);
       int? g;
@@ -75,6 +75,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   }
 
   (String, String) get _odul {
+    if (b.dostluk) return ('±0', 'dostluk maçı');
     final m = masa;
     if (m == null) return ('—', '');
     return switch (_kazandim) {

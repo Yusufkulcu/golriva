@@ -24,7 +24,9 @@ class _AnaIskeletState extends State<AnaIskelet> {
   @override
   Widget build(BuildContext context) {
     final sayfalar = [
-      OynaSekmesi(repos: widget.repos),
+      OynaSekmesi(
+          repos: widget.repos,
+          onProfil: () => setState(() => sekme = 3)),
       const SiralamaSekmesi(),
       const DuellolarSekmesi(),
       const ProfilSekmesi(),

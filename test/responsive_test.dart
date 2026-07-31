@@ -10,8 +10,11 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
+import 'package:golriva/online/davet_ekrani.dart';
 import 'package:golriva/screens/ana_iskelet.dart';
 import 'package:golriva/screens/arkadasla_ekrani.dart';
+import 'package:golriva/screens/arkadaslar_ekrani.dart';
+import 'package:golriva/screens/ligler_ekrani.dart';
 import 'package:golriva/theme/golriva_theme.dart';
 import 'test_repos.dart';
 
@@ -137,6 +140,25 @@ void main() {
                 '${e.key} (${e.value}) boyutunda oyun secim ekraninda tasma');
         expect(find.text('RULET'), findsOneWidget);
       });
+    }
+  });
+
+  group('YENI SAYFALAR — tum boyutlarda tasma yok', () {
+    final sayfalar = <String, Widget Function()>{
+      'LİGLER': () => const LiglerEkrani(),
+      'ARKADAŞLAR': () => const ArkadaslarEkrani(),
+      'DAVET KUR': () => DavetKurEkrani(repos: repos),
+    };
+    for (final s in sayfalar.keys) {
+      for (final e in boyutlar.entries) {
+        testWidgets('$s · ${e.key}', (tester) async {
+          await boyutAyarla(tester, e.value);
+          await kur(tester, sayfalar[s]!());
+          expect(tester.takeException(), isNull,
+              reason: '$s ${e.key} (${e.value}) boyutunda tasma');
+          await temizle(tester);
+        });
+      }
     }
   });
 

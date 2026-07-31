@@ -63,6 +63,25 @@ void main() {
     }
   });
 
+  test('iOS uygulama ikonlari mevcut, dogru boyutta', () {
+    const kontrol = {
+      'Icon-App-1024x1024@1x.png': 1024,
+      'Icon-App-60x60@3x.png': 180,
+      'Icon-App-83.5x83.5@2x.png': 167,
+      'Icon-App-20x20@1x.png': 20,
+    };
+    for (final e in kontrol.entries) {
+      final b = File(
+              'ios/Runner/Assets.xcassets/AppIcon.appiconset/${e.key}')
+          .readAsBytesSync();
+      int okuInt(int o) =>
+          (b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3];
+      // PNG IHDR: genislik 16. bayttan, yukseklik 20. bayttan
+      expect(okuInt(16), e.value, reason: '${e.key} genislik');
+      expect(okuInt(20), e.value, reason: '${e.key} yukseklik');
+    }
+  });
+
   testWidgets('iskelet: logo + arayuz SVG ikonlari cizilir', (tester) async {
     final repos = testRepos();
     await tester.pumpWidget(MaterialApp(home: AnaIskelet(repos: repos)));

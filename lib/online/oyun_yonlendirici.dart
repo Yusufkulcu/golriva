@@ -30,14 +30,28 @@ const onlineOyunAdlari = {
   'kariyer_ikizi': 'KARİYER İKİZİ',
 };
 
+/// _oyunEkrani'nin su an destekledigi cevrimici oyunlar — davet kurarken
+/// oyun secimi bu listeden yapilir (bayrak + ikiz online Faz 2.5).
+const onlineOynanabilir = [
+  'en_kisa_kadro',
+  'kupa_drafti',
+  'en_genc_kadro',
+  'hedefi_tuttur',
+  'bonservis_avi',
+  'sari_kart_avi',
+  'mac_rekortmenleri',
+  'milli_gol_krallari',
+];
+
 /// oyun_kodu → cevrimici oyun akisi. Once SENKRON BAGLANTI ekrani gelir:
 /// iki cihaz otomatik el sikisir, 3-2-1 sunucu saatiyle ayni anda maca girilir
 /// (kullanici kurali: tercih kullaniciya birakilmaz, sayaclar es zamanli).
 Widget onlineOyunEkrani(GolrivaRepos repos, OnlineMacBilgi bilgi) {
   final kanal = OnlineMacKanali(bilgi);
   kanal.sonrakiEkranKur = (b) => onlineOyunEkrani(repos, b);
-  if (bilgi.masaKod.isNotEmpty) {
+  if (bilgi.masaKod.isNotEmpty && !bilgi.dostluk) {
     // Seri sonucu ekranindaki RÖVANŞ: ayni masa + ayni modla yeni arama
+    // (dostlukta rovans yeni davet gerektirir — buton gosterilmez)
     kanal.rovansEkranKur = () =>
         AramaEkrani(repos: repos, mod: bilgi.mod, masaKod: bilgi.masaKod);
   }
@@ -180,7 +194,8 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
       final ben = await servis.kamuProfil(b.seatUid(b.benimSiram));
       final rakip = await servis.kamuProfil(b.seatUid(1 - b.benimSiram));
       final maclar = await servis.seriMaclari(b.seriId);
-      final m = await servis.masaOdul(b.masaKod, b.mod);
+      // dostlukta giris alinmaz — masa satiri gosterilmez
+      final m = b.dostluk ? null : await servis.masaOdul(b.masaKod, b.mod);
       if (!mounted) return;
       final biten = maclar.where((x) => x.durum == 'bitti').toList();
       final benimUid = b.seatUid(b.benimSiram);
@@ -449,7 +464,17 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                   ]),
                 ),
                 // ── MASA / GIRIS BILGISI ──
-                if (masa != null) ...[
+                if (b.dostluk) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Text('DOSTLUK MAÇI · Riva ve Elo işlemez',
+                        style: GoogleFonts.figtree(
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w700,
+                            color: GolrivaColors.dim)),
+                  ),
+                ] else if (masa != null) ...[
                   const SizedBox(height: 12),
                   Center(
                     child: Text.rich(

@@ -78,6 +78,10 @@ Widget ilerleme(double oran, {double yukseklik = 5}) => ClipRRect(
       ),
     );
 
+/// Turkce buyuk harf (i→İ, ı→I) — Dart toUpperCase locale bilmez.
+String trBuyuk(String s) =>
+    s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
+
 /// kucuk etiket yazisi (9px, genis harf araligi)
 Widget etiket(String s, {Color renk = GolrivaColors.dim}) => Text(s,
     style: GoogleFonts.figtree(

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../reklam/reklam_servis.dart';
+import '../satinalma/satinalma_servis.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 
@@ -186,10 +187,12 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Düello kazan',
+                          Text('Düello kazanarak',
                               style: GoogleFonts.figtree(
                                   fontSize: 13, fontWeight: FontWeight.w800)),
-                          Text('Klasik masada galibiyet',
+                          Text(
+                              'Ranked maç kazan, ödül otomatik işlenir '
+                              '(örn. Klasik tek maç +70)',
                               style: GoogleFonts.figtree(
                                   fontSize: 10, color: GolrivaColors.dim)),
                         ]),
@@ -212,16 +215,16 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
               const SizedBox(width: 6),
               Padding(
                 padding: const EdgeInsets.only(bottom: 1),
-                child: etiket('· YAKINDA'),
+                child: etiket('· MAĞAZADAN'),
               ),
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _paket('500', 'Riva'),
+              _paket('500', 'Riva', 'riva_500'),
               const SizedBox(width: 8),
-              _paket('1.500', 'Riva · popüler', altin: true),
+              _paket('1.500', 'Riva · popüler', 'riva_1500', altin: true),
               const SizedBox(width: 8),
-              _paket('5.000', 'Riva'),
+              _paket('5.000', 'Riva', 'riva_5000'),
             ]),
             // ── GEÇMİŞ: harcamalar + kazanımlar (defter) ──
             if (gecmis != null) ...[
@@ -286,9 +289,49 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
     );
   }
 
-  Widget _paket(String miktar, String alt, {bool altin = false}) => Expanded(
-        child: Opacity(
-          opacity: .5,
+  bool satinAliniyor = false;
+
+  /// SATIN ALMA AKISI: magaza → basari → sunucudan Riva tahsil → tazele.
+  Future<void> _satinAl(String urunKodu) async {
+    final servis = OnlineServis();
+    if (!SupabaseAyar.yapilandirildi || !servis.girisYapildi) {
+      _yakinda('Satın alma için çevrimiçi hesap gerekli.');
+      return;
+    }
+    if (satinAliniyor) return;
+    setState(() => satinAliniyor = true);
+    try {
+      final sonuc = await SatinAlmaServis.satinAl(urunKodu);
+      if (sonuc.islemId == null) {
+        _yakinda(sonuc.hata ?? 'Satın alma tamamlanamadı.');
+        return;
+      }
+      final odul = await servis.satinAlmaOdul(
+          SatinAlmaServis.magaza, urunKodu, sonuc.islemId!);
+      final p = await servis.profilGetir();
+      final g = await servis.defterGecmisi();
+      if (mounted) {
+        setState(() {
+          bakiye = p?.bakiye;
+          gecmis = g;
+        });
+        _yakinda('+$odul RIVA cüzdanında — teşekkürler!');
+      }
+    } catch (e) {
+      _yakinda('$e'.contains('Could not find the')
+          ? 'Sunucu güncellemesi gerekli: supabase/faz2_6_hesap.sql çalıştırılmalı.'
+          : 'Ödül işlenemedi: $e — mağaza işlemin kayıtlı, destekle iletişime geç.');
+    } finally {
+      if (mounted) setState(() => satinAliniyor = false);
+    }
+  }
+
+  Widget _paket(String miktar, String alt, String urunKodu,
+          {bool altin = false}) =>
+      Expanded(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: satinAliniyor ? null : () => _satinAl(urunKodu),
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 13),
             decoration: kartDekor().copyWith(
@@ -302,7 +345,7 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
                       color:
                           altin ? GolrivaColors.goldHi : GolrivaColors.ink)),
               const SizedBox(height: 2),
-              Text(alt,
+              Text(satinAliniyor ? '…' : alt,
                   style: GoogleFonts.figtree(
                       fontSize: 9, color: GolrivaColors.dim)),
             ]),

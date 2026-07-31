@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../online/kayit_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/oyun_yonlendirici.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'kilavuz_ekrani.dart';
 import 'ligler_ekrani.dart';
 import 'oyna_sekmesi.dart';
 
@@ -27,7 +29,10 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
   OnlineProfil? profil;
   int? siram;
   ({int seri, int galibiyet, Map<String, (int, int)> oyunlar})? ist;
+  List<({String rakip, int s1, int s2, bool? kazandim, String mod,
+      DateTime tarih, bool benP1})>? duellolar;
   bool yuklendi = false;
+  bool fotoYukleniyor = false;
 
   @override
   void initState() {
@@ -45,21 +50,90 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
       final p = await servis.profilGetir();
       ({int seri, int galibiyet, Map<String, (int, int)> oyunlar})? i;
       int? sira;
+      List<({String rakip, int s1, int s2, bool? kazandim, String mod,
+          DateTime tarih, bool benP1})>? d;
       if (p != null) {
         i = await servis.istatistik();
         final (_, s) = await servis.siralama();
         sira = s;
+        d = await servis.macGecmisi();
       }
       if (mounted) {
         setState(() {
           profil = p;
           ist = i;
           siram = sira;
+          duellolar = d;
           yuklendi = true;
         });
       }
     } catch (_) {
       if (mounted) setState(() => yuklendi = true);
+    }
+  }
+
+  /// PROFİL FOTOĞRAFI: galeriden sec → kucult → Storage'a yukle.
+  Future<void> _fotoSec() async {
+    if (fotoYukleniyor) return;
+    try {
+      final secim = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 512,
+          maxHeight: 512,
+          imageQuality: 82);
+      if (secim == null) return;
+      setState(() => fotoYukleniyor = true);
+      final bytes = await secim.readAsBytes();
+      await OnlineServis().avatarYukle(bytes);
+      await _yukle();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profil fotoğrafın güncellendi')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('$e'.contains('bucket') ||
+                    '$e'.contains('Bucket') ||
+                    '$e'.contains('Could not find')
+                ? 'Sunucu güncellemesi gerekli: supabase/faz2_6_hesap.sql çalıştırılmalı.'
+                : 'Fotoğraf yüklenemedi: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => fotoYukleniyor = false);
+    }
+  }
+
+  Future<void> _cikis() async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: GolrivaColors.card,
+        title: Text('Çıkış yap?',
+            style: GoogleFonts.bigShouldersDisplay(
+                fontWeight: FontWeight.w900, color: GolrivaColors.ink)),
+        content: Text(
+            OnlineServis().misafirMi
+                ? 'DİKKAT: misafir hesabı bu cihaza bağlı — çıkarsan bu '
+                    'hesaba bir daha ULAŞAMAZSIN. Emin misin?'
+                : 'Tekrar e-posta ve şifrenle girebilirsin.',
+            style: GoogleFonts.figtree(color: GolrivaColors.dim)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('VAZGEÇ')),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('ÇIKIŞ YAP',
+                  style: TextStyle(color: GolrivaColors.bad))),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
+    await OnlineServis().cikisYap();
+    if (mounted) {
+      // uygulamayi giris ekranindan yeniden baslat
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
     }
   }
 
@@ -71,18 +145,48 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
     }
     if (profil == null) return _hesapYok();
     final p = profil!;
-    final uyelik = p.uyelik == null
-        ? ''
-        : 'Üyelik: ${_aylar[p.uyelik!.month]} ${p.uyelik!.year} · Türkiye';
+    final servis = OnlineServis();
+    final kimlik = [
+      if (p.uyelik != null)
+        'Üyelik: ${_aylar[p.uyelik!.month]} ${p.uyelik!.year}',
+      servis.misafirMi ? 'Misafir hesabı' : (servis.eposta ?? ''),
+    ].where((s) => s.isNotEmpty).join(' · ');
     return RefreshIndicator(
       color: GolrivaColors.gold,
       onRefresh: _yukle,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
         children: [
+          // avatar: dokun → galeriden fotograf sec (kullanici istegi)
           Center(
-              child: avatar(p.kullaniciAdi, 76,
-                  kenar: GolrivaColors.gold, kalinlik: 2.5)),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _fotoSec,
+              child: Stack(alignment: Alignment.bottomRight, children: [
+                avatar(p.kullaniciAdi, 76,
+                    kenar: GolrivaColors.gold,
+                    kalinlik: 2.5,
+                    url: p.avatarUrl),
+                Container(
+                  width: 24,
+                  height: 24,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: GolrivaColors.card2,
+                      border: Border.all(color: GolrivaColors.edge)),
+                  child: fotoYukleniyor
+                      ? const SizedBox(
+                          width: 11,
+                          height: 11,
+                          child: CircularProgressIndicator(
+                              color: GolrivaColors.gold, strokeWidth: 2))
+                      : const Icon(Icons.photo_camera_outlined,
+                          size: 13, color: GolrivaColors.goldHi),
+                ),
+              ]),
+            ),
+          ),
           const SizedBox(height: 8),
           Center(
             child: Text(p.kullaniciAdi.toUpperCase(),
@@ -92,7 +196,7 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
                     letterSpacing: 1)),
           ),
           Center(
-            child: Text(uyelik,
+            child: Text(kimlik,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5, color: GolrivaColors.dim)),
           ),
@@ -169,8 +273,117 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
             const SizedBox(width: 8),
             _rozet('hedefi_tuttur', acik: false),
           ]),
+          // ── SON DÜELLOLAR (menuden kaldirildi, buraya tasindi) ──
+          const SizedBox(height: 13),
+          Text('SON DÜELLOLAR',
+              style: GoogleFonts.bigShouldersDisplay(
+                  fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          const SizedBox(height: 8),
+          if (duellolar == null || duellolar!.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: kartDekor(),
+              child: Text(
+                  'Henüz biten düello yok — OYNA sekmesinden HIZLI DÜELLO ile başla!',
+                  style: GoogleFonts.figtree(
+                      fontSize: 12, color: GolrivaColors.dim)),
+            )
+          else
+            for (final m in duellolar!) _duelloKarti(m),
+          // ── KILAVUZ + ÇIKIŞ ──
+          const SizedBox(height: 13),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const KilavuzEkrani())),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+              decoration: kartDekor(r: 14),
+              child: Row(children: [
+                gIkon('rulet', 16, GolrivaColors.gold),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text('Nasıl çalışır? — Elo, Riva, ligler · KILAVUZ',
+                      style: GoogleFonts.figtree(
+                          fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+                Text('›',
+                    style: GoogleFonts.figtree(
+                        fontSize: 16, color: GolrivaColors.dim2)),
+              ]),
+            ),
+          ),
+          if (OnlineServis().girisYapildi) ...[
+            const SizedBox(height: 7),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _cikis,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                decoration: kartDekor(r: 14),
+                child: Row(children: [
+                  gIkon('carpi', 15, GolrivaColors.bad),
+                  const SizedBox(width: 9),
+                  Text('Çıkış yap',
+                      style: GoogleFonts.figtree(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: GolrivaColors.bad)),
+                ]),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _duelloKarti(
+      ({String rakip, int s1, int s2, bool? kazandim, String mod,
+          DateTime tarih, bool benP1}) m) {
+    final skorum = m.benP1 ? m.s1 : m.s2;
+    final skorRakip = m.benP1 ? m.s2 : m.s1;
+    final (durum, renk) = m.kazandim == null
+        ? ('BERABERE', GolrivaColors.dim)
+        : m.kazandim!
+            ? ('GALİBİYET', GolrivaColors.ok)
+            : ('MAĞLUBİYET', GolrivaColors.bad);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: (m.kazandim ?? false) ? gKartDekor() : kartDekor(),
+      child: Row(children: [
+        avatar(m.rakip, 34, kenar: GolrivaColors.p2),
+        const SizedBox(width: 10),
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(m.rakip,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.figtree(
+                    fontSize: 13, fontWeight: FontWeight.w700)),
+            Text(
+                '${m.mod.toUpperCase()} · ${m.tarih.day} ${_aylar[m.tarih.month]}',
+                style: GoogleFonts.figtree(
+                    fontSize: 9.5, color: GolrivaColors.dim)),
+          ]),
+        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('$skorum - $skorRakip',
+              style: GoogleFonts.spaceGrotesk(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: GolrivaColors.goldHi)),
+          Text(durum,
+              style: GoogleFonts.figtree(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: renk)),
+        ]),
+      ]),
     );
   }
 
@@ -204,6 +417,13 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
                 }, yazi: 15),
               ),
             ],
+            TextButton(
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const KilavuzEkrani())),
+              child: const Text('Nasıl çalışır? · KILAVUZ',
+                  style:
+                      TextStyle(color: GolrivaColors.goldHi, fontSize: 12)),
+            ),
           ]),
         ),
       );

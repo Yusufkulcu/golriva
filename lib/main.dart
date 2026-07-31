@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
+import 'online/auth_ekrani.dart';
 import 'online/online_servis.dart';
+import 'online/supabase_ayar.dart';
 import 'screens/ana_iskelet.dart';
 import 'theme/golriva_theme.dart';
+
+/// Sayfa donuslerini dinlemek icin (sekmeler donuste kendini tazeler).
+final rotaGozcusu = RouteObserver<ModalRoute<void>>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +28,7 @@ class GolrivaApp extends StatelessWidget {
       title: 'GOLRIVA',
       debugShowCheckedModeBanner: false,
       theme: GolrivaTheme.dark(),
+      navigatorObservers: [rotaGozcusu],
       home: const _Loader(),
     );
   }
@@ -95,6 +101,12 @@ class _LoaderState extends State<_Loader> {
           ]),
         ),
       );
+    }
+    // ILK ACILIS KURALI: cevrimici yapida oturum yoksa once
+    // Giris/Kayit/Misafir ekrani (kullanici istegi). Cevrimdisi derleme
+    // (Supabase yapilandirilmamis) dogrudan ana iskelete gider.
+    if (SupabaseAyar.yapilandirildi && !OnlineServis().girisYapildi) {
+      return AuthEkrani(repos: repos!);
     }
     return AnaIskelet(repos: repos!);
   }

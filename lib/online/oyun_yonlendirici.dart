@@ -163,6 +163,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   bool benHazir = false;
   bool rakipHazir = false;
   bool rakipCekildi = false;
+  bool cekildim = false; // VAZGEÇ onaylandi — ARTIK MACA GIRILMEZ
   bool hedefAraniyor = false;
   DateTime? baslangicHedefi; // yerel saate cevrilmis SUNUCU hedefi
   int? geriSayim;
@@ -237,7 +238,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   /// = ikinci hazir'in sunucu zamani + 4 sn. Iki cihaz da ayni mutlak
   /// ani hedefler → geri sayim es zamanli biter (kullanici kurali).
   void _kontrol() {
-    if (!benHazir || !rakipHazir || hedefAraniyor) return;
+    if (!benHazir || !rakipHazir || hedefAraniyor || cekildim) return;
     hedefAraniyor = true;
     _hedefiBul();
   }
@@ -260,7 +261,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   }
 
   void _sayimiBaslat(Duration kalan) {
-    if (!mounted || baslangicHedefi != null) return;
+    if (!mounted || cekildim || baslangicHedefi != null) return;
     setState(() => baslangicHedefi = DateTime.now().add(kalan));
     _sayimTikla();
     sayimTimer = Timer.periodic(
@@ -268,7 +269,9 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   }
 
   void _sayimTikla() {
-    if (!mounted || baslangicHedefi == null) return;
+    // KULLANICI HATASI DUZELTMESI: VAZGEÇ onaylandiysa geri sayim
+    // calismaya devam edip maca SOKMAMALI.
+    if (!mounted || cekildim || baslangicHedefi == null) return;
     final kalanMs =
         baslangicHedefi!.difference(DateTime.now()).inMilliseconds;
     if (kalanMs <= 0) {
@@ -509,7 +512,13 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                       style: OutlinedButton.styleFrom(
                           foregroundColor: GolrivaColors.dim,
                           side: const BorderSide(color: GolrivaColors.edge2)),
-                      onPressed: () => cekilAkisi(context, widget.kanal),
+                      onPressed: () => cekilAkisi(context, widget.kanal,
+                          onCekildi: () {
+                        // onay ANINDA sayaci durdur — geri sayim bitse bile
+                        // maca girilmez (kullanici hatasi duzeltmesi)
+                        cekildim = true;
+                        sayimTimer?.cancel();
+                      }),
                       child: Text('VAZGEÇ (HÜKMEN)',
                           style: GoogleFonts.bigShouldersDisplay(
                               fontWeight: FontWeight.w800, letterSpacing: 1.5)),

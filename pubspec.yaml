@@ -18,6 +18,10 @@ dependencies:
   # sira titresimleri: HapticFeedback sistem ayarina takiliyor,
   # vibration paketi motoru dogrudan kullanir (Android/iOS/web)
   vibration: ^3.1.8
+  # Riva paketleri (magaza konsollarinda urunler tanimlanmali)
+  in_app_purchase: ^3.2.0
+  # profil fotografi secimi
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:

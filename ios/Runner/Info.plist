@@ -66,6 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Profil fotografi secimi (image_picker) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Profil fotoğrafını seçmek için fotoğraflarına erişim gerekir.</string>
 	<!-- AdMob UYGULAMA kimligi: TEST kimligi — AdMob hesabi acilinca
 	     gercek kimlikle DEGISTIRILMELI. -->
 	<key>GADApplicationIdentifier</key>

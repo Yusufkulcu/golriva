@@ -26,14 +26,11 @@ void main() {
     // profil yok → misafir gorunumu; cevrimici degerler tire kalir
     expect(find.text('MİSAFİR'), findsOneWidget);
     expect(find.text('HIZLI DÜELLO'), findsOneWidget);
-    // cevrimici sekmeler kibarca aciklama gosterir, istek atmaz
-    // (IndexedStack'te gizli sekmeler offstage kurulur → skipOffstage: false)
-    expect(find.text('Sıralama çevrimiçi bir özellik.', skipOffstage: false),
-        findsOneWidget);
-    expect(
-        find.text('Düello geçmişi çevrimiçi bir özellik.',
-            skipOffstage: false),
-        findsOneWidget);
+    // cevrimici sekme kibarca aciklama gosterir, istek atmaz
+    // (artik tek aktif sekme kurulur — SIRALAMA'ya gecip bak)
+    await tester.tap(find.text('SIRALAMA'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Sıralama çevrimiçi bir özellik.'), findsOneWidget);
   });
 
   // FAZ 2.2: cevrimici oynanisin temeli — AYNI SEED, iki istemcide AYNI oyun.

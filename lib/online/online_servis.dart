@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'mac_kanali.dart';
 import 'supabase_ayar.dart';
@@ -10,8 +11,9 @@ class OnlineProfil {
   final int ligPuan;
   final int bakiye;
   final DateTime? uyelik;
+  final String? avatarUrl;
   OnlineProfil(this.kullaniciAdi, this.elo, this.ligKod, this.ligPuan,
-      this.bakiye, this.uyelik);
+      this.bakiye, this.uyelik, this.avatarUrl);
 }
 
 /// Masa bilgisi (masalar tablosundan).
@@ -66,7 +68,7 @@ class OnlineServis {
     if (!girisYapildi) return null;
     final p = await _c
         .from('profiller')
-        .select('kullanici_adi, elo, lig_kod, lig_puan, created_at')
+        .select('kullanici_adi, elo, lig_kod, lig_puan, created_at, avatar_url')
         .eq('id', uid!)
         .maybeSingle();
     if (p == null) return null;
@@ -83,8 +85,76 @@ class OnlineServis {
         ((c?['bakiye'] ?? 0) as num).toInt(),
         p['created_at'] == null
             ? null
-            : DateTime.parse(p['created_at'] as String));
+            : DateTime.parse(p['created_at'] as String),
+        p['avatar_url'] as String?);
   }
+
+  // ---------- FAZ 2.6: HESAP (e-posta + şifre) ----------
+
+  String? get eposta => _c.auth.currentUser?.email;
+  bool get misafirMi => _c.auth.currentUser?.isAnonymous ?? false;
+
+  /// E-posta + şifre ile kayıt. Oturum hemen açılmadıysa (Supabase'de
+  /// "Confirm email" AÇIK demektir) 'onay' döner; kullanıcı e-postasını
+  /// onaylayıp GİRİŞ yapmalıdır. null = oturum açık, devam.
+  Future<String?> epostaKayit(String email, String sifre) async {
+    final r = await _c.auth.signUp(email: email, password: sifre);
+    return r.session == null ? 'onay' : null;
+  }
+
+  Future<void> epostaGiris(String email, String sifre) async {
+    await _c.auth.signInWithPassword(email: email, password: sifre);
+  }
+
+  /// Şifre sıfırlama kodu gönder (e-posta şablonunda {{ .Token }} olmalı).
+  Future<void> sifreKoduGonder(String email) =>
+      _c.auth.resetPasswordForEmail(email);
+
+  /// E-postadaki 6 haneli kodla yeni şifre belirle.
+  Future<void> sifreSifirla(String email, String kod, String yeniSifre) async {
+    await _c.auth
+        .verifyOTP(type: OtpType.recovery, token: kod.trim(), email: email);
+    await _c.auth.updateUser(UserAttributes(password: yeniSifre));
+  }
+
+  Future<void> cikisYap() => _c.auth.signOut();
+
+  /// Oturum acikken profil olustur (kullanici adi sec) — 500 RIVA hediye.
+  Future<void> profilOlustur(String ad) =>
+      _c.rpc('yeni_kullanici', params: {'u': uid, 'ad': ad});
+
+  // ---------- FAZ 2.6: PROFİL FOTOĞRAFI ----------
+
+  /// JPEG baytlarini Storage'a yukle (uid.jpg, uzerine yazar), profili
+  /// guncelle; onbellek kirici ?v= ile herkese acik URL doner.
+  Future<String> avatarYukle(Uint8List bytes) async {
+    final yol = '$uid.jpg';
+    await _c.storage.from('avatarlar').uploadBinary(yol, bytes,
+        fileOptions:
+            const FileOptions(upsert: true, contentType: 'image/jpeg'));
+    final url = _c.storage.from('avatarlar').getPublicUrl(yol);
+    await _c.rpc('avatar_ayarla', params: {'u': url});
+    return '$url?v=${DateTime.now().millisecondsSinceEpoch}';
+  }
+
+  // ---------- FAZ 2.6: SATIN ALMA ----------
+
+  /// Magaza satin alimini sunucuya bildir; Riva miktari doner.
+  /// (magaza, islem_id) benzersiz — ayni islem iki kez odullenmez.
+  Future<int> satinAlmaOdul(
+      String magaza, String urunKodu, String islemId) async {
+    final r = await _c.rpc('satin_alma_odul', params: {
+      'magaza_adi': magaza,
+      'urun_kodu': urunKodu,
+      'islem_id': islemId
+    });
+    return (r as num).toInt();
+  }
+
+  // ---------- FAZ 2.6: VERİ İTİRAZI ----------
+
+  Future<void> itirazGonder(String oyuncuAdi, String mesaj) =>
+      _c.rpc('itiraz_gonder', params: {'oyuncu': oyuncuAdi, 'm': mesaj});
 
   Future<List<Masa>> masalar() async {
     final r = await _c

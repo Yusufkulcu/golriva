@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
+import '../main.dart' show rotaGozcusu;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
-import 'duellolar_sekmesi.dart';
 import 'oyna_sekmesi.dart';
 import 'profil_sekmesi.dart';
 import 'siralama_sekmesi.dart';
 
-/// UYGULAMA ISKELETI — golriva_ekranlar_v1.html'deki 4 sekmeli yapi:
-/// OYNA · SIRALAMA · DÜELLOLAR · PROFİL (tabbar2 birebir).
+/// UYGULAMA ISKELETI — 3 sekme: OYNA · SIRALAMA · PROFİL
+/// (Düellolar artık profilin altında — kullanıcı istegi).
+///
+/// OTOMATIK TAZELIK (kullanici kurali: "sayfaya girince guncel veri"):
+/// - Sekme degisince sayfa YENIDEN kurulur (taze sorgu).
+/// - Herhangi bir sayfadan geri donulunce (mac, cuzdan, arama...)
+///   RouteObserver tetiklenir ve aktif sekme yeniden kurulur.
 class AnaIskelet extends StatefulWidget {
   final GolrivaRepos repos;
   const AnaIskelet({super.key, required this.repos});
@@ -18,21 +23,44 @@ class AnaIskelet extends StatefulWidget {
   State<AnaIskelet> createState() => _AnaIskeletState();
 }
 
-class _AnaIskeletState extends State<AnaIskelet> {
+class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
   int sekme = 0;
+  int tazelik = 0; // her artis aktif sekmeyi sifirdan kurar
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final rota = ModalRoute.of(context);
+    if (rota != null) rotaGozcusu.subscribe(this, rota);
+  }
+
+  @override
+  void dispose() {
+    rotaGozcusu.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // ustumuzdeki sayfa kapandi (mac bitti, cuzdan kapandi...) → tazele
+    setState(() => tazelik++);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final sayfalar = [
-      OynaSekmesi(
+    final sayfa = switch (sekme) {
+      1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
+      2 => ProfilSekmesi(key: ValueKey('profil-$tazelik')),
+      _ => OynaSekmesi(
+          key: ValueKey('oyna-$tazelik'),
           repos: widget.repos,
-          onProfil: () => setState(() => sekme = 3)),
-      const SiralamaSekmesi(),
-      const DuellolarSekmesi(),
-      const ProfilSekmesi(),
-    ];
+          onProfil: () => setState(() {
+                sekme = 2;
+                tazelik++;
+              })),
+    };
     return Scaffold(
-      body: SafeArea(bottom: false, child: IndexedStack(index: sekme, children: sayfalar)),
+      body: SafeArea(bottom: false, child: sayfa),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: GolrivaColors.bg,
@@ -44,11 +72,9 @@ class _AnaIskeletState extends State<AnaIskelet> {
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
             child: Row(
               children: [
-                // Expanded: en dar ekranda (320px) bile tasma imkansiz
                 Expanded(child: _sekmeButonu(0, 'nav_oyna', 'OYNA')),
                 Expanded(child: _sekmeButonu(1, 'nav_siralama', 'SIRALAMA')),
-                Expanded(child: _sekmeButonu(2, 'nav_duellolar', 'DÜELLOLAR')),
-                Expanded(child: _sekmeButonu(3, 'nav_profil', 'PROFİL')),
+                Expanded(child: _sekmeButonu(2, 'nav_profil', 'PROFİL')),
               ],
             ),
           ),
@@ -61,7 +87,10 @@ class _AnaIskeletState extends State<AnaIskelet> {
     final aktif = sekme == i;
     final renk = aktif ? GolrivaColors.goldHi : GolrivaColors.dim2;
     return InkWell(
-      onTap: () => setState(() => sekme = i),
+      onTap: () => setState(() {
+        sekme = i;
+        tazelik++; // ayni sekmeye bassa bile taze veri
+      }),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

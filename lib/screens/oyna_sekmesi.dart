@@ -189,7 +189,7 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
           InkWell(
             customBorder: const CircleBorder(),
             onTap: widget.onProfil,
-            child: avatar(ad, 36),
+            child: avatar(ad, 36, url: profil?.avatarUrl),
           ),
         ]),
         const SizedBox(height: 13),

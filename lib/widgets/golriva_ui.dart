@@ -46,25 +46,33 @@ Widget gIkon(String ad, double boyut, [Color renk = GolrivaColors.gold]) =>
         height: boyut,
         colorFilter: ColorFilter.mode(renk, BlendMode.srcIn));
 
-/// avatar dairesi (bas harf)
+/// avatar dairesi — [url] verilirse fotograf, yoksa bas harf
 Widget avatar(String ad, double boyut,
-        {Color kenar = GolrivaColors.goldDeep, double kalinlik = 1.5}) =>
+        {Color kenar = GolrivaColors.goldDeep,
+        double kalinlik = 1.5,
+        String? url}) =>
     Container(
       width: boyut,
       height: boyut,
       alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const RadialGradient(
             center: Alignment(-.4, -.4),
             colors: [Color(0xFF2B2B35), Color(0xFF17171E)]),
         border: Border.all(color: kenar, width: kalinlik),
+        image: url == null
+            ? null
+            : DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
       ),
-      child: Text(ad.isEmpty ? '?' : ad[0].toUpperCase(),
-          style: GoogleFonts.bigShouldersDisplay(
-              fontSize: boyut * .42,
-              fontWeight: FontWeight.w900,
-              color: GolrivaColors.ink)),
+      child: url != null
+          ? null
+          : Text(ad.isEmpty ? '?' : ad[0].toUpperCase(),
+              style: GoogleFonts.bigShouldersDisplay(
+                  fontSize: boyut * .42,
+                  fontWeight: FontWeight.w900,
+                  color: GolrivaColors.ink)),
     );
 
 /// altin ilerleme cubugu

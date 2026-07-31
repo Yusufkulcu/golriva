@@ -10,10 +10,12 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
+import 'package:golriva/online/auth_ekrani.dart';
 import 'package:golriva/online/davet_ekrani.dart';
 import 'package:golriva/screens/ana_iskelet.dart';
 import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/screens/arkadaslar_ekrani.dart';
+import 'package:golriva/screens/kilavuz_ekrani.dart';
 import 'package:golriva/screens/ligler_ekrani.dart';
 import 'package:golriva/theme/golriva_theme.dart';
 import 'test_repos.dart';
@@ -148,6 +150,8 @@ void main() {
       'LİGLER': () => const LiglerEkrani(),
       'ARKADAŞLAR': () => const ArkadaslarEkrani(),
       'DAVET KUR': () => DavetKurEkrani(repos: repos),
+      'KILAVUZ': () => const KilavuzEkrani(),
+      'AUTH': () => AuthEkrani(repos: repos),
     };
     for (final s in sayfalar.keys) {
       for (final e in boyutlar.entries) {

@@ -10,11 +10,13 @@ import 'package:golriva/games/kor_av/screen.dart';
 import 'package:golriva/games/kupa_drafti/screen.dart';
 import 'package:golriva/games/serbest_kadro/engine.dart';
 import 'package:golriva/games/serbest_kadro/screen.dart';
+import 'package:golriva/online/auth_ekrani.dart';
 import 'package:golriva/online/davet_ekrani.dart';
 import 'package:golriva/screens/ana_iskelet.dart';
 import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/screens/arkadaslar_ekrani.dart';
 import 'package:golriva/screens/cuzdan_ekrani.dart';
+import 'package:golriva/screens/kilavuz_ekrani.dart';
 import 'package:golriva/screens/ligler_ekrani.dart';
 import 'test_repos.dart';
 
@@ -46,7 +48,9 @@ void main() {
       (tester) async {
     await tester.pumpWidget(iskelet());
     await tester.pump(const Duration(milliseconds: 100));
-    for (final s in ['OYNA', 'SIRALAMA', 'DÜELLOLAR', 'PROFİL']) {
+    // DÜELLOLAR sekmesi kaldirildi (profil altina tasindi) — 3 sekme
+    expect(find.text('DÜELLOLAR'), findsNothing);
+    for (final s in ['OYNA', 'SIRALAMA', 'PROFİL']) {
       expect(find.text(s), findsWidgets, reason: '$s sekmesi eksik');
     }
     expect(find.text('HIZLI DÜELLO'), findsOneWidget);
@@ -126,6 +130,29 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ArkadaslarEkrani()));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('çevrimiçi hesap gerekli'), findsOneWidget);
+  });
+
+  testWidgets('Auth: giris/kayit/misafir secenekleri cizilir', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: AuthEkrani(repos: repos)));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('GİRİŞ YAP'), findsWidgets); // baslik + buton
+    expect(find.text('KAYIT OL'), findsOneWidget);
+    expect(find.text('MİSAFİR OLARAK OYNA'), findsOneWidget);
+    expect(find.text('Şifremi unuttum'), findsOneWidget);
+    // kayit adimina gecis
+    await tester.tap(find.text('KAYIT OL'));
+    await tester.pump();
+    expect(find.text('HESAP AÇ · +500 RIVA'), findsOneWidget);
+  });
+
+  testWidgets('Kilavuz: temel bolumler cizilir', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: KilavuzEkrani()));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('ELO NEDİR?'), findsOneWidget);
+    expect(find.text('RIVA NEDİR?'), findsOneWidget);
+    await tester.dragUntilVisible(find.text('ADALET & VERİ'),
+        find.byType(ListView).first, const Offset(0, -150));
+    expect(find.text('ADALET & VERİ'), findsOneWidget);
   });
 
   testWidgets('Cuzdan: reklam karti aktif, testte dokununca cokmez',

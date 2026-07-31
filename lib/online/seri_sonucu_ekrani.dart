@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'itiraz_dialog.dart';
 import 'mac_kanali.dart';
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart' show onlineOyunAdlari;
@@ -241,6 +242,15 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                   ),
                 ),
               ]),
+              // VERİ İTİRAZI (kullanici istegi: oyun bitiminde bildirim yolu)
+              Center(
+                child: TextButton(
+                  onPressed: () => veriItirazDialog(context),
+                  child: const Text('Futbolcu verisi yanlış mı? VERİ İTİRAZI',
+                      style:
+                          TextStyle(color: GolrivaColors.dim, fontSize: 11.5)),
+                ),
+              ),
             ],
           ),
         ),

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GOLRIVA · YÖNETİM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Space+Grotesk:wght@500;600;700&family=Figtree:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// CDN yedegi: jsdelivr ulasilamadiysa unpkg dene
+if (typeof supabase === 'undefined') {
+  document.write('<scr' + 'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr' + 'ipt>');
+}
+</script>
+<style>
+:root{
+  --bg:#08080B; --card:#14141B; --card2:#1A1A23;
+  --gold:#D4AF37; --gold-hi:#F0D67C; --gold-deep:#A8842A;
+  --ink:#F5F2E9; --dim:#B9B9C6; --dim2:#8A8A99;
+  --ok:#5FE08C; --bad:#FF7A6E; --p2:#7FB4FF;
+  --edge:rgba(212,175,55,.18); --edge2:rgba(255,255,255,.06);
+  --disp:'Big Shoulders Display',sans-serif; --num:'Space Grotesk',monospace; --govde:'Figtree',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--govde);font-size:13px;min-height:100vh}
+.disp{font-family:var(--disp);font-weight:900;letter-spacing:1.5px}
+.num{font-family:var(--num)}
+.goldtxt{background:linear-gradient(135deg,var(--gold-hi),var(--gold) 55%,var(--gold-deep));-webkit-background-clip:text;background-clip:text;color:transparent}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--edge2);border-radius:14px}
+.gcard{background:radial-gradient(120% 90% at 50% -20%,rgba(212,175,55,.13),rgba(20,20,27,.02)),var(--card);border:1px solid var(--edge);border-radius:14px}
+button{font-family:var(--disp);font-weight:800;letter-spacing:1px;border:none;border-radius:9px;cursor:pointer;padding:7px 12px;font-size:12px;background:var(--card2);color:var(--ink);border:1px solid var(--edge2)}
+button:hover{border-color:var(--edge)}
+button.altin{background:linear-gradient(135deg,var(--gold-hi),var(--gold) 45%,var(--gold-deep));color:#231A04;border:none}
+button.tehlike{color:var(--bad);border-color:rgba(255,122,110,.3)}
+button.kucuk{padding:4px 8px;font-size:10.5px}
+input,select,textarea{background:var(--card2);border:1px solid var(--edge2);border-radius:9px;color:var(--ink);padding:7px 10px;font-family:var(--govde);font-size:13px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--edge)}
+table{width:100%;border-collapse:collapse}
+th{font-size:9.5px;letter-spacing:2px;color:var(--dim2);text-align:left;padding:7px 9px;border-bottom:1px solid var(--edge2);font-weight:700;text-transform:uppercase}
+td{padding:7px 9px;border-bottom:1px solid var(--edge2);vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.015)}
+.etiket{font-size:9px;letter-spacing:2px;color:var(--dim);font-weight:700;text-transform:uppercase}
+.hap{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:800}
+.hap.ok{background:rgba(95,224,140,.12);color:var(--ok)}
+.hap.bad{background:rgba(255,122,110,.12);color:var(--bad)}
+.hap.dim{background:rgba(255,255,255,.05);color:var(--dim)}
+.hap.gold{background:rgba(212,175,55,.14);color:var(--gold-hi)}
+.arti{color:var(--ok);font-weight:700}.eksi{color:var(--bad);font-weight:700}
+
+/* GİRİŞ */
+#giris{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+#giris .kutu{width:min(480px,92vw);padding:28px}
+#giris input{width:100%;margin-top:8px}
+.uyari{background:rgba(255,122,110,.08);border:1px solid rgba(255,122,110,.25);border-radius:10px;padding:10px 12px;font-size:11.5px;color:var(--dim);line-height:1.55;margin-top:14px}
+
+/* KABUK */
+#kabuk{display:none;max-width:1280px;margin:0 auto;padding:18px}
+.ust{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.sekmeler{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.sekme{padding:8px 14px;border-radius:22px;font-family:var(--disp);font-weight:800;letter-spacing:1.5px;font-size:12px;cursor:pointer;color:var(--dim);background:var(--card);border:1px solid var(--edge2)}
+.sekme.aktif{color:var(--gold-hi);background:rgba(212,175,55,.13);border-color:var(--edge)}
+.panel{display:none}.panel.aktif{display:block}
+.arac{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.statlar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:14px}
+.stat{padding:13px 14px}
+.stat .deger{font-family:var(--num);font-size:24px;font-weight:700;color:var(--gold-hi)}
+.stat .ad{font-size:9px;letter-spacing:2px;color:var(--dim2);font-weight:700;margin-top:2px}
+.blok{padding:13px;margin-bottom:12px;overflow-x:auto}
+.baslik{font-family:var(--disp);font-weight:900;font-size:15px;letter-spacing:2px;margin-bottom:9px}
+.detay{background:rgba(255,255,255,.02);border-left:2px solid var(--edge)}
+#bildirim{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:99}
+.toast{padding:10px 15px;border-radius:11px;background:var(--card2);border:1px solid var(--edge);font-size:12.5px;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast.hata{border-color:rgba(255,122,110,.4);color:var(--bad)}
+.mono{font-family:var(--num);font-size:11px;color:var(--dim2)}
+.satirform{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px;background:rgba(212,175,55,.04);border-radius:9px;margin-top:6px}
+.satirform input,.satirform select{padding:5px 8px;font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- ═══════ GİRİŞ ═══════ -->
+<div id="giris"><div class="kutu gcard">
+  <div class="disp" style="font-size:30px"><span class="goldtxt">GOL</span>RIVA <span style="font-size:15px;color:var(--dim)">· YÖNETİM</span></div>
+  <div class="etiket" style="margin-top:14px">SUPABASE PROJE URL</div>
+  <input id="g-url" placeholder="https://xxxx.supabase.co">
+  <div class="etiket" style="margin-top:12px">SERVICE ROLE ANAHTARI (secret)</div>
+  <input id="g-anahtar" type="password" placeholder="sb_secret_... ya da eyJ...">
+  <label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:12px;color:var(--dim)">
+    <input type="checkbox" id="g-hatirla" style="width:auto"> Bu tarayıcıda hatırla (yalnız kendi bilgisayarında!)
+  </label>
+  <button class="altin" style="width:100%;margin-top:14px;padding:12px;font-size:15px" onclick="baglan()">BAĞLAN</button>
+  <div class="uyari"><b style="color:var(--bad)">DİKKAT:</b> service_role anahtarı veritabanında HER ŞEYİ yapabilir.
+  Bu dosyayı yalnız kendi bilgisayarında aç; dosyayı, anahtarı ya da ekran görüntüsünü kimseyle paylaşma,
+  hiçbir siteye yükleme. Anahtar: Supabase panel → Project Settings → API keys → service_role.</div>
+  <div id="g-hata" style="color:var(--bad);margin-top:10px;font-size:12px"></div>
+</div></div>
+
+<!-- ═══════ KABUK ═══════ -->
+<div id="kabuk">
+  <div class="ust">
+    <div class="disp" style="font-size:24px"><span class="goldtxt">GOL</span>RIVA <span style="font-size:13px;color:var(--dim)">· YÖNETİM</span></div>
+    <div style="flex:1"></div>
+    <span id="proje" class="mono"></span>
+    <button class="kucuk" onclick="cikis()">ÇIKIŞ</button>
+  </div>
+  <div class="sekmeler" id="sekmeler"></div>
+  <div id="paneller"></div>
+</div>
+<div id="bildirim"></div>
+
+<script>
+/* ═══════════ ALTYAPI ═══════════ */
+let sb = null;
+const $ = s => document.querySelector(s);
+const kacir = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tarih = t => t ? new Date(t).toLocaleString('tr-TR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+const kisaId = id => (id||'').slice(0,8);
+function toast(m, hata=false){
+  const d = document.createElement('div');
+  d.className = 'toast' + (hata ? ' hata' : '');
+  d.textContent = m;
+  $('#bildirim').appendChild(d);
+  setTimeout(()=>d.remove(), hata ? 8000 : 3500);
+}
+async function dene(islem, basari){
+  try{ await islem(); if(basari) toast(basari); return true; }
+  catch(e){ toast('HATA: ' + (e.message || e), true); return false; }
+}
+function hataAt(r){ if(r.error) throw r.error; return r; }
+
+/* profil adi onbellegi: uid → kullanici_adi */
+const adlar = new Map();
+async function adYukle(uids){
+  const eksik = [...new Set(uids)].filter(u => u && !adlar.has(u));
+  if(!eksik.length) return;
+  const r = hataAt(await sb.from('profiller').select('id, kullanici_adi').in('id', eksik));
+  for(const p of r.data) adlar.set(p.id, p.kullanici_adi);
+}
+const ad = uid => uid ? (adlar.get(uid) || kisaId(uid)) : '—';
+async function uidBul(kullaniciAdi){
+  const r = hataAt(await sb.from('profiller').select('id, kullanici_adi').ilike('kullanici_adi', kullaniciAdi.trim()).limit(1));
+  if(!r.data.length) throw new Error('kullanıcı bulunamadı: ' + kullaniciAdi);
+  adlar.set(r.data[0].id, r.data[0].kullanici_adi);
+  return r.data[0].id;
+}
+
+/* ═══════════ GİRİŞ ═══════════ */
+try{
+  const k = localStorage.getItem('glr_admin');
+  if(k){ const o = JSON.parse(k); $('#g-url').value = o.url||''; $('#g-anahtar').value = o.anahtar||''; $('#g-hatirla').checked = true; }
+}catch(_){}
+async function baglan(){
+  if(typeof supabase === 'undefined'){
+    $('#g-hata').textContent = 'Supabase kütüphanesi yüklenemedi — internet bağlantını kontrol edip sayfayı yenile.';
+    return;
+  }
+  const url = $('#g-url').value.trim(), anahtar = $('#g-anahtar').value.trim();
+  if(!url || !anahtar){ $('#g-hata').textContent = 'URL ve anahtar gerekli.'; return; }
+  try{
+    sb = supabase.createClient(url, anahtar);
+    hataAt(await sb.from('profiller').select('id', {count:'exact', head:true}));
+  }catch(e){
+    $('#g-hata').textContent = 'Bağlanılamadı: ' + (e.message||e) + ' — URL/anahtar doğru mu? (service_role olmalı)';
+    return;
+  }
+  try{
+    if($('#g-hatirla').checked) localStorage.setItem('glr_admin', JSON.stringify({url, anahtar}));
+    else localStorage.removeItem('glr_admin');
+  }catch(_){}
+  $('#proje').textContent = url.replace('https://','');
+  $('#giris').style.display = 'none';
+  $('#kabuk').style.display = 'block';
+  sekmeAc('pano');
+}
+function cikis(){ try{localStorage.removeItem('glr_admin');}catch(_){} location.reload(); }
+
+/* ═══════════ SEKMELER ═══════════ */
+const SEKMELER = [
+  ['pano','PANO'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
+  ['kuyruk','KUYRUK & DAVET'], ['arkadas','ARKADAŞLIKLAR'], ['lig','LİGLER & SEZON'],
+  ['ekonomi','EKONOMİ'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
+];
+for(const [k, adx] of SEKMELER){
+  const b = document.createElement('div');
+  b.className = 'sekme'; b.id = 'sekme-'+k; b.textContent = adx;
+  b.onclick = () => sekmeAc(k);
+  $('#sekmeler').appendChild(b);
+  const p = document.createElement('div');
+  p.className = 'panel'; p.id = 'panel-'+k;
+  $('#paneller').appendChild(p);
+}
+function sekmeAc(k){
+  document.querySelectorAll('.sekme').forEach(e=>e.classList.remove('aktif'));
+  document.querySelectorAll('.panel').forEach(e=>e.classList.remove('aktif'));
+  $('#sekme-'+k).classList.add('aktif');
+  $('#panel-'+k).classList.add('aktif');
+  YUKLE[k]();
+}
+
+/* ═══════════ 1. PANO ═══════════ */
+async function panoYukle(){
+  const p = $('#panel-pano');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const ozet = hataAt(await sb.from('v_ozet').select('*').single()).data;
+  const gunluk = hataAt(await sb.from('v_gunluk').select('*')).data;
+  const dagilim = hataAt(await sb.from('v_lig_dagilim').select('*').order('sira')).data;
+  const kuyruk = hataAt(await sb.from('eslestirme_kuyrugu').select('user_id',{count:'exact',head:true})).count ?? 0;
+  const davet = hataAt(await sb.from('davetler').select('kod',{count:'exact',head:true}).eq('durum','bekliyor')).count ?? 0;
+  const S = (deger, adx) => `<div class="stat gcard"><div class="deger">${deger}</div><div class="ad">${adx}</div></div>`;
+  p.innerHTML = `
+    <div class="statlar">
+      ${S(ozet.toplam_kullanici,'KULLANICI')} ${S(ozet.bugun_yeni,'BUGÜN YENİ')}
+      ${S(ozet.aktif_seri,'AKTİF SERİ')} ${S(ozet.bugun_seri,'BUGÜN SERİ')}
+      ${S(kuyruk,'KUYRUKTA')} ${S(davet,'BEKLEYEN DAVET')}
+      ${S(ozet.dolasimdaki_riva,'DOLAŞIMDAKİ RIVA')} ${S(ozet.kasa_toplam,'KASA (RAKE)')}
+      ${S(ozet.kasa_bugun,'KASA BUGÜN')} ${S(ozet.bugun_reklam,'BUGÜN REKLAM')}
+      ${S(ozet.acik_itiraz,'AÇIK İTİRAZ')}
+    </div>
+    <div class="blok card"><div class="baslik">SON 14 GÜN</div><table>
+      <tr><th>Gün</th><th>Yeni kullanıcı</th><th>Seri</th><th>Rake</th><th>Reklam</th></tr>
+      ${gunluk.map(g=>`<tr><td class="num">${g.gun}</td><td class="num">${g.yeni_kullanici}</td>
+        <td class="num">${g.seri}</td><td class="num">${g.rake}</td><td class="num">${g.reklam}</td></tr>`).join('')}
+    </table></div>
+    <div class="blok card"><div class="baslik">LİG DAĞILIMI</div><table>
+      <tr><th>Lig</th><th>Oyuncu</th></tr>
+      ${dagilim.map(l=>`<tr><td>${kacir(l.ad)}</td><td class="num">${l.oyuncu}</td></tr>`).join('')}
+    </table></div>`;
+}
+
+/* ═══════════ 2. KULLANICILAR ═══════════ */
+const LIGLER = ['amator','lig3','lig2','lig1','super','avrupa','sampiyonlar'];
+async function kullaniciYukle(){
+  const p = $('#panel-kullanici');
+  if(!p.dataset.kurul){
+    p.dataset.kurul = 1;
+    p.innerHTML = `<div class="arac">
+        <input id="k-ara" placeholder="Kullanıcı adı ara…" style="width:240px" onkeydown="if(event.key==='Enter')kullaniciListele()">
+        <button class="altin kucuk" onclick="kullaniciListele()">ARA</button>
+        <span class="etiket">boş bırak = son kayıt olan 50</span>
+      </div><div id="k-liste"></div>`;
+  }
+  kullaniciListele();
+}
+async function kullaniciListele(){
+  const kutu = $('#k-liste');
+  kutu.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const aranan = $('#k-ara').value.trim();
+  let q = sb.from('profiller').select('id, kullanici_adi, elo, lig_kod, lig_puan, yasakli, yasak_nedeni, created_at')
+            .order('created_at', {ascending:false}).limit(50);
+  if(aranan) q = q.ilike('kullanici_adi', '%'+aranan+'%');
+  const r = hataAt(await q);
+  const ids = r.data.map(x=>x.id);
+  const cz = ids.length ? hataAt(await sb.from('cuzdanlar').select('user_id, bakiye').in('user_id', ids)).data : [];
+  const bakiye = new Map(cz.map(c=>[c.user_id, c.bakiye]));
+  kutu.innerHTML = `<div class="blok card"><table>
+    <tr><th>Kullanıcı</th><th>Elo</th><th>Lig</th><th>Bakiye</th><th>Üyelik</th><th>Durum</th><th style="width:330px">İşlem</th></tr>
+    ${r.data.map(u=>`<tr>
+      <td><b>${kacir(u.kullanici_adi)}</b><div class="mono">${u.id}</div></td>
+      <td class="num">${u.elo}</td>
+      <td class="num">${u.lig_kod} · ${u.lig_puan}p</td>
+      <td class="num">${bakiye.get(u.id) ?? '—'}</td>
+      <td class="mono">${tarih(u.created_at)}</td>
+      <td>${u.yasakli ? `<span class="hap bad" title="${kacir(u.yasak_nedeni||'')}">YASAKLI</span>` : '<span class="hap ok">AKTİF</span>'}</td>
+      <td>
+        <button class="kucuk" onclick="kullaniciDuzenleAc('${u.id}')">DÜZENLE</button>
+        <button class="kucuk" onclick="rivaDuzelt('${u.id}')">RIVA ±</button>
+        <button class="kucuk ${u.yasakli?'':'tehlike'}" onclick="yasakla('${u.id}', ${!u.yasakli})">${u.yasakli?'YASAĞI AÇ':'YASAKLA'}</button>
+        <button class="kucuk tehlike" onclick="kullaniciSil('${u.id}', '${kacir(u.kullanici_adi)}')">SİL</button>
+        <div id="kd-${u.id}"></div>
+      </td></tr>`).join('')}
+  </table></div>`;
+  r.data.forEach(u=>adlar.set(u.id, u.kullanici_adi));
+}
+async function kullaniciDuzenleAc(id){
+  const h = $('#kd-'+id);
+  if(h.innerHTML){ h.innerHTML=''; return; }
+  const u = hataAt(await sb.from('profiller').select('*').eq('id', id).single()).data;
+  h.innerHTML = `<div class="satirform">
+    <input id="kd-ad-${id}" value="${kacir(u.kullanici_adi)}" style="width:120px" title="kullanıcı adı">
+    <input id="kd-elo-${id}" type="number" value="${u.elo}" style="width:80px" title="elo">
+    <select id="kd-lig-${id}">${LIGLER.map(l=>`<option ${l===u.lig_kod?'selected':''}>${l}</option>`).join('')}</select>
+    <input id="kd-puan-${id}" type="number" value="${u.lig_puan}" style="width:70px" title="lig puanı">
+    <button class="altin kucuk" onclick="kullaniciKaydet('${id}')">KAYDET</button>
+  </div>`;
+}
+async function kullaniciKaydet(id){
+  const g = s => $(s).value;
+  if(await dene(async()=>hataAt(await sb.from('profiller').update({
+    kullanici_adi: g('#kd-ad-'+id).trim(),
+    elo: parseInt(g('#kd-elo-'+id)), lig_kod: g('#kd-lig-'+id),
+    lig_puan: parseInt(g('#kd-puan-'+id)),
+  }).eq('id', id)), 'Kullanıcı güncellendi')) kullaniciListele();
+}
+async function rivaDuzelt(id){
+  const m = parseInt(prompt('Miktar (eksi = düş, artı = ekle):','50'));
+  if(!m) return;
+  const neden = prompt('Neden (zorunlu, defterde iz bırakır):');
+  if(!neden || neden.length < 5){ toast('Neden en az 5 karakter olmalı', true); return; }
+  if(await dene(async()=>hataAt(await sb.rpc('admin_duzeltme',{u:id, m, neden})), `${m>0?'+':''}${m} RIVA işlendi`)) kullaniciListele();
+}
+async function yasakla(id, durum){
+  const neden = durum ? prompt('Yasak nedeni:') : null;
+  if(durum && !neden) return;
+  if(await dene(async()=>hataAt(await sb.rpc('admin_yasak',{u:id, durum, neden})), durum?'Yasaklandı':'Yasak kaldırıldı')) kullaniciListele();
+}
+async function kullaniciSil(id, adx){
+  if(!confirm(`${adx} SİLİNECEK — profil, cüzdan ve bağlı kayıtlar. Emin misin?`)) return;
+  if(prompt(`Onay için kullanıcı adını yaz: ${adx}`) !== adx){ toast('Onay eşleşmedi, iptal', true); return; }
+  if(await dene(async()=>hataAt(await sb.from('profiller').delete().eq('id', id)),
+    'Kullanıcı silindi')) kullaniciListele();
+}
+
+/* ═══════════ 3. SERİLER & MAÇLAR ═══════════ */
+async function seriYukle(){
+  const p = $('#panel-seri');
+  if(!p.dataset.kurul){
+    p.dataset.kurul = 1;
+    p.innerHTML = `<div class="arac">
+        <select id="s-durum" onchange="seriListele()">
+          <option value="oyunda">AÇIK (oyunda)</option><option value="bitti">BİTMİŞ</option>
+          <option value="iptal">İPTAL</option><option value="">HEPSİ</option>
+        </select>
+        <select id="s-tur" onchange="seriListele()">
+          <option value="">RANKED + DOSTLUK</option><option value="false">YALNIZ RANKED</option><option value="true">YALNIZ DOSTLUK</option>
+        </select>
+        <button class="altin kucuk" onclick="seriListele()">YENİLE</button>
+      </div><div id="s-liste"></div>`;
+  }
+  seriListele();
+}
+async function seriListele(){
+  const kutu = $('#s-liste');
+  kutu.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  let q = sb.from('seriler').select('*').order('created_at',{ascending:false}).limit(50);
+  const d = $('#s-durum').value, t = $('#s-tur').value;
+  if(d) q = q.eq('durum', d);
+  if(t) q = q.eq('dostluk', t === 'true');
+  const r = hataAt(await q);
+  await adYukle(r.data.flatMap(s=>[s.p1, s.p2, s.kazanan]));
+  kutu.innerHTML = `<div class="blok card"><table>
+    <tr><th>Seri</th><th>Oyuncular</th><th>Tür</th><th>Skor</th><th>Durum</th><th>Tarih</th><th>İşlem</th></tr>
+    ${r.data.map(s=>`<tr>
+      <td class="mono">${kisaId(s.id)}</td>
+      <td><b>${kacir(ad(s.p1))}</b> <span class="etiket">vs</span> <b style="color:var(--p2)">${kacir(ad(s.p2))}</b></td>
+      <td class="num">${s.mod} · ${s.dostluk ? '<span class="hap gold">DOSTLUK</span>' : kacir(s.masa_kod)}</td>
+      <td class="num">${s.skor1} - ${s.skor2}${s.kazanan ? ' · <b>'+kacir(ad(s.kazanan))+'</b>' : ''}</td>
+      <td>${s.durum==='oyunda'?'<span class="hap ok">OYUNDA</span>':s.durum==='iptal'?'<span class="hap bad">İPTAL</span>':'<span class="hap dim">BİTTİ</span>'}</td>
+      <td class="mono">${tarih(s.created_at)}</td>
+      <td><button class="kucuk" onclick="seriDetay('${s.id}','${s.p1}','${s.p2}','${s.durum}',${s.dostluk})">DETAY</button>
+        ${s.durum==='oyunda' ? `<button class="kucuk tehlike" onclick="seriIptal('${s.id}')">İPTAL+İADE</button>` : ''}
+        <div id="sd-${s.id}"></div></td></tr>`).join('')}
+  </table></div>`;
+}
+async function seriDetay(sid, p1, p2, durum, dostluk){
+  const h = $('#sd-'+sid);
+  if(h.innerHTML){ h.innerHTML=''; return; }
+  h.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const maclar = hataAt(await sb.from('maclar').select('*').eq('seri_id', sid).order('seri_sira')).data;
+  const satirlar = [];
+  for(const m of maclar){
+    const hc = hataAt(await sb.from('hamleler').select('id',{count:'exact',head:true}).eq('mac_id', m.id)).count ?? 0;
+    satirlar.push(`<div style="padding:5px 0;border-bottom:1px solid var(--edge2)">
+      <span class="num">#${m.seri_sira}</span> <b>${kacir(m.oyun_kodu)}</b>
+      · ${m.durum==='oyunda'?'<span class="hap ok">OYUNDA</span>':'<span class="hap dim">bitti</span>'}
+      · kazanan: <b>${m.kazanan ? kacir(ad(m.kazanan)) : (m.durum==='bitti'?'berabere':'—')}</b>
+      · <span class="mono">${hc} hamle · seed ${m.seed}</span>
+      ${m.durum==='oyunda' ? `
+        <button class="kucuk" onclick="hukmen('${m.id}','${p1}','${sid}')">HÜKMEN ${kacir(ad(p1))}</button>
+        <button class="kucuk" onclick="hukmen('${m.id}','${p2}','${sid}')">HÜKMEN ${kacir(ad(p2))}</button>
+        <button class="kucuk" onclick="hukmen('${m.id}',null,'${sid}')">BERABERE KAPAT</button>` : ''}
+    </div>`);
+  }
+  h.innerHTML = `<div class="detay" style="padding:8px;margin-top:6px;border-radius:8px">${satirlar.join('') || 'maç yok'}</div>`;
+}
+async function hukmen(mid, kazanan, sid){
+  const kim = kazanan ? ad(kazanan) : 'BERABERE';
+  if(!confirm(`Maç HÜKMEN kapatılacak → ${kim}. Skor/ödül/Elo sunucu kurallarıyla işlenir. Emin misin?`)) return;
+  if(await dene(async()=>hataAt(await sb.rpc('mac_sonuc',{mid, kazanan_p:kazanan})), 'Maç kapatıldı')) seriListele();
+}
+async function seriIptal(sid){
+  const neden = prompt('İptal nedeni (zorunlu — ranked ise girişler otomatik İADE edilir):');
+  if(!neden || neden.length < 5){ toast('Neden en az 5 karakter olmalı', true); return; }
+  if(await dene(async()=>hataAt(await sb.rpc('admin_seri_iptal',{sid, neden})), 'Seri iptal edildi, girişler iade')) seriListele();
+}
+
+/* ═══════════ 4. KUYRUK & DAVET ═══════════ */
+async function kuyrukYukle(){
+  const p = $('#panel-kuyruk');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const kq = hataAt(await sb.from('eslestirme_kuyrugu').select('*').order('created_at',{ascending:false})).data;
+  const dv = hataAt(await sb.from('davetler').select('*').order('created_at',{ascending:false}).limit(50)).data;
+  await adYukle([...kq.map(k=>k.user_id), ...dv.map(d=>d.kurucu)]);
+  const simdi = Date.now();
+  p.innerHTML = `
+    <div class="blok card"><div class="baslik">EŞLEŞTİRME KUYRUĞU (${kq.length})
+      <button class="kucuk tehlike" style="float:right" onclick="kuyrukBosalt()">TÜMÜNÜ TEMİZLE</button></div>
+    <table><tr><th>Oyuncu</th><th>Mod · Masa</th><th>Elo</th><th>Giriş</th><th>Nabız</th><th></th></tr>
+    ${kq.map(k=>{
+      const taze = k.son_gorulme && (simdi - new Date(k.son_gorulme).getTime()) < 12000;
+      return `<tr><td><b>${kacir(ad(k.user_id))}</b></td>
+      <td class="num">${k.mod} · ${kacir(k.masa_kod)}</td><td class="num">${k.elo}</td>
+      <td class="mono">${tarih(k.created_at)}</td>
+      <td>${taze?'<span class="hap ok">CANLI</span>':'<span class="hap bad">KOPUK</span>'}</td>
+      <td><button class="kucuk tehlike" onclick="kuyrukSil('${k.user_id}')">ÇIKAR</button></td></tr>`;}).join('') || '<tr><td colspan="6" class="etiket">kuyruk boş</td></tr>'}
+    </table></div>
+    <div class="blok card"><div class="baslik">DAVETLER (son 50)
+      <button class="kucuk" style="float:right" onclick="davetTemizle()">ESKİLERİ TEMİZLE</button></div>
+    <table><tr><th>Kod</th><th>Kurucu</th><th>Mod · Oyun</th><th>Durum</th><th>Tarih</th><th></th></tr>
+    ${dv.map(d=>`<tr><td class="num"><b>${kacir(d.kod)}</b></td><td>${kacir(ad(d.kurucu))}</td>
+      <td class="num">${d.mod} · ${kacir(d.oyun_kodu||'rulet')}</td>
+      <td>${d.durum==='bekliyor'?'<span class="hap ok">BEKLİYOR</span>':d.durum==='eslesti'?'<span class="hap gold">EŞLEŞTİ</span>':'<span class="hap dim">iptal</span>'}</td>
+      <td class="mono">${tarih(d.created_at)}</td>
+      <td>${d.durum==='bekliyor'?`<button class="kucuk tehlike" onclick="davetIptal('${kacir(d.kod)}')">İPTAL</button>`:''}</td></tr>`).join('') || '<tr><td colspan="6" class="etiket">davet yok</td></tr>'}
+    </table></div>`;
+}
+async function kuyrukSil(uid){
+  if(await dene(async()=>hataAt(await sb.from('eslestirme_kuyrugu').delete().eq('user_id', uid)), 'Kuyruktan çıkarıldı')) kuyrukYukle();
+}
+async function kuyrukBosalt(){
+  if(!confirm('Kuyruktaki HERKES çıkarılacak. Emin misin?')) return;
+  if(await dene(async()=>hataAt(await sb.from('eslestirme_kuyrugu').delete().gte('created_at','1970-01-01')), 'Kuyruk boşaltıldı')) kuyrukYukle();
+}
+async function davetIptal(kod){
+  if(await dene(async()=>hataAt(await sb.from('davetler').update({durum:'iptal'}).eq('kod', kod)), 'Davet iptal edildi')) kuyrukYukle();
+}
+async function davetTemizle(){
+  if(await dene(async()=>hataAt(await sb.rpc('davet_temizle')), '30 dk\'dan eski davetler iptal edildi')) kuyrukYukle();
+}
+
+/* ═══════════ 5. ARKADAŞLIKLAR ═══════════ */
+async function arkadasYukle(){
+  const p = $('#panel-arkadas');
+  if(!p.dataset.kurul){
+    p.dataset.kurul = 1;
+    p.innerHTML = `<div class="arac">
+      <input id="a-ara" placeholder="Kullanıcı adına göre süz…" style="width:220px" onkeydown="if(event.key==='Enter')arkadasListele()">
+      <button class="altin kucuk" onclick="arkadasListele()">ARA</button>
+      <span class="etiket">boş = son 50 kayıt</span></div><div id="a-liste"></div>`;
+  }
+  arkadasListele();
+}
+async function arkadasListele(){
+  const kutu = $('#a-liste');
+  kutu.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const aranan = $('#a-ara').value.trim();
+  let q = sb.from('arkadaslar').select('*').order('created_at',{ascending:false}).limit(aranan ? 200 : 50);
+  if(aranan){
+    try{ q = q.eq('user_id', await uidBul(aranan)); }
+    catch(e){ kutu.innerHTML = `<div class="etiket">${kacir(e.message)}</div>`; return; }
+  }
+  const r = hataAt(await q);
+  await adYukle(r.data.flatMap(a=>[a.user_id, a.arkadas_id]));
+  kutu.innerHTML = `<div class="blok card"><table>
+    <tr><th>Kullanıcı</th><th>Arkadaşı</th><th>Tarih</th><th></th></tr>
+    ${r.data.map(a=>`<tr><td><b>${kacir(ad(a.user_id))}</b></td><td><b style="color:var(--p2)">${kacir(ad(a.arkadas_id))}</b></td>
+      <td class="mono">${tarih(a.created_at)}</td>
+      <td><button class="kucuk tehlike" onclick="arkadasSil('${a.user_id}','${a.arkadas_id}')">ÇİFTİ SİL</button></td></tr>`).join('') || '<tr><td colspan="4" class="etiket">kayıt yok</td></tr>'}
+  </table></div>`;
+}
+async function arkadasSil(u, a){
+  if(!confirm(`${ad(u)} ↔ ${ad(a)} arkadaşlığı İKİ YÖNLÜ silinecek. Emin misin?`)) return;
+  if(await dene(async()=>{
+    hataAt(await sb.from('arkadaslar').delete().eq('user_id',u).eq('arkadas_id',a));
+    hataAt(await sb.from('arkadaslar').delete().eq('user_id',a).eq('arkadas_id',u));
+  }, 'Arkadaşlık silindi')) arkadasListele();
+}
+
+/* ═══════════ 6. LİGLER & SEZON ═══════════ */
+async function ligYukle(){
+  const p = $('#panel-lig');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const ligler = hataAt(await sb.from('ligler').select('*').order('sira')).data;
+  const sezonlar = hataAt(await sb.from('sezonlar').select('*').order('id',{ascending:false}).limit(10)).data;
+  const gecmis = hataAt(await sb.from('lig_gecmisi').select('*').order('created_at',{ascending:false}).limit(30)).data;
+  await adYukle(gecmis.map(g=>g.user_id));
+  p.innerHTML = `
+    <div class="blok card"><div class="baslik">LİG KONFİGÜRASYONU <span class="etiket">değerler anında oyunu etkiler</span></div>
+    <table><tr><th>Lig</th><th>Terfi eşiği</th><th>Bo1 G/M</th><th>Bo3 G/M</th><th></th></tr>
+    ${ligler.map(l=>`<tr><td><b>${kacir(l.ad)}</b> <span class="mono">${l.kod}</span></td>
+      <td><input id="lg-t-${l.kod}" type="number" value="${l.terfi_esigi}" style="width:90px"></td>
+      <td><input id="lg-g1-${l.kod}" type="number" value="${l.g_bo1}" style="width:55px">
+          <input id="lg-k1-${l.kod}" type="number" value="${l.k_bo1}" style="width:55px"></td>
+      <td><input id="lg-g3-${l.kod}" type="number" value="${l.g_bo3}" style="width:55px">
+          <input id="lg-k3-${l.kod}" type="number" value="${l.k_bo3}" style="width:55px"></td>
+      <td><button class="altin kucuk" onclick="ligKaydet('${l.kod}')">KAYDET</button></td></tr>`).join('')}
+    </table></div>
+    <div class="blok card"><div class="baslik">SEZONLAR
+      <button class="kucuk tehlike" style="float:right" onclick="sezonSifirla()">YENİ SEZON BAŞLAT (SIFIRLAMA)</button></div>
+    <table><tr><th>Ad</th><th>Başlangıç</th><th>Bitiş</th><th>Durum</th></tr>
+    ${sezonlar.map(s=>`<tr><td><b>${kacir(s.ad)}</b></td><td class="mono">${tarih(s.baslangic)}</td>
+      <td class="mono">${tarih(s.bitis)}</td>
+      <td>${s.aktif?'<span class="hap ok">AKTİF</span>':'<span class="hap dim">bitti</span>'}</td></tr>`).join('')}
+    </table></div>
+    <div class="blok card"><div class="baslik">LİG HAREKETLERİ (son 30)</div>
+    <table><tr><th>Oyuncu</th><th>Olay</th><th>Eski → Yeni</th><th>Tarih</th></tr>
+    ${gecmis.map(g=>`<tr><td><b>${kacir(ad(g.user_id))}</b></td>
+      <td>${g.olay==='terfi'?'<span class="hap ok">TERFİ</span>':g.olay==='dusme'?'<span class="hap bad">DÜŞME</span>':'<span class="hap dim">sezon</span>'}</td>
+      <td class="num">${kacir(g.eski_lig)} → ${kacir(g.yeni_lig)}</td>
+      <td class="mono">${tarih(g.created_at)}</td></tr>`).join('') || '<tr><td colspan="4" class="etiket">hareket yok</td></tr>'}
+    </table></div>`;
+}
+async function ligKaydet(kod){
+  const v = s => parseInt($(s).value);
+  if(await dene(async()=>hataAt(await sb.from('ligler').update({
+    terfi_esigi:v('#lg-t-'+kod), g_bo1:v('#lg-g1-'+kod), k_bo1:v('#lg-k1-'+kod),
+    g_bo3:v('#lg-g3-'+kod), k_bo3:v('#lg-k3-'+kod),
+  }).eq('kod', kod)), kod + ' güncellendi')) ligYukle();
+}
+async function sezonSifirla(){
+  if(!confirm('YENİ SEZON: aktif sezon kapanır, HERKES bir alt lige iner, puanlar sıfırlanır. Emin misin?')) return;
+  const adx = prompt('Yeni sezon adı:', 'Sezon 2');
+  if(!adx) return;
+  if(prompt('Onay için AD KELİMESİNİ BÜYÜK yaz: SIFIRLA') !== 'SIFIRLA'){ toast('Onay eşleşmedi, iptal', true); return; }
+  if(await dene(async()=>hataAt(await sb.rpc('sezon_sifirla',{yeni_ad:adx})), 'Yeni sezon başladı: '+adx)) ligYukle();
+}
+
+/* ═══════════ 7. EKONOMİ ═══════════ */
+async function ekonomiYukle(){
+  const p = $('#panel-ekonomi');
+  if(!p.dataset.kurul){
+    p.dataset.kurul = 1;
+    p.innerHTML = `<div class="arac">
+      <select id="e-tip" onchange="ekonomiListele()">
+        <option value="">TÜM TİPLER</option>
+        ${['baslangic','seri_giris','seri_odul','berabere_iade','rake','reklam','paket','duzeltme'].map(t=>`<option>${t}</option>`).join('')}
+      </select>
+      <input id="e-kim" placeholder="Kullanıcı adına göre süz…" style="width:200px" onkeydown="if(event.key==='Enter')ekonomiListele()">
+      <button class="altin kucuk" onclick="ekonomiListele()">SÜZ</button>
+      <span style="flex:1"></span>
+      <input id="e-duzelt-ad" placeholder="kullanıcı adı" style="width:130px">
+      <input id="e-duzelt-m" type="number" placeholder="± miktar" style="width:90px">
+      <input id="e-duzelt-n" placeholder="neden" style="width:160px">
+      <button class="kucuk" onclick="ekonomiDuzelt()">RIVA DÜZELT</button>
+    </div><div id="e-liste"></div>`;
+  }
+  ekonomiListele();
+}
+async function ekonomiListele(){
+  const kutu = $('#e-liste');
+  kutu.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  let q = sb.from('defter').select('*').order('created_at',{ascending:false}).limit(100);
+  const tip = $('#e-tip').value, kim = $('#e-kim').value.trim();
+  if(tip) q = q.eq('tip', tip);
+  if(kim){
+    try{ q = q.eq('user_id', await uidBul(kim)); }
+    catch(e){ kutu.innerHTML = `<div class="etiket">${kacir(e.message)}</div>`; return; }
+  }
+  const r = hataAt(await q);
+  await adYukle(r.data.map(d=>d.user_id));
+  kutu.innerHTML = `<div class="blok card"><div class="baslik">DEFTER <span class="etiket">son 100 kayıt · kasa toplamları PANO'da</span></div>
+    <table><tr><th>Kullanıcı</th><th>Tip</th><th>Miktar</th><th>Açıklama</th><th>Seri</th><th>Tarih</th></tr>
+    ${r.data.map(d=>`<tr>
+      <td><b>${d.user_id==='00000000-0000-0000-0000-000000000001'?'💰 KASA':kacir(ad(d.user_id))}</b></td>
+      <td class="num">${kacir(d.tip)}</td>
+      <td class="num ${d.miktar>=0?'arti':'eksi'}">${d.miktar>0?'+':''}${d.miktar}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${kacir(d.aciklama||'')}</td>
+      <td class="mono">${kisaId(d.seri_id)}</td>
+      <td class="mono">${tarih(d.created_at)}</td></tr>`).join('')}
+    </table></div>`;
+}
+async function ekonomiDuzelt(){
+  const adx = $('#e-duzelt-ad').value.trim(), m = parseInt($('#e-duzelt-m').value), n = $('#e-duzelt-n').value.trim();
+  if(!adx || !m || n.length < 5){ toast('Ad, miktar ve en az 5 karakter neden gerekli', true); return; }
+  await dene(async()=>{
+    const u = await uidBul(adx);
+    hataAt(await sb.rpc('admin_duzeltme',{u, m, neden:n}));
+  }, `${kacir(adx)}: ${m>0?'+':''}${m} RIVA işlendi`);
+  ekonomiListele();
+}
+
+/* ═══════════ 8. REKLAM ═══════════ */
+async function reklamYukle(){
+  const p = $('#panel-reklam');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const r = hataAt(await sb.from('reklam_odulleri').select('*').order('created_at',{ascending:false}).limit(100));
+  const bugun = hataAt(await sb.from('reklam_odulleri').select('id',{count:'exact',head:true})
+    .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString())).count ?? 0;
+  await adYukle(r.data.map(x=>x.user_id));
+  p.innerHTML = `
+    <div class="statlar">
+      <div class="stat gcard"><div class="deger">${bugun}</div><div class="ad">BUGÜN İZLENEN</div></div>
+      <div class="stat gcard"><div class="deger">${bugun*50}</div><div class="ad">BUGÜN DAĞITILAN RIVA</div></div>
+    </div>
+    <div class="blok card"><div class="baslik">REKLAM ÖDÜLLERİ (son 100)</div>
+    <table><tr><th>Kullanıcı</th><th>Ağ</th><th>İşlem</th><th>Miktar</th><th>Tarih</th></tr>
+    ${r.data.map(x=>`<tr><td><b>${kacir(ad(x.user_id))}</b></td><td class="num">${kacir(x.ag)}</td>
+      <td class="mono">${kacir(x.ssv_islem_id)}</td><td class="num arti">+${x.miktar}</td>
+      <td class="mono">${tarih(x.created_at)}</td></tr>`).join('') || '<tr><td colspan="5" class="etiket">kayıt yok</td></tr>'}
+    </table></div>`;
+}
+
+/* ═══════════ 9. İTİRAZLAR ═══════════ */
+async function itirazYukle(){
+  const p = $('#panel-itiraz');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const r = hataAt(await sb.from('veri_itirazlari').select('*').order('created_at',{ascending:false}).limit(100));
+  await adYukle(r.data.map(x=>x.user_id));
+  const durumlar = ['acik','inceleniyor','duzeltildi','red'];
+  p.innerHTML = `<div class="blok card"><div class="baslik">VERİ İTİRAZLARI <span class="etiket">her itiraz ciddiye alınır</span></div>
+    <table><tr><th>Kullanıcı</th><th>Futbolcu</th><th>Mesaj</th><th>Durum</th><th>Admin notu</th><th></th></tr>
+    ${r.data.map(x=>`<tr><td><b>${kacir(ad(x.user_id))}</b><div class="mono">${tarih(x.created_at)}</div></td>
+      <td><b>${kacir(x.oyuncu_adi)}</b></td>
+      <td style="max-width:280px">${kacir(x.mesaj)}</td>
+      <td><select id="it-d-${x.id}">${durumlar.map(d=>`<option ${d===x.durum?'selected':''}>${d}</option>`).join('')}</select></td>
+      <td><input id="it-n-${x.id}" value="${kacir(x.admin_notu||'')}" style="width:150px"></td>
+      <td><button class="altin kucuk" onclick="itirazKaydet(${x.id})">KAYDET</button></td></tr>`).join('') || '<tr><td colspan="6" class="etiket">itiraz yok</td></tr>'}
+    </table></div>`;
+}
+async function itirazKaydet(id){
+  if(await dene(async()=>hataAt(await sb.from('veri_itirazlari').update({
+    durum: $('#it-d-'+id).value, admin_notu: $('#it-n-'+id).value, updated_at: new Date().toISOString(),
+  }).eq('id', id)), 'İtiraz güncellendi')) itirazYukle();
+}
+
+const YUKLE = { pano:panoYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
+  arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, reklam:reklamYukle, itiraz:itirazYukle };
+</script>
+</body>
+</html>

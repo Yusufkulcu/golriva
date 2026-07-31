@@ -2,18 +2,41 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:vibration/vibration.dart';
 
 /// SIRA TITRESIMLERI (kullanici istegi): sira degisimini elde hissettir.
 /// - Sira BANA gecti → cift guclu vuru (belirgin: "hadi, sira sende!")
-/// - Sira RAKIBE gecti → tek hafif vuru ("hamlen gitti")
-/// HapticFeedback izin istemez; titresimi kapali cihazlarda sessizce yutulur.
-Future<void> siraBanaTitresim() async {
-  await HapticFeedback.heavyImpact();
-  await Future.delayed(const Duration(milliseconds: 140));
-  await HapticFeedback.heavyImpact();
-}
+/// - Sira RAKIBE gecti → tek kisa vuru ("hamlen gitti")
+/// ONCE gercek titresim motoru (vibration paketi — sistemin "dokunma
+/// titresimi" ayarina TAKILMAZ), motor yoksa HapticFeedback'e dusulur.
+Future<void> siraBanaTitresim() => _titret(
+      desen: [0, 170, 110, 170], // bekle-titre-bekle-titre (ms)
+      yedek: () async {
+        await HapticFeedback.heavyImpact();
+        await Future.delayed(const Duration(milliseconds: 140));
+        await HapticFeedback.heavyImpact();
+      },
+    );
 
-Future<void> siraRakibeTitresim() => HapticFeedback.lightImpact();
+Future<void> siraRakibeTitresim() => _titret(
+      desen: [0, 70],
+      yedek: HapticFeedback.lightImpact,
+    );
+
+Future<void> _titret(
+    {required List<int> desen, required Future<void> Function() yedek}) async {
+  try {
+    if (await Vibration.hasVibrator()) {
+      await Vibration.vibrate(pattern: desen);
+      return;
+    }
+  } catch (_) {
+    // testler / desteksiz platform: sessizce yedege dus
+  }
+  try {
+    await yedek();
+  } catch (_) {}
+}
 
 /// Cevrimici mac kimligi ve DETERMINISTIK kurulum bilgisi.
 /// Iki istemci de ayni seed + ayni baslangic zamaniyla ayni motoru kurar —

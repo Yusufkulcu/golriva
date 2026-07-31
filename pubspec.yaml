@@ -15,6 +15,9 @@ dependencies:
   supabase_flutter: ^2.8.0
   # odullu reklam (yalniz Android/iOS'ta etkin) — 9.x: guncel Gradle uyumu
   google_mobile_ads: ^9.0.0
+  # sira titresimleri: HapticFeedback sistem ayarina takiliyor,
+  # vibration paketi motoru dogrudan kullanir (Android/iOS/web)
+  vibration: ^3.1.8
 
 dev_dependencies:
   flutter_test:

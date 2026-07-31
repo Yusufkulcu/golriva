@@ -16,22 +16,39 @@ end $$;
 grant execute on function avatar_ayarla(text) to authenticated;
 
 -- Depolama kovası + kuralları (yalnız Supabase'de çalışır; yerel testte atlanır)
+-- NOT: bazı projelerde SQL editörü storage.objects'e policy YAZAMAZ
+-- ("must be owner of table objects"). O durumda betik DURMAZ, uyarı basar —
+-- kuralları Dashboard → Storage → avatarlar → Policies'ten elle eklersin
+-- (talimat: golriva_hesap kurulum mesajında).
 do $$ begin
   if exists (select 1 from pg_namespace where nspname = 'storage') then
-    insert into storage.buckets (id, name, public)
-      values ('avatarlar', 'avatarlar', true)
-      on conflict (id) do nothing;
+    begin
+      insert into storage.buckets (id, name, public)
+        values ('avatarlar', 'avatarlar', true)
+        on conflict (id) do nothing;
+    exception when others then
+      raise notice 'UYARI: kova olusturulamadi (%) — Dashboard/Storage''tan "avatarlar" adinda PUBLIC kova ac', sqlerrm;
+    end;
     -- herkes okur (public kova), kullanıcı YALNIZ kendi dosyasını yazar:
     -- dosya adı deseni: <uid>.jpg
     begin
       create policy avatar_yukle on storage.objects for insert to authenticated
         with check (bucket_id = 'avatarlar'
                     and name = auth.uid()::text || '.jpg');
-    exception when duplicate_object then null; end;
+    exception
+      when duplicate_object then null;
+      when others then
+        raise notice 'UYARI: yukleme kurali eklenemedi (%) — Dashboard''dan ekle (INSERT policy)', sqlerrm;
+    end;
     begin
       create policy avatar_guncelle on storage.objects for update to authenticated
-        using (bucket_id = 'avatarlar' and name = auth.uid()::text || '.jpg');
-    exception when duplicate_object then null; end;
+        using (bucket_id = 'avatarlar' and name = auth.uid()::text || '.jpg')
+        with check (bucket_id = 'avatarlar' and name = auth.uid()::text || '.jpg');
+    exception
+      when duplicate_object then null;
+      when others then
+        raise notice 'UYARI: guncelleme kurali eklenemedi (%) — Dashboard''dan ekle (UPDATE policy)', sqlerrm;
+    end;
   end if;
 end $$;
 

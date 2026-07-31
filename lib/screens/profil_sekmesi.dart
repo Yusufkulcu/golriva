@@ -92,12 +92,18 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
       }
     } catch (e) {
       if (mounted) {
+        final m = '$e';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('$e'.contains('bucket') ||
-                    '$e'.contains('Bucket') ||
-                    '$e'.contains('Could not find')
+            content: Text(m.contains('bucket') ||
+                    m.contains('Bucket') ||
+                    m.contains('Could not find')
                 ? 'Sunucu güncellemesi gerekli: supabase/faz2_6_hesap.sql çalıştırılmalı.'
-                : 'Fotoğraf yüklenemedi: $e')));
+                : m.contains('403') ||
+                        m.contains('security') ||
+                        m.contains('Unauthorized')
+                    ? 'Depolama izni eksik — faz2_6_hesap.sql yeniden çalıştırılmalı; '
+                        'olmazsa Storage panelinden avatarlar kurallarını ekle.'
+                    : 'Fotoğraf yüklenemedi: $e')));
       }
     } finally {
       if (mounted) setState(() => fotoYukleniyor = false);

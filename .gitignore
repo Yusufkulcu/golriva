@@ -45,3 +45,6 @@ app.*.map.json
 /android/app/release
 futgame/
 ios/**/swiftpm/
+anahtar-ve-keyler/
+key.properties
+*.jks

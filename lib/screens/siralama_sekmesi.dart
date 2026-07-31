@@ -70,7 +70,7 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
           }
       }
     } catch (e) {
-      if (mounted) setState(() => hata = 'Yüklenemedi: $e');
+      if (mounted) setState(() => hata = sunucuHataMesaji(e));
     }
   }
 

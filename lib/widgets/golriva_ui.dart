@@ -82,6 +82,13 @@ Widget ilerleme(double oran, {double yukseklik = 5}) => ClipRRect(
 String trBuyuk(String s) =>
     s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
 
+/// Sunucu hata mesajini kullanicinin dilinden soyle. Ozellikle
+/// "Could not find the function" = faz2_4_ek.sql daha calistirilmamis.
+String sunucuHataMesaji(Object e) => '$e'.contains('Could not find the')
+    ? 'Sunucu bu özellik için henüz güncellenmemiş — Supabase SQL '
+        'editöründe supabase/faz2_4_ek.sql çalıştırılmalı.'
+    : 'Yüklenemedi: $e';
+
 /// kucuk etiket yazisi (9px, genis harf araligi)
 Widget etiket(String s, {Color renk = GolrivaColors.dim}) => Text(s,
     style: GoogleFonts.figtree(
@@ -108,20 +115,24 @@ Widget goldButon(String s, VoidCallback? onTap,
           borderRadius: BorderRadius.circular(18),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
             alignment: Alignment.center,
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (ikonAd != null) ...[
-                gIkon(ikonAd, 17, const Color(0xFF231A04)),
-                const SizedBox(width: 8),
-              ],
-              Text(s,
-                  style: GoogleFonts.bigShouldersDisplay(
-                      fontSize: yazi,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.5,
-                      color: const Color(0xFF231A04))),
-            ]),
+            // FittedBox: uzun basliklar dar ekranda kuculerek sigar
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (ikonAd != null) ...[
+                  gIkon(ikonAd, 17, const Color(0xFF231A04)),
+                  const SizedBox(width: 8),
+                ],
+                Text(s,
+                    style: GoogleFonts.bigShouldersDisplay(
+                        fontSize: yazi,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2.5,
+                        color: const Color(0xFF231A04))),
+              ]),
+            ),
           ),
         ),
       ),

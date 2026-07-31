@@ -150,3 +150,7 @@ grant execute on function davet_olustur(text, text) to authenticated;
 grant execute on function davet_katil(text)       to authenticated;
 grant execute on function davet_iptal()           to authenticated;
 grant execute on function davet_temizle()         to authenticated;
+
+-- PostgREST sema onbellegini tazele — fonksiyonlar aninda gorunur olsun
+-- ("could not find the function" hatasinin ilaci).
+notify pgrst, 'reload schema';

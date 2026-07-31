@@ -44,7 +44,7 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
       final l = await servis.arkadasListesi();
       if (mounted) setState(() => liste = l);
     } catch (e) {
-      if (mounted) setState(() => hata = 'Yüklenemedi: $e');
+      if (mounted) setState(() => hata = sunucuHataMesaji(e));
     }
   }
 

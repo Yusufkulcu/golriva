@@ -99,14 +99,15 @@ void main() {
     await tester
         .pumpWidget(MaterialApp(home: DavetKurEkrani(repos: repos)));
     expect(find.text('RULET'), findsOneWidget);
-    expect(find.text('TEK MAÇ'), findsOneWidget);
-    expect(find.text('3 MAÇLIK SERİ'), findsOneWidget);
-    await tester.dragUntilVisible(find.text('DAVET KODU OLUŞTUR'),
-        find.byType(ListView).first, const Offset(0, -100));
-    expect(find.text('DAVET KODU OLUŞTUR'), findsOneWidget);
-    // sabit oyun secilebilir
+    // sabit oyun secilebilir (ust bolge — once dokun, sonra kaydir)
     await tester.tap(find.text('KUPA DRAFTI'));
     await tester.pump();
+    // SERİ bolumu + buton ekranin altinda — ListView tembel cizer, kaydir
+    await tester.dragUntilVisible(find.text('DAVET KODU OLUŞTUR'),
+        find.byType(ListView).first, const Offset(0, -100));
+    expect(find.text('TEK MAÇ'), findsOneWidget);
+    expect(find.text('3 MAÇLIK SERİ'), findsOneWidget);
+    expect(find.text('DAVET KODU OLUŞTUR'), findsOneWidget);
   });
 
   testWidgets('Ligler: 7 kademe cevrimdisi yedekle cizilir', (tester) async {

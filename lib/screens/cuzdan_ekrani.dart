@@ -19,6 +19,23 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
   int? bakiye;
   List<({String tip, int miktar, String? aciklama, DateTime tarih})>? gecmis;
 
+  // paketler sunucudan (admin panelden yonetilir); gelmezse bilinen uc paket
+  List<({String kod, String ad, int riva})> paketler = const [
+    (kod: 'riva_500', ad: 'Başlangıç', riva: 500),
+    (kod: 'riva_1500', ad: 'Popüler', riva: 1500),
+    (kod: 'riva_5000', ad: 'Kral', riva: 5000),
+  ];
+
+  static String _binlik(int n) {
+    final s = '$n';
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write('.');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+
   static const _aylar = [
     '', 'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
     'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'
@@ -44,6 +61,9 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
       servis.defterGecmisi().then((g) {
         if (mounted) setState(() => gecmis = g);
       }).catchError((_) {});
+      servis.urunler().then((u) {
+        if (u.isNotEmpty && mounted) setState(() => paketler = u);
+      }).catchError((_) {}); // sunucuda tablo yoksa bilinen paketler kalir
     }
   }
 
@@ -220,11 +240,12 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              _paket('500', 'Riva', 'riva_500'),
-              const SizedBox(width: 8),
-              _paket('1.500', 'Riva · popüler', 'riva_1500', altin: true),
-              const SizedBox(width: 8),
-              _paket('5.000', 'Riva', 'riva_5000'),
+              for (var i = 0; i < paketler.length && i < 4; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                _paket(_binlik(paketler[i].riva), paketler[i].ad,
+                    paketler[i].kod,
+                    altin: i == 1),
+              ],
             ]),
             // ── GEÇMİŞ: harcamalar + kazanımlar (defter) ──
             if (gecmis != null) ...[

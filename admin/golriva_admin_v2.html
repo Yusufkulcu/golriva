@@ -179,7 +179,7 @@ function cikis(){ try{localStorage.removeItem('glr_admin');}catch(_){} location.
 const SEKMELER = [
   ['pano','PANO'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
   ['kuyruk','KUYRUK & DAVET'], ['arkadas','ARKADAŞLIKLAR'], ['lig','LİGLER & SEZON'],
-  ['ekonomi','EKONOMİ'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
+  ['ekonomi','EKONOMİ'], ['market','MARKET'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
 ];
 for(const [k, adx] of SEKMELER){
   const b = document.createElement('div');
@@ -569,6 +569,77 @@ async function ekonomiDuzelt(){
   ekonomiListele();
 }
 
+/* ═══════════ 7b. MARKET (urun yonetimi + satin almalar) ═══════════ */
+async function marketYukle(){
+  const p = $('#panel-market');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  let urunler = [], satislar = [];
+  try{ urunler = hataAt(await sb.from('urunler').select('*').order('sira')).data; }
+  catch(e){
+    p.innerHTML = `<div class="blok card">MARKET için sunucu güncellemesi gerekli:
+      Supabase SQL editöründe <b>supabase/faz2_7_market.sql</b> çalıştırılmalı.<br>
+      <span class="etiket">${kacir(e.message||e)}</span></div>`;
+    return;
+  }
+  try{ satislar = hataAt(await sb.from('satin_almalar').select('*')
+      .order('created_at',{ascending:false}).limit(100)).data; }catch(_){ }
+  await adYukle(satislar.map(s=>s.user_id));
+  const toplamRiva = satislar.reduce((t,s)=>t+s.miktar,0);
+  p.innerHTML = `
+    <div class="statlar">
+      <div class="stat gcard"><div class="deger">${satislar.length}</div><div class="ad">SATIŞ (son 100)</div></div>
+      <div class="stat gcard"><div class="deger">${toplamRiva}</div><div class="ad">DAĞITILAN RIVA (son 100)</div></div>
+    </div>
+    <div class="blok card"><div class="baslik">ÜRÜNLER
+      <span class="etiket">ürün kodu MAĞAZA konsolundaki kimlikle birebir aynı olmalı
+      (Play: Uygulama içi ürünler · App Store: In-App Purchases)</span></div>
+    <table><tr><th>Kod</th><th>Ad</th><th>Riva</th><th>Sıra</th><th>Durum</th><th></th></tr>
+    ${urunler.map(u=>`<tr>
+      <td class="num"><b>${kacir(u.kod)}</b></td>
+      <td><input id="ur-ad-${kacir(u.kod)}" value="${kacir(u.ad)}" style="width:110px"></td>
+      <td><input id="ur-riva-${kacir(u.kod)}" type="number" value="${u.riva}" style="width:80px"></td>
+      <td><input id="ur-sira-${kacir(u.kod)}" type="number" value="${u.sira}" style="width:55px"></td>
+      <td>${u.aktif?'<span class="hap ok">SATIŞTA</span>':'<span class="hap dim">kapalı</span>'}</td>
+      <td><button class="altin kucuk" onclick="urunKaydet('${kacir(u.kod)}')">KAYDET</button>
+          <button class="kucuk ${u.aktif?'tehlike':''}" onclick="urunAcKapa('${kacir(u.kod)}', ${!u.aktif})">${u.aktif?'KAPAT':'AÇ'}</button></td>
+    </tr>`).join('')}
+    <tr><td><input id="ur-yeni-kod" placeholder="riva_10000" style="width:110px"></td>
+      <td><input id="ur-yeni-ad" placeholder="Efsane" style="width:110px"></td>
+      <td><input id="ur-yeni-riva" type="number" placeholder="10000" style="width:80px"></td>
+      <td><input id="ur-yeni-sira" type="number" value="9" style="width:55px"></td>
+      <td class="etiket">yeni ürün</td>
+      <td><button class="altin kucuk" onclick="urunEkle()">EKLE</button></td></tr>
+    </table></div>
+    <div class="blok card"><div class="baslik">SATIN ALMALAR (son 100)</div>
+    <table><tr><th>Kullanıcı</th><th>Mağaza</th><th>Ürün</th><th>İşlem</th><th>Riva</th><th>Tarih</th></tr>
+    ${satislar.map(s=>`<tr><td><b>${kacir(ad(s.user_id))}</b></td>
+      <td class="num">${kacir(s.magaza)}</td><td class="num">${kacir(s.urun)}</td>
+      <td class="mono">${kacir(s.islem_id)}</td><td class="num arti">+${s.miktar}</td>
+      <td class="mono">${tarih(s.created_at)}</td></tr>`).join('') || '<tr><td colspan="6" class="etiket">henüz satış yok</td></tr>'}
+    </table></div>`;
+}
+async function urunKaydet(kod){
+  const v = s => $(s).value;
+  if(await dene(async()=>hataAt(await sb.from('urunler').update({
+    ad: v('#ur-ad-'+kod), riva: parseInt(v('#ur-riva-'+kod)),
+    sira: parseInt(v('#ur-sira-'+kod)),
+  }).eq('kod', kod)), kod + ' güncellendi')) marketYukle();
+}
+async function urunAcKapa(kod, aktif){
+  if(await dene(async()=>hataAt(await sb.from('urunler').update({aktif}).eq('kod', kod)),
+    kod + (aktif ? ' satışa açıldı' : ' kapatıldı'))) marketYukle();
+}
+async function urunEkle(){
+  const kod = $('#ur-yeni-kod').value.trim(), adx = $('#ur-yeni-ad').value.trim();
+  const riva = parseInt($('#ur-yeni-riva').value), sira = parseInt($('#ur-yeni-sira').value) || 9;
+  if(!/^[a-z0-9_]+$/.test(kod) || !adx || !riva || riva <= 0){
+    toast('Kod (küçük harf/rakam/alt çizgi), ad ve pozitif Riva gerekli', true);
+    return;
+  }
+  if(await dene(async()=>hataAt(await sb.from('urunler').insert({kod, ad:adx, riva, sira})),
+    kod + ' eklendi — MAĞAZA konsolunda da aynı kodla ürün tanımlamayı unutma!')) marketYukle();
+}
+
 /* ═══════════ 8. REKLAM ═══════════ */
 async function reklamYukle(){
   const p = $('#panel-reklam');
@@ -614,7 +685,8 @@ async function itirazKaydet(id){
 }
 
 const YUKLE = { pano:panoYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
-  arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, reklam:reklamYukle, itiraz:itirazYukle };
+  arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, market:marketYukle,
+  reklam:reklamYukle, itiraz:itirazYukle };
 </script>
 </body>
 </html>

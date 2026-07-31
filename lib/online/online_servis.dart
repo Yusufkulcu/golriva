@@ -151,6 +151,22 @@ class OnlineServis {
     return (r as num).toInt();
   }
 
+  /// Satistaki Riva paketleri (urunler tablosu — admin panelden yonetilir).
+  Future<List<({String kod, String ad, int riva})>> urunler() async {
+    final r = await _c
+        .from('urunler')
+        .select('kod, ad, riva')
+        .eq('aktif', true)
+        .order('sira');
+    return (r as List)
+        .map((u) => (
+              kod: u['kod'] as String,
+              ad: u['ad'] as String,
+              riva: (u['riva'] as num).toInt(),
+            ))
+        .toList();
+  }
+
   // ---------- FAZ 2.6: VERİ İTİRAZI ----------
 
   Future<void> itirazGonder(String oyuncuAdi, String mesaj) =>

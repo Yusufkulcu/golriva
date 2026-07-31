@@ -17,6 +17,7 @@ import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/screens/arkadaslar_ekrani.dart';
 import 'package:golriva/screens/cuzdan_ekrani.dart';
 import 'package:golriva/screens/kilavuz_ekrani.dart';
+import 'package:golriva/screens/magaza_sekmesi.dart';
 import 'package:golriva/screens/ligler_ekrani.dart';
 import 'test_repos.dart';
 
@@ -48,9 +49,9 @@ void main() {
       (tester) async {
     await tester.pumpWidget(iskelet());
     await tester.pump(const Duration(milliseconds: 100));
-    // DÜELLOLAR sekmesi kaldirildi (profil altina tasindi) — 3 sekme
+    // DÜELLOLAR yok (profil altinda); MAĞAZA yeni sekme — 4 sekme
     expect(find.text('DÜELLOLAR'), findsNothing);
-    for (final s in ['OYNA', 'SIRALAMA', 'PROFİL']) {
+    for (final s in ['OYNA', 'SIRALAMA', 'MAĞAZA', 'PROFİL']) {
       expect(find.text(s), findsWidgets, reason: '$s sekmesi eksik');
     }
     expect(find.text('HIZLI DÜELLO'), findsOneWidget);
@@ -155,18 +156,32 @@ void main() {
     expect(find.text('ADALET & VERİ'), findsOneWidget);
   });
 
-  testWidgets('Cuzdan: reklam karti aktif, testte dokununca cokmez',
+  testWidgets('Magaza: reklam + fiyatli paketler; dokununca cokmez',
       (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: CuzdanEkrani()));
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: MagazaSekmesi())));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Reklam izle'), findsOneWidget);
-    expect(find.text('Günde 10 hak'), findsOneWidget);
-    expect(find.textContaining('yakında'), findsNothing); // artik gercek!
+    expect(find.text('RIVA PAKETLERİ'), findsOneWidget);
+    expect(find.text('500'), findsOneWidget); // paket miktari
+    expect(find.text('5.000'), findsOneWidget); // binlik ayirici
+    // fiyat rozetleri: canli fiyat yoksa 'Mağazada' yazar (3 paket)
+    expect(find.text('Mağazada'), findsNWidgets(3));
     // VM'de reklam desteklenmez → kibarca snackbar, cokme yok
     await tester.tap(find.text('Reklam izle'));
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.takeException(), isNull);
     expect(find.textContaining('yalnız telefonda'), findsOneWidget);
+  });
+
+  testWidgets('Cuzdan: sade — gecmis var, magaza/reklam/duello karti YOK',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: CuzdanEkrani()));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('GEÇMİŞ'), findsOneWidget);
+    // kullanici istegi: "Düello kazanarak" bilgilendirmesi kaldirildi
+    expect(find.textContaining('Düello kazan'), findsNothing);
+    expect(find.text('Reklam izle'), findsNothing); // magazaya tasindi
+    expect(find.text('PAKETLER'), findsNothing);
   });
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {

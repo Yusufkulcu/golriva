@@ -36,7 +36,9 @@ const sonrakiLig = {
 class OynaSekmesi extends StatefulWidget {
   final GolrivaRepos repos;
   final VoidCallback? onProfil; // sag ust avatar → PROFİL sekmesi
-  const OynaSekmesi({super.key, required this.repos, this.onProfil});
+  final VoidCallback? onMagaza; // reklam karti → MAĞAZA sekmesi
+  const OynaSekmesi(
+      {super.key, required this.repos, this.onProfil, this.onMagaza});
 
   @override
   State<OynaSekmesi> createState() => _OynaSekmesiState();
@@ -298,11 +300,10 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
           ],
         ]),
         const SizedBox(height: 11),
-        // reklam karti
+        // reklam karti → MAĞAZA sekmesi (reklam izleme artik orada)
         InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const CuzdanEkrani())),
+          onTap: widget.onMagaza,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: kartDekor(),

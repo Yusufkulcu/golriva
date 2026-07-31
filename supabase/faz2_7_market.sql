@@ -46,3 +46,14 @@ end $$;
 grant execute on function satin_alma_odul(text, text, text) to authenticated;
 
 notify pgrst, 'reload schema';
+
+-- Fiyat GORUNUM yazisi (gercek fiyat magaza konsolundadir; canli fiyat
+-- cekilemezse uygulama bu yaziyi gosterir — admin panelden duzenlenir).
+alter table urunler add column if not exists fiyat_metni text;
+update urunler set fiyat_metni = coalesce(fiyat_metni,
+  case kod when 'riva_500' then '₺39,99'
+           when 'riva_1500' then '₺99,99'
+           when 'riva_5000' then '₺299,99' end)
+ where kod in ('riva_500','riva_1500','riva_5000');
+
+notify pgrst, 'reload schema';

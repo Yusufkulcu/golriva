@@ -152,10 +152,12 @@ class OnlineServis {
   }
 
   /// Satistaki Riva paketleri (urunler tablosu — admin panelden yonetilir).
-  Future<List<({String kod, String ad, int riva})>> urunler() async {
+  /// [fiyatMetni]: gorunum fiyati — canli magaza fiyati cekilemezse gosterilir.
+  Future<List<({String kod, String ad, int riva, String? fiyatMetni})>>
+      urunler() async {
     final r = await _c
         .from('urunler')
-        .select('kod, ad, riva')
+        .select('kod, ad, riva, fiyat_metni')
         .eq('aktif', true)
         .order('sira');
     return (r as List)
@@ -163,6 +165,7 @@ class OnlineServis {
               kod: u['kod'] as String,
               ad: u['ad'] as String,
               riva: (u['riva'] as num).toInt(),
+              fiyatMetni: u['fiyat_metni'] as String?,
             ))
         .toList();
   }

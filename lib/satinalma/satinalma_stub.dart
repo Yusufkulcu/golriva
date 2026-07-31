@@ -7,4 +7,7 @@ class SatinAlmaServis {
   static Future<({String? islemId, String? hata})> satinAl(
           String urunKodu) async =>
       (islemId: null, hata: 'Satın alma yalnız telefonda yapılır.');
+
+  /// Magaza fiyatlari — stub'da bos (uygulama gorunum fiyatina duser).
+  static Future<Map<String, String>> fiyatlar(Set<String> kodlar) async => {};
 }

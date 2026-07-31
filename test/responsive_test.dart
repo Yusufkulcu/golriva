@@ -17,6 +17,7 @@ import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/screens/arkadaslar_ekrani.dart';
 import 'package:golriva/screens/kilavuz_ekrani.dart';
 import 'package:golriva/screens/ligler_ekrani.dart';
+import 'package:golriva/screens/magaza_sekmesi.dart';
 import 'package:golriva/theme/golriva_theme.dart';
 import 'test_repos.dart';
 
@@ -152,6 +153,7 @@ void main() {
       'DAVET KUR': () => DavetKurEkrani(repos: repos),
       'KILAVUZ': () => const KilavuzEkrani(),
       'AUTH': () => AuthEkrani(repos: repos),
+      'MAĞAZA': () => const Scaffold(body: MagazaSekmesi()),
     };
     for (final s in sayfalar.keys) {
       for (final e in boyutlar.entries) {

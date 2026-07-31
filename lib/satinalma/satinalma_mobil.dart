@@ -54,6 +54,19 @@ class SatinAlmaServis {
     });
   }
 
+  /// CANLI magaza fiyatlari (kullanicinin para birimiyle, or. ₺39,99).
+  /// Magaza kapali/urun tanimsizsa bos harita doner — arayuz gorunum
+  /// fiyatina (urunler.fiyat_metni) duser.
+  static Future<Map<String, String>> fiyatlar(Set<String> kodlar) async {
+    try {
+      if (!destekleniyor || !await _iap.isAvailable()) return {};
+      final cevap = await _iap.queryProductDetails(kodlar);
+      return {for (final u in cevap.productDetails) u.id: u.price};
+    } catch (_) {
+      return {};
+    }
+  }
+
   static void _guncelleme(List<PurchaseDetails> liste) {
     for (final s in liste) {
       switch (s.status) {

@@ -593,11 +593,12 @@ async function marketYukle(){
     <div class="blok card"><div class="baslik">ÜRÜNLER
       <span class="etiket">ürün kodu MAĞAZA konsolundaki kimlikle birebir aynı olmalı
       (Play: Uygulama içi ürünler · App Store: In-App Purchases)</span></div>
-    <table><tr><th>Kod</th><th>Ad</th><th>Riva</th><th>Sıra</th><th>Durum</th><th></th></tr>
+    <table><tr><th>Kod</th><th>Ad</th><th>Riva</th><th>Görünen fiyat</th><th>Sıra</th><th>Durum</th><th></th></tr>
     ${urunler.map(u=>`<tr>
       <td class="num"><b>${kacir(u.kod)}</b></td>
       <td><input id="ur-ad-${kacir(u.kod)}" value="${kacir(u.ad)}" style="width:110px"></td>
       <td><input id="ur-riva-${kacir(u.kod)}" type="number" value="${u.riva}" style="width:80px"></td>
+      <td><input id="ur-fiyat-${kacir(u.kod)}" value="${kacir(u.fiyat_metni||'')}" placeholder="₺39,99" style="width:80px" title="uygulamada gorunen fiyat yazisi — gercek fiyat magaza konsolunda"></td>
       <td><input id="ur-sira-${kacir(u.kod)}" type="number" value="${u.sira}" style="width:55px"></td>
       <td>${u.aktif?'<span class="hap ok">SATIŞTA</span>':'<span class="hap dim">kapalı</span>'}</td>
       <td><button class="altin kucuk" onclick="urunKaydet('${kacir(u.kod)}')">KAYDET</button>
@@ -606,6 +607,7 @@ async function marketYukle(){
     <tr><td><input id="ur-yeni-kod" placeholder="riva_10000" style="width:110px"></td>
       <td><input id="ur-yeni-ad" placeholder="Efsane" style="width:110px"></td>
       <td><input id="ur-yeni-riva" type="number" placeholder="10000" style="width:80px"></td>
+      <td><input id="ur-yeni-fiyat" placeholder="₺599,99" style="width:80px"></td>
       <td><input id="ur-yeni-sira" type="number" value="9" style="width:55px"></td>
       <td class="etiket">yeni ürün</td>
       <td><button class="altin kucuk" onclick="urunEkle()">EKLE</button></td></tr>
@@ -622,6 +624,7 @@ async function urunKaydet(kod){
   const v = s => $(s).value;
   if(await dene(async()=>hataAt(await sb.from('urunler').update({
     ad: v('#ur-ad-'+kod), riva: parseInt(v('#ur-riva-'+kod)),
+    fiyat_metni: v('#ur-fiyat-'+kod) || null,
     sira: parseInt(v('#ur-sira-'+kod)),
   }).eq('kod', kod)), kod + ' güncellendi')) marketYukle();
 }
@@ -636,7 +639,7 @@ async function urunEkle(){
     toast('Kod (küçük harf/rakam/alt çizgi), ad ve pozitif Riva gerekli', true);
     return;
   }
-  if(await dene(async()=>hataAt(await sb.from('urunler').insert({kod, ad:adx, riva, sira})),
+  if(await dene(async()=>hataAt(await sb.from('urunler').insert({kod, ad:adx, riva, sira, fiyat_metni: $('#ur-yeni-fiyat').value.trim() || null})),
     kod + ' eklendi — MAĞAZA konsolunda da aynı kodla ürün tanımlamayı unutma!')) marketYukle();
 }
 

@@ -4,6 +4,7 @@ import '../data/repos.dart';
 import '../main.dart' show rotaGozcusu;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'magaza_sekmesi.dart';
 import 'oyna_sekmesi.dart';
 import 'profil_sekmesi.dart';
 import 'siralama_sekmesi.dart';
@@ -50,11 +51,16 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
   Widget build(BuildContext context) {
     final sayfa = switch (sekme) {
       1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
-      2 => ProfilSekmesi(key: ValueKey('profil-$tazelik')),
+      2 => MagazaSekmesi(key: ValueKey('magaza-$tazelik')),
+      3 => ProfilSekmesi(key: ValueKey('profil-$tazelik')),
       _ => OynaSekmesi(
           key: ValueKey('oyna-$tazelik'),
           repos: widget.repos,
           onProfil: () => setState(() {
+                sekme = 3;
+                tazelik++;
+              }),
+          onMagaza: () => setState(() {
                 sekme = 2;
                 tazelik++;
               })),
@@ -74,7 +80,8 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
               children: [
                 Expanded(child: _sekmeButonu(0, 'nav_oyna', 'OYNA')),
                 Expanded(child: _sekmeButonu(1, 'nav_siralama', 'SIRALAMA')),
-                Expanded(child: _sekmeButonu(2, 'nav_profil', 'PROFİL')),
+                Expanded(child: _sekmeButonu(2, 'nav_magaza', 'MAĞAZA')),
+                Expanded(child: _sekmeButonu(3, 'nav_profil', 'PROFİL')),
               ],
             ),
           ),

@@ -34,6 +34,7 @@ void main() {
     'nav_siralama',
     'nav_duellolar',
     'nav_profil',
+    'nav_magaza',
     'simsek',
     'riva',
     'oynat',

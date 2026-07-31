@@ -14,6 +14,7 @@ import 'package:golriva/online/davet_ekrani.dart';
 import 'package:golriva/screens/ana_iskelet.dart';
 import 'package:golriva/screens/arkadasla_ekrani.dart';
 import 'package:golriva/screens/arkadaslar_ekrani.dart';
+import 'package:golriva/screens/cuzdan_ekrani.dart';
 import 'package:golriva/screens/ligler_ekrani.dart';
 import 'test_repos.dart';
 
@@ -125,6 +126,20 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ArkadaslarEkrani()));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('çevrimiçi hesap gerekli'), findsOneWidget);
+  });
+
+  testWidgets('Cuzdan: reklam karti aktif, testte dokununca cokmez',
+      (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: CuzdanEkrani()));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Reklam izle'), findsOneWidget);
+    expect(find.text('Günde 10 hak'), findsOneWidget);
+    expect(find.textContaining('yakında'), findsNothing); // artik gercek!
+    // VM'de reklam desteklenmez → kibarca snackbar, cokme yok
+    await tester.tap(find.text('Reklam izle'));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.takeException(), isNull);
+    expect(find.textContaining('yalnız telefonda'), findsOneWidget);
   });
 
   Future<void> gecisTesti(WidgetTester tester, String kart, Type ekran) async {

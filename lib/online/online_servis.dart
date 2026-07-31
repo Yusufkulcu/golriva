@@ -194,7 +194,8 @@ class OnlineServis {
         .from('seriler')
         .select('id, kazanan')
         .or('p1.eq.$uid,p2.eq.$uid')
-        .eq('durum', 'bitti');
+        .eq('durum', 'bitti')
+        .eq('dostluk', false); // performans RANKED maclardan olculur
     final ids = (seriler as List).map((s) => s['id'] as String).toList();
     final toplam = ids.length;
     final kazandigim =
@@ -399,6 +400,16 @@ class OnlineServis {
               tarih: DateTime.parse(d['created_at'] as String),
             ))
         .toList();
+  }
+
+  // ---------- FAZ 2.5: ÖDÜLLÜ REKLAM ----------
+
+  /// Odullu reklam izlendikten sonra RIVA tahsil et. Kurallar SUNUCUDA:
+  /// odul 50, gunluk tavan 10, ayni islem kimligi iki kez odullenmez.
+  Future<int> reklamOdulAl(String islemId) async {
+    final r = await _c.rpc('reklam_odul_al',
+        params: {'ag_adi': 'admob', 'islem_id': islemId});
+    return (r as num).toInt();
   }
 
   // ---------- FAZ 2.4: LİG KONFİGÜRASYONU ----------

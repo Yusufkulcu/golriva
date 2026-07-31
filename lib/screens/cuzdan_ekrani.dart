@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
+import '../reklam/reklam_servis.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 
@@ -48,6 +49,51 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
   void _yakinda(String s) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(s)));
 
+  bool reklamOynuyor = false;
+
+  /// ODULLU REKLAM AKISI: reklami goster → odul kazanildiysa sunucudan
+  /// tahsil et (kurallar sunucuda) → bakiye + gecmisi tazele.
+  Future<void> _reklamIzle() async {
+    if (!ReklamServis.destekleniyor) {
+      _yakinda('Reklamlar yalnız telefonda (Android/iOS) gösterilir.');
+      return;
+    }
+    final servis = OnlineServis();
+    if (!SupabaseAyar.yapilandirildi || !servis.girisYapildi) {
+      _yakinda('Reklam ödülü için çevrimiçi hesap gerekli.');
+      return;
+    }
+    if (reklamOynuyor) return;
+    setState(() => reklamOynuyor = true);
+    try {
+      final islem = await ReklamServis.odulluGoster();
+      if (islem == null) {
+        _yakinda('Reklam şu an yüklenemedi — birazdan tekrar dene.');
+        return;
+      }
+      final odul = await servis.reklamOdulAl(islem);
+      final p = await servis.profilGetir();
+      final g = await servis.defterGecmisi();
+      if (mounted) {
+        setState(() {
+          bakiye = p?.bakiye;
+          gecmis = g;
+        });
+        _yakinda('+$odul RIVA cüzdanında!');
+      }
+    } catch (e) {
+      final m = '$e';
+      _yakinda(m.contains('tavan')
+          ? 'Günlük reklam hakkın doldu (10/10) — yarın yine gel!'
+          : m.contains('Could not find the')
+              ? 'Sunucu güncellemesi gerekli: Supabase SQL editöründe '
+                  'supabase/faz2_5_reklam.sql çalıştırılmalı.'
+              : 'Ödül işlenemedi: $e');
+    } finally {
+      if (mounted) setState(() => reklamOynuyor = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,22 +133,30 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
             const SizedBox(height: 8),
             InkWell(
               borderRadius: BorderRadius.circular(18),
-              onTap: () => _yakinda(
-                  'Ödüllü reklam (AdMob) entegrasyonu yakında — günde 10 × +50 RIVA'),
+              onTap: _reklamIzle,
               child: Container(
                 padding: const EdgeInsets.all(13),
                 decoration: gKartDekor(),
                 child: Row(children: [
-                  gIkon('oynat', 22, GolrivaColors.goldHi),
+                  reklamOynuyor
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                              color: GolrivaColors.gold, strokeWidth: 2.5))
+                      : gIkon('oynat', 22, GolrivaColors.goldHi),
                   const SizedBox(width: 11),
                   Expanded(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Reklam izle',
+                          Text(
+                              reklamOynuyor
+                                  ? 'Reklam yükleniyor…'
+                                  : 'Reklam izle',
                               style: GoogleFonts.figtree(
                                   fontSize: 13, fontWeight: FontWeight.w800)),
-                          Text('Günde 10 hak · yakında',
+                          Text('Günde 10 hak',
                               style: GoogleFonts.figtree(
                                   fontSize: 10, color: GolrivaColors.dim)),
                         ]),

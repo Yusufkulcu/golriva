@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'mac_kanali.dart' show siraRakibeTitresim;
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart';
 
@@ -63,6 +64,7 @@ class _AramaEkraniState extends State<AramaEkrani> {
       if (s != null) {
         nabiz?.cancel();
         kuyrukta = false;
+        siraRakibeTitresim(); // RAKIP BULUNDU — hafif dokunus
         Navigator.of(context).pushReplacement(MaterialPageRoute(
             builder: (_) => onlineOyunEkrani(widget.repos, s)));
       } else {

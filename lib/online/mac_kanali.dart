@@ -1,6 +1,19 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// SIRA TITRESIMLERI (kullanici istegi): sira degisimini elde hissettir.
+/// - Sira BANA gecti → cift guclu vuru (belirgin: "hadi, sira sende!")
+/// - Sira RAKIBE gecti → tek hafif vuru ("hamlen gitti")
+/// HapticFeedback izin istemez; titresimi kapali cihazlarda sessizce yutulur.
+Future<void> siraBanaTitresim() async {
+  await HapticFeedback.heavyImpact();
+  await Future.delayed(const Duration(milliseconds: 140));
+  await HapticFeedback.heavyImpact();
+}
+
+Future<void> siraRakibeTitresim() => HapticFeedback.lightImpact();
 
 /// Cevrimici mac kimligi ve DETERMINISTIK kurulum bilgisi.
 /// Iki istemci de ayni seed + ayni baslangic zamaniyla ayni motoru kurar —
@@ -97,7 +110,13 @@ class OnlineMacKanali {
       for (final h in (r as List)) {
         _sonHamleId = (h['id'] as num).toInt();
         if (h['user_id'] != _benimUid) {
-          _onRakipHamle?.call(Map<String, dynamic>.from(h['icerik'] as Map));
+          final icerik = Map<String, dynamic>.from(h['icerik'] as Map);
+          // rakibin OYUN hamlesi geldi = sira bana gecti → belirgin titresim
+          // (hazir/cekildi gibi sinyaller sira degistirmez, titretmez)
+          if (icerik['tip'] == 'sec' || icerik['tip'] == 'sure') {
+            siraBanaTitresim();
+          }
+          _onRakipHamle?.call(icerik);
         }
       }
       // EMNIYET AGI: rakip cekildi/mac sunucuda kapandiysa (sinyal kacsa
@@ -117,6 +136,10 @@ class OnlineMacKanali {
 
   /// Kendi hamlemi gonder (motor zaten yerelde uyguladi).
   Future<void> gonder(Map<String, dynamic> icerik) async {
+    // benim OYUN hamlem = sira rakibe gecti → hafif titresim
+    if (icerik['tip'] == 'sec' || icerik['tip'] == 'sure') {
+      siraRakibeTitresim();
+    }
     _hamleNo++;
     try {
       await _c.rpc('hamle_gonder',

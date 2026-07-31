@@ -273,6 +273,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
         baslangicHedefi!.difference(DateTime.now()).inMilliseconds;
     if (kalanMs <= 0) {
       sayimTimer?.cancel();
+      siraBanaTitresim(); // MAC BASLIYOR — elde de hissedilsin
       Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => widget.oyunEkraniKur()));
     } else {

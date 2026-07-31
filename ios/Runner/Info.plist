@@ -66,13 +66,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Profil fotografi secimi (image_picker) -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Profil fotoğrafını seçmek için fotoğraflarına erişim gerekir.</string>
-	<!-- AdMob UYGULAMA kimligi: TEST kimligi — AdMob hesabi acilinca
-	     gercek kimlikle DEGISTIRILMELI. -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-3005671929534756~4772864382</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

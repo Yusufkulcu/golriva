@@ -262,14 +262,19 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      goldYazi(_binlik(p.riva), boyut: 24, bosluk: 1),
-                      const SizedBox(width: 6),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: etiket('RIVA'),
-                      ),
-                    ]),
+                    // FittedBox: dar ekranda miktar+RIVA kuculerek sigar
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        goldYazi(_binlik(p.riva), boyut: 24, bosluk: 1),
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: etiket('RIVA'),
+                        ),
+                      ]),
+                    ),
                     Text(p.ad,
                         style: GoogleFonts.figtree(
                             fontSize: 11,

@@ -13,7 +13,8 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_svg: ^2.0.10
   supabase_flutter: ^2.8.0
-  google_mobile_ads: ^5.2.0 # odullu reklam (yalniz Android/iOS'ta etkin)
+  # odullu reklam (yalniz Android/iOS'ta etkin) — 9.x: guncel Gradle uyumu
+  google_mobile_ads: ^9.0.0
 
 dev_dependencies:
   flutter_test:

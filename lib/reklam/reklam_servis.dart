@@ -4,4 +4,6 @@
 /// Boylece `flutter build web` google_mobile_ads'in platform kanallarina
 /// hic dokunmaz; testler (VM) mobil dosyayi yukler ama Platform kontrolu
 /// sayesinde reklam kodu calismaz.
+library;
+
 export 'reklam_stub.dart' if (dart.library.io) 'reklam_mobil.dart';

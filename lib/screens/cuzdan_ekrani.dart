@@ -68,7 +68,11 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
     try {
       final islem = await ReklamServis.odulluGoster();
       if (islem == null) {
-        _yakinda('Reklam şu an yüklenemedi — birazdan tekrar dene.');
+        // neden ekranda gorunsun — tani koyabilmek icin (kod 0/1/2/3)
+        final neden = ReklamServis.sonHata;
+        _yakinda(neden == null
+            ? 'Reklam şu an yüklenemedi — birazdan tekrar dene.'
+            : 'Reklam gösterilemedi · $neden');
         return;
       }
       final odul = await servis.reklamOdulAl(islem);

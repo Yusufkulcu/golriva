@@ -18,46 +18,81 @@ const _iosBirim = String.fromEnvironment('REKLAM_ODUL_IOS',
 class ReklamServis {
   static bool _baslatildi = false;
 
+  /// Son basarisizligin insan-okur nedeni (tani icin) — basarida null.
+  static String? sonHata;
+
   static bool get destekleniyor => Platform.isAndroid || Platform.isIOS;
+
+  static Future<void> _hazirla() async {
+    if (_baslatildi) return;
+    await MobileAds.instance.initialize();
+    _baslatildi = true;
+  }
 
   /// Odullu reklami yukler ve gosterir.
   /// - Odul KAZANILDIYSA benzersiz islem kimligi doner (sunucuya iletilir).
-  /// - Reklam yuklenemedi / erken kapatildi / odul yoksa null doner.
+  /// - Aksi halde null doner; neden [sonHata]'da yazar.
   static Future<String?> odulluGoster() async {
-    if (!destekleniyor) return null;
-    if (!_baslatildi) {
-      await MobileAds.instance.initialize();
-      _baslatildi = true;
+    if (!destekleniyor) {
+      sonHata = 'platform desteklemiyor';
+      return null;
     }
-    final tamam = Completer<String?>();
-    await RewardedAd.load(
+    try {
+      await _hazirla();
+    } catch (e) {
+      sonHata = 'SDK başlatılamadı: $e';
+      return null;
+    }
+    // ilk istek "no fill" verebilir — kisa arayla 3 deneme
+    for (var deneme = 1; deneme <= 3; deneme++) {
+      final ad = await _yukle();
+      if (ad != null) return _goster(ad);
+      if (deneme < 3) await Future.delayed(const Duration(seconds: 2));
+    }
+    return null;
+  }
+
+  static Future<RewardedAd?> _yukle() {
+    final tamam = Completer<RewardedAd?>();
+    RewardedAd.load(
       adUnitId: Platform.isAndroid ? _androidBirim : _iosBirim,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
-          String? islem;
-          ad.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (a) {
-              a.dispose();
-              if (!tamam.isCompleted) tamam.complete(islem);
-            },
-            onAdFailedToShowFullScreenContent: (a, e) {
-              a.dispose();
-              if (!tamam.isCompleted) tamam.complete(null);
-            },
-          );
-          ad.show(onUserEarnedReward: (_, odul) {
-            // odul ani: benzersiz islem kimligi uret — sunucudaki
-            // (ag, islem_id) benzersiz kisiti cift odulu engeller
-            islem = 'r${DateTime.now().millisecondsSinceEpoch}-'
-                '${identityHashCode(ad)}';
-          });
+          if (!tamam.isCompleted) tamam.complete(ad);
         },
         onAdFailedToLoad: (e) {
+          // kod 0=iç hata, 1=geçersiz istek, 2=ağ hatası, 3=stok yok
+          sonHata = 'yükleme (kod ${e.code}): ${e.message}';
           if (!tamam.isCompleted) tamam.complete(null);
         },
       ),
     );
+    return tamam.future;
+  }
+
+  static Future<String?> _goster(RewardedAd ad) {
+    final tamam = Completer<String?>();
+    String? islem;
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        if (islem == null) sonHata = 'reklam ödülden önce kapatıldı';
+        if (!tamam.isCompleted) tamam.complete(islem);
+      },
+      onAdFailedToShowFullScreenContent: (a, e) {
+        sonHata = 'gösterim (kod ${e.code}): ${e.message}';
+        a.dispose();
+        if (!tamam.isCompleted) tamam.complete(null);
+      },
+    );
+    ad.show(onUserEarnedReward: (_, odul) {
+      // odul ani: benzersiz islem kimligi — sunucudaki (ag, islem_id)
+      // benzersiz kisiti cift odulu engeller
+      sonHata = null;
+      islem = 'r${DateTime.now().millisecondsSinceEpoch}-'
+          '${identityHashCode(ad)}';
+    });
     return tamam.future;
   }
 }

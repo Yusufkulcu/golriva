@@ -55,8 +55,11 @@ android {
             } else {
                 signingConfigs.getByName("debug") // CI / anahtarsiz makine
             }
-            // R8 koruma kurallari: release'te acilis cokmesinin ilaci
-            // (AdMob/Billing siniflari sokulmesin) — android/app/proguard-rules.pro
+            // R8 KAPALI: koruma kurallarina ragmen acilis cokmesi surdu —
+            // kucultucu tumden devre disi (bedel: ~10MB daha buyuk paket).
+            // Ileride tekrar acmak istersek once cokme logunu cozeriz.
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

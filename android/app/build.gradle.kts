@@ -55,6 +55,12 @@ android {
             } else {
                 signingConfigs.getByName("debug") // CI / anahtarsiz makine
             }
+            // R8 koruma kurallari: release'te acilis cokmesinin ilaci
+            // (AdMob/Billing siniflari sokulmesin) — android/app/proguard-rules.pro
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

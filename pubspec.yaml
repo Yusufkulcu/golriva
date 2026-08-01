@@ -1,7 +1,7 @@
 name: golriva
 description: "GOLRIVA — Futbol Zekâsı Düellosu"
 publish_to: "none"
-version: 1.0.0+1 # ilk magaza surumu
+version: 1.0.0+2 # +2: Play ayni versionCode'u iki kez kabul etmez
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

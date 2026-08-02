@@ -13,6 +13,11 @@ if (typeof supabase === 'undefined') {
   document.write('<scr' + 'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr' + 'ipt>');
 }
 </script>
+<!-- İSTEĞE BAĞLI yerel anahtar dosyası: panelin YANINDA golriva_admin_key.js
+     varsa (repoya girmez, .gitignore'da) URL+anahtar oradan okunup otomatik
+     bağlanılır — her açılışta elle girmeye gerek kalmaz. Dosya yoksa bu satır
+     sessizce atlanır ve normal giriş ekranı çıkar. -->
+<script src="golriva_admin_key.js" onerror="void 0"></script>
 <style>
 :root{
   --bg:#08080B; --card:#14141B; --card2:#1A1A23;
@@ -146,10 +151,21 @@ async function uidBul(kullaniciAdi){
 }
 
 /* ═══════════ GİRİŞ ═══════════ */
-try{
-  const k = localStorage.getItem('glr_admin');
-  if(k){ const o = JSON.parse(k); $('#g-url').value = o.url||''; $('#g-anahtar').value = o.anahtar||''; $('#g-hatirla').checked = true; }
-}catch(_){}
+// Kayitli/gizli-dosyadan gelen bilgiyle alanlari doldur; varsa OTOMATIK baglan.
+// Oncelik: golriva_admin_key.js (window.GLR_ADMIN) → localStorage.
+(function otomatikGiris(){
+  let kayit = null;
+  if(window.GLR_ADMIN && window.GLR_ADMIN.url && window.GLR_ADMIN.anahtar){
+    kayit = window.GLR_ADMIN; // yerel gizli dosya — en guvenilir (file:// dahi olsa)
+  } else {
+    try{ const k = localStorage.getItem('glr_admin'); if(k) kayit = JSON.parse(k); }catch(_){}
+  }
+  if(!kayit) return;
+  $('#g-url').value = kayit.url || '';
+  $('#g-anahtar').value = kayit.anahtar || '';
+  $('#g-hatirla').checked = true;
+  if(kayit.url && kayit.anahtar) baglan(); // dogrudan panele gec
+})();
 async function baglan(){
   if(typeof supabase === 'undefined'){
     $('#g-hata').textContent = 'Supabase kütüphanesi yüklenemedi — internet bağlantını kontrol edip sayfayı yenile.';

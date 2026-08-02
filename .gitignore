@@ -48,3 +48,6 @@ ios/**/swiftpm/
 anahtar-ve-keyler/
 key.properties
 *.jks
+# admin panel yerel gizli anahtar dosyasi (service_role) — ASLA repoya girmez
+admin/golriva_admin_key.js
+golriva_admin_key.js

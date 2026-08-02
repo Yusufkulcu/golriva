@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../reklam/reklam_servis.dart';
@@ -42,11 +43,15 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
     final servis = OnlineServis();
     servis.profilGetir().then((p) {
       if (mounted) setState(() => bakiye = p?.bakiye);
-    }).catchError((_) {});
+    }).catchError((Object e, StackTrace s) {
+      hataBildir('magaza._yukle.profil', e, s);
+    });
     try {
       final u = await servis.urunler();
       if (u.isNotEmpty && mounted) setState(() => paketler = u);
-    } catch (_) {} // sunucu eski ise bilinen paketler kalir
+    } catch (e, s) {
+      hataBildir('magaza._yukle.urunler', e, s); // bilinen paketler kalir
+    }
     // canli magaza fiyatlari (kullanicinin para birimiyle)
     try {
       final f = await SatinAlmaServis.fiyatlar(
@@ -87,10 +92,10 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
     try {
       final islem = await ReklamServis.odulluGoster();
       if (islem == null) {
+        // Teknik neden (kod 3, no-fill, SDK...) yalniz admin'e gider.
         final neden = ReklamServis.sonHata;
-        _mesaj(neden == null
-            ? 'Reklam şu an yüklenemedi — birazdan tekrar dene.'
-            : 'Reklam gösterilemedi · $neden');
+        if (neden != null) hataBildir('magaza._reklamIzle', neden);
+        _mesaj('Reklam şu an gösterilemedi — birazdan tekrar dene.');
         return;
       }
       final odul = await servis.reklamOdulAl(islem);
@@ -99,11 +104,12 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
         setState(() => bakiye = p?.bakiye);
         _mesaj('+$odul RIVA cüzdanında!');
       }
-    } catch (e) {
+    } catch (e, s) {
       final m = '$e';
       _mesaj(m.contains('tavan')
           ? 'Günlük reklam hakkın doldu (10/10) — yarın yine gel!'
-          : 'Ödül işlenemedi: $e');
+          : temizMesaj('magaza._reklamOdul', e,
+              'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
     } finally {
       if (mounted) setState(() => reklamOynuyor = false);
     }
@@ -131,10 +137,11 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
         setState(() => bakiye = p?.bakiye);
         _mesaj('+$odul RIVA cüzdanında — teşekkürler!');
       }
-    } catch (e) {
-      _mesaj('$e'.contains('Could not find the')
-          ? 'Sunucu güncellemesi gerekli: supabase/faz2_7_market.sql çalıştırılmalı.'
-          : 'Ödül işlenemedi: $e — mağaza işlemin kayıtlı, destekle iletişime geç.');
+    } catch (e, s) {
+      // Teknik neden (or. faz2_7_market.sql eksik) admin paneline raporlanir.
+      _mesaj(temizMesaj('magaza._satinAl', e,
+          'Ödül işlenirken sorun oluştu — mağaza işlemin kayıtlı, '
+          'destekle iletişime geç.', s));
     } finally {
       if (mounted) setState(() => satinAliniyor = false);
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
@@ -40,10 +41,14 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
       final servis = OnlineServis();
       servis.profilGetir().then((p) {
         if (mounted) setState(() => bakiye = p?.bakiye);
-      }).catchError((_) {});
+      }).catchError((Object e, StackTrace s) {
+        hataBildir('cuzdan.profil', e, s);
+      });
       servis.defterGecmisi().then((g) {
         if (mounted) setState(() => gecmis = g);
-      }).catchError((_) {});
+      }).catchError((Object e, StackTrace s) {
+        hataBildir('cuzdan.gecmis', e, s);
+      });
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'hata_raporu.dart';
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart';
 
@@ -42,11 +43,12 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
         kuruluyor = false;
       });
       nabiz = Timer.periodic(const Duration(seconds: 2), (_) => _yokla());
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
         setState(() {
           kuruluyor = false;
-          hata = 'Davet kurulamadı: $e';
+          hata = temizMesaj('davet._kur', e,
+              'Davet şu an kurulamadı — tekrar dene.', s);
         });
       }
     }
@@ -324,13 +326,15 @@ Future<void> davetKatilDialog(BuildContext context, GolrivaRepos repos) async {
                       nav.pop(); // dialog
                       nav.push(MaterialPageRoute(
                           builder: (_) => onlineOyunEkrani(repos, bilgi)));
-                    } catch (e) {
+                    } catch (e, s) {
                       setD(() {
                         deneniyor = false;
                         hata = '$e'.contains('bulunamadı')
                             ? 'Davet bulunamadı — kodu kontrol et '
                                 '(süresi dolmuş olabilir).'
-                            : 'Katılınamadı: $e';
+                            : temizMesaj('davet._katil', e,
+                                'Katılım şu an gerçekleşemedi — tekrar dene.',
+                                s);
                       });
                     }
                   },

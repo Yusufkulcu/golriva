@@ -157,9 +157,28 @@ async function baglan(){
   }
   const url = $('#g-url').value.trim(), anahtar = $('#g-anahtar').value.trim();
   if(!url || !anahtar){ $('#g-hata').textContent = 'URL ve anahtar gerekli.'; return; }
+  // YANLIS ANAHTAR KALKANI: anon/publishable anahtarla panel "bos" gorunur
+  // (RLS sessizce filtreler) — bagladan once rolu tespit edip acikca reddet.
+  const yanlisAnahtar = 'Bu anahtar service_role DEĞİL — panel bu anahtarla boş görünür. ' +
+    'Doğrusu: Supabase panel → Project Settings → API keys → service_role (sb_secret_... ya da eyJ... secret).';
+  if(anahtar.startsWith('sb_publishable_') || anahtar.startsWith('sb_anon_')){
+    $('#g-hata').textContent = yanlisAnahtar; return;
+  }
+  if(anahtar.startsWith('eyJ')){
+    try{
+      const rol = JSON.parse(atob(anahtar.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).role;
+      if(rol && rol !== 'service_role'){ $('#g-hata').textContent = yanlisAnahtar; return; }
+    }catch(_){ /* cozulemedi — asagidaki RLS sinamasi yakalar */ }
+  }
   try{
     sb = supabase.createClient(url, anahtar);
-    hataAt(await sb.from('profiller').select('id', {count:'exact', head:true}));
+    const pr = hataAt(await sb.from('profiller').select('id', {count:'exact', head:true}));
+    // RLS SINAMASI: cuzdanlar yalniz service_role'a acik. Profil varken
+    // cuzdan sayisi 0 ise anahtar RLS'e takiliyor demektir → reddet.
+    const cz = hataAt(await sb.from('cuzdanlar').select('user_id', {count:'exact', head:true}));
+    if((pr.count ?? 0) > 0 && (cz.count ?? 0) === 0){
+      $('#g-hata').textContent = yanlisAnahtar; sb = null; return;
+    }
   }catch(e){
     $('#g-hata').textContent = 'Bağlanılamadı: ' + (e.message||e) + ' — URL/anahtar doğru mu? (service_role olmalı)';
     return;
@@ -180,6 +199,7 @@ const SEKMELER = [
   ['pano','PANO'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
   ['kuyruk','KUYRUK & DAVET'], ['arkadas','ARKADAŞLIKLAR'], ['lig','LİGLER & SEZON'],
   ['ekonomi','EKONOMİ'], ['market','MARKET'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
+  ['hatalar','HATALAR'],
 ];
 for(const [k, adx] of SEKMELER){
   const b = document.createElement('div');
@@ -687,9 +707,58 @@ async function itirazKaydet(id){
   }).eq('id', id)), 'İtiraz güncellendi')) itirazYukle();
 }
 
+/* ═══════════ 10. HATALAR (uygulama ici yazilim hatalari) ═══════════ */
+/* Kural: kullanici hicbir teknik hata gormez — uygulama her teknik hatayi
+   hata_bildir RPC'siyle buraya dusurur (sayfa/konum + mesaj + yigin izi). */
+async function hatalarYukle(){
+  const p = $('#panel-hatalar');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  let r;
+  try{ r = hataAt(await sb.from('hata_kayitlari').select('*')
+      .order('created_at',{ascending:false}).limit(100)); }
+  catch(e){
+    p.innerHTML = `<div class="blok card">HATALAR için sunucu güncellemesi gerekli:
+      Supabase SQL editöründe <b>supabase/faz2_8_hata.sql</b> çalıştırılmalı.<br>
+      <span class="etiket">${kacir(e.message||e)}</span></div>`;
+    return;
+  }
+  const bugun = hataAt(await sb.from('hata_kayitlari').select('id',{count:'exact',head:true})
+    .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString())).count ?? 0;
+  await adYukle(r.data.filter(x=>x.user_id).map(x=>x.user_id));
+  // ayni sayfa+mesaj tekrarlarini grupla (en cok tekrarlanan sorun ustte gorunur)
+  const sayac = {};
+  for(const x of r.data){ const a = x.sayfa+'§'+x.mesaj.split('\n')[0]; sayac[a]=(sayac[a]||0)+1; }
+  p.innerHTML = `
+    <div class="statlar">
+      <div class="stat gcard"><div class="deger">${bugun}</div><div class="ad">BUGÜN</div></div>
+      <div class="stat gcard"><div class="deger">${r.data.length}</div><div class="ad">SON 100 KAYIT</div></div>
+      <div class="stat gcard"><div class="deger">${Object.keys(sayac).length}</div><div class="ad">FARKLI SORUN</div></div>
+    </div>
+    <div class="blok card"><div class="baslik">HATA KAYITLARI (son 100)
+      <span class="etiket">kullanıcı bunları hiç görmez — sade mesaj gösterilir, teknik detay buraya düşer</span>
+      <button class="kucuk tehlike" style="float:right" onclick="hataTemizle()">ESKİLERİ SİL (7 gün+)</button></div>
+    <table><tr><th>Tarih</th><th>Kullanıcı</th><th>Sayfa / Konum</th><th>Teknik mesaj</th><th>Sürüm</th><th>Platform</th><th>Tekrar</th></tr>
+    ${r.data.map(x=>{
+      const a = x.sayfa+'§'+x.mesaj.split('\n')[0];
+      return `<tr><td class="mono">${tarih(x.created_at)}</td>
+      <td><b>${x.user_id ? kacir(ad(x.user_id)) : '<span class="etiket">oturumsuz</span>'}</b></td>
+      <td class="num"><b>${kacir(x.sayfa)}</b></td>
+      <td style="max-width:380px"><div class="mono" style="white-space:pre-wrap;word-break:break-word">${kacir(x.mesaj)}</div></td>
+      <td class="num">${kacir(x.surum||'—')}</td><td class="num">${kacir(x.platform||'—')}</td>
+      <td class="num">${sayac[a]>1?`<span class="hap bad">×${sayac[a]}</span>`:'1'}</td></tr>`;
+    }).join('') || '<tr><td colspan="7" class="etiket">hata kaydı yok — tertemiz 🎉</td></tr>'}
+    </table></div>`;
+}
+async function hataTemizle(){
+  if(!confirm('7 günden eski hata kayıtları silinsin mi?')) return;
+  const sinir = new Date(Date.now() - 7*24*3600*1000).toISOString();
+  if(await dene(async()=>hataAt(await sb.from('hata_kayitlari').delete().lt('created_at', sinir)),
+    'Eski hata kayıtları silindi')) hatalarYukle();
+}
+
 const YUKLE = { pano:panoYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
   arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, market:marketYukle,
-  reklam:reklamYukle, itiraz:itirazYukle };
+  reklam:reklamYukle, itiraz:itirazYukle, hatalar:hatalarYukle };
 </script>
 </body>
 </html>

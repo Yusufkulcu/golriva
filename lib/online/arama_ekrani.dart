@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'hata_raporu.dart';
 import 'mac_kanali.dart' show siraRakibeTitresim;
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart';
@@ -47,11 +48,12 @@ class _AramaEkraniState extends State<AramaEkrani> {
       kuyrukta = true;
       nabiz = Timer.periodic(const Duration(seconds: 3), (_) => _kontrol());
       if (mounted) setState(() {});
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
         setState(() => hata = '$e'.contains('yetersiz')
             ? 'Yetersiz bakiye — bu masa için RIVA gerekiyor.'
-            : 'Kuyruğa girilemedi: $e');
+            : temizMesaj('arama._basla', e,
+                'Kuyruğa şu an girilemedi — tekrar dene.', s));
       }
     }
   }

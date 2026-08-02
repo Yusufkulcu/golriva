@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import '../online/hata_raporu.dart';
 
 /// UYGULAMA ICI SATIN ALMA (Riva paketleri).
 /// Urun kodlari magaza konsollarinda TANIMLI olmali (yoksa "ürün mağazada
@@ -32,10 +33,12 @@ class SatinAlmaServis {
     _abone ??= _iap.purchaseStream.listen(_guncelleme);
     final cevap = await _iap.queryProductDetails({urunKodu});
     if (cevap.productDetails.isEmpty) {
+      // Teknik neden (urun magaza konsolunda tanimsiz) admin'e raporlanir.
       return (
         islemId: null,
-        hata: 'Ürün mağazada tanımlı değil ($urunKodu) — mağaza konsolu '
-            'kurulumu gerekiyor.'
+        hata: temizMesaj('satinalma.urun',
+            'urun magazada tanimli degil: $urunKodu',
+            'Bu paket şu an satın alınamıyor — birazdan tekrar dene.')
       );
     }
     _bekleyen = Completer();
@@ -43,9 +46,13 @@ class SatinAlmaServis {
       await _iap.buyConsumable(
           purchaseParam:
               PurchaseParam(productDetails: cevap.productDetails.first));
-    } catch (e) {
+    } catch (e, s) {
       _bekleyen = null;
-      return (islemId: null, hata: 'Satın alma başlatılamadı: $e');
+      return (
+        islemId: null,
+        hata: temizMesaj('satinalma.baslat', e,
+            'Satın alma başlatılamadı — tekrar dene.', s)
+      );
     }
     return _bekleyen!.future.timeout(const Duration(minutes: 3),
         onTimeout: () {
@@ -84,8 +91,12 @@ class SatinAlmaServis {
           _bekleyen = null;
         case PurchaseStatus.error:
           if (s.pendingCompletePurchase) _iap.completePurchase(s);
-          _bekleyen?.complete(
-              (islemId: null, hata: s.error?.message ?? 'satın alma hatası'));
+          _bekleyen?.complete((
+            islemId: null,
+            hata: temizMesaj('satinalma.akis',
+                s.error?.message ?? 'satin alma hatasi (detaysiz)',
+                'Satın alma tamamlanamadı — birazdan tekrar dene.')
+          ));
           _bekleyen = null;
         case PurchaseStatus.pending:
           break; // magaza onayi bekleniyor — akis devam eder

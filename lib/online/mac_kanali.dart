@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:vibration/vibration.dart';
+import 'hata_raporu.dart';
 
 /// SIRA TITRESIMLERI (kullanici istegi): sira degisimini elde hissettir.
 /// - Sira BANA gecti → cift guclu vuru (belirgin: "hadi, sira sende!")
@@ -172,7 +173,10 @@ class OnlineMacKanali {
       try {
         await _c.rpc('hamle_gonder',
             params: {'mid': bilgi.macId, 'no': _hamleNo, 'icerik_j': icerik});
-      } catch (_) {}
+      } catch (e, s) {
+        // hamle sunucuya ulasamadi — rakip tarafinda senkron bozulabilir
+        hataBildir('macKanali.gonder', e, s);
+      }
     }
   }
 

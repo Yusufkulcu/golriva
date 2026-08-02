@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../online/hata_raporu.dart';
 import '../online/kayit_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/oyun_yonlendirici.dart';
@@ -67,7 +68,8 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
           yuklendi = true;
         });
       }
-    } catch (_) {
+    } catch (e, s) {
+      hataBildir('profil._yukle', e, s);
       if (mounted) setState(() => yuklendi = true);
     }
   }
@@ -90,20 +92,13 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profil fotoğrafın güncellendi')));
       }
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
-        final m = '$e';
+        // Teknik ayrinti (bucket/403/policy vb.) admin paneline raporlanir;
+        // kullanici yalnizca sade bir mesaj gorur.
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(m.contains('bucket') ||
-                    m.contains('Bucket') ||
-                    m.contains('Could not find')
-                ? 'Sunucu güncellemesi gerekli: supabase/faz2_6_hesap.sql çalıştırılmalı.'
-                : m.contains('403') ||
-                        m.contains('security') ||
-                        m.contains('Unauthorized')
-                    ? 'Depolama izni eksik — faz2_6_hesap.sql yeniden çalıştırılmalı; '
-                        'olmazsa Storage panelinden avatarlar kurallarını ekle.'
-                    : 'Fotoğraf yüklenemedi: $e')));
+            content: Text(temizMesaj('profil._fotoSec', e,
+                'Fotoğraf yüklenemedi — tekrar dene.', s))));
       }
     } finally {
       if (mounted) setState(() => fotoYukleniyor = false);

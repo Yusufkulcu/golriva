@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/golriva_theme.dart';
+import 'hata_raporu.dart';
 import 'online_servis.dart';
 import 'supabase_ayar.dart';
 
@@ -91,12 +92,15 @@ Future<void> veriItirazDialog(BuildContext context) async {
                                 content: Text(
                                     'İtirazın alındı — incelenip düzeltilecek. Teşekkürler!')));
                       }
-                    } catch (e) {
+                    } catch (e, s) {
                       setD(() {
                         mesgul = false;
                         hata = '$e'.contains('sınır')
                             ? 'Günlük itiraz sınırına ulaştın (5) — yarın tekrar dene.'
-                            : 'Gönderilemedi: $e';
+                            : '$e'.contains('kısa')
+                                ? 'Açıklama çok kısa — en az 10 karakter yaz.'
+                                : temizMesaj('itiraz._gonder', e,
+                                    'Gönderilemedi — tekrar dene.', s);
                       });
                     }
                   },

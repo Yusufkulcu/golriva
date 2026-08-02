@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
@@ -43,8 +44,11 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
     try {
       final l = await servis.arkadasListesi();
       if (mounted) setState(() => liste = l);
-    } catch (e) {
-      if (mounted) setState(() => hata = sunucuHataMesaji(e));
+    } catch (e, s) {
+      if (mounted) {
+        setState(() => hata = temizMesaj('arkadaslar._yukle', e,
+            'Liste şu an yüklenemedi — tekrar dene.', s));
+      }
     }
   }
 
@@ -60,14 +64,15 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$ad arkadaş listene eklendi')));
       }
-    } catch (e) {
+    } catch (e, s) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('$e'.contains('bulunamadı')
                 ? 'Kullanıcı bulunamadı — adı kontrol et.'
                 : '$e'.contains('kendini')
                     ? 'Kendini ekleyemezsin :)'
-                    : 'Eklenemedi: $e')));
+                    : temizMesaj('arkadaslar._ekle', e,
+                        'Şu an eklenemedi — tekrar dene.', s))));
       }
     } finally {
       if (mounted) setState(() => ekleniyor = false);
@@ -78,7 +83,9 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
     try {
       await servis.arkadasSil(ad);
       await _yukle();
-    } catch (_) {}
+    } catch (e, s) {
+      hataBildir('arkadaslar._sil', e, s);
+    }
   }
 
   @override

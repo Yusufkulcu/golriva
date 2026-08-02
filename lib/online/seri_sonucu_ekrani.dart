@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'hata_raporu.dart';
 import 'itiraz_dialog.dart';
 import 'mac_kanali.dart';
 import 'online_servis.dart';
@@ -60,8 +61,9 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
           maclar = maclarL.where((x) => x.durum == 'bitti').toList();
         });
       }
-    } catch (_) {
-      // susleme verisi — gelmezse kartlar "—" gosterir
+    } catch (e, s) {
+      // susleme verisi — gelmezse kartlar "—" gosterir; yine de rapor et
+      hataBildir('seriSonucu._yukle', e, s);
     }
   }
 

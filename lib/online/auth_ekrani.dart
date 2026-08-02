@@ -5,6 +5,7 @@ import '../data/repos.dart';
 import '../screens/ana_iskelet.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'hata_raporu.dart';
 import 'online_servis.dart';
 
 /// İLK AÇILIŞ / HESAP EKRANI — kullanıcı kuralı: uygulama doğrudan ana
@@ -66,20 +67,23 @@ class _AuthEkraniState extends State<AuthEkrani> {
     });
     try {
       await is_();
-    } catch (e) {
+    } catch (e, s) {
       final m = '$e';
       if (mounted) {
-        setState(() => hata = m.contains('Invalid login')
-            ? 'E-posta ya da şifre hatalı.'
-            : m.contains('already registered')
-                ? 'Bu e-posta zaten kayıtlı — GİRİŞ YAP\'ı dene.'
-                : m.contains('least 6')
-                    ? 'Şifre en az 6 karakter olmalı.'
-                    : m.contains('invalid') && m.contains('otp')
-                        ? 'Kod hatalı ya da süresi dolmuş.'
-                        : m.contains('duplicate') || m.contains('23505')
-                            ? 'Bu kullanıcı adı alınmış — başka bir tane dene.'
-                            : 'İşlem başarısız: $e');
+        setState(() => hata = e is String
+            ? e // bilerek firlatilan kullanici mesaji (dogrulama)
+            : m.contains('Invalid login')
+                ? 'E-posta ya da şifre hatalı.'
+                : m.contains('already registered')
+                    ? 'Bu e-posta zaten kayıtlı — GİRİŞ YAP\'ı dene.'
+                    : m.contains('least 6')
+                        ? 'Şifre en az 6 karakter olmalı.'
+                        : m.contains('invalid') && m.contains('otp')
+                            ? 'Kod hatalı ya da süresi dolmuş.'
+                            : m.contains('duplicate') || m.contains('23505')
+                                ? 'Bu kullanıcı adı alınmış — başka bir tane dene.'
+                                : temizMesaj('auth._calistir', e,
+                                    'İşlem şu an tamamlanamadı — tekrar dene.', s));
       }
     } finally {
       if (mounted) setState(() => mesgul = false);

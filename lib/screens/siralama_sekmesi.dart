@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
@@ -69,8 +70,11 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
             });
           }
       }
-    } catch (e) {
-      if (mounted) setState(() => hata = sunucuHataMesaji(e));
+    } catch (e, s) {
+      if (mounted) {
+        setState(() => hata = temizMesaj('siralama._yukle', e,
+            'Sıralama şu an yüklenemedi — tekrar dene.', s));
+      }
     }
   }
 

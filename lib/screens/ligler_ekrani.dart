@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
@@ -60,7 +61,9 @@ class _LiglerEkraniState extends State<LiglerEkrani> {
           benimPuan = p?.ligPuan;
         });
       }
-    } catch (_) {}
+    } catch (e, s) {
+      hataBildir('ligler._yukle', e, s);
+    }
   }
 
   @override

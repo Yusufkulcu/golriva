@@ -90,13 +90,6 @@ Widget ilerleme(double oran, {double yukseklik = 5}) => ClipRRect(
 String trBuyuk(String s) =>
     s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();
 
-/// Sunucu hata mesajini kullanicinin dilinden soyle. Ozellikle
-/// "Could not find the function" = faz2_4_ek.sql daha calistirilmamis.
-String sunucuHataMesaji(Object e) => '$e'.contains('Could not find the')
-    ? 'Sunucu bu özellik için henüz güncellenmemiş — Supabase SQL '
-        'editöründe supabase/faz2_4_ek.sql çalıştırılmalı.'
-    : 'Yüklenemedi: $e';
-
 /// kucuk etiket yazisi (9px, genis harf araligi)
 Widget etiket(String s, {Color renk = GolrivaColors.dim}) => Text(s,
     style: GoogleFonts.figtree(

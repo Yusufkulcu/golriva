@@ -1,8 +1,10 @@
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
 import 'online/auth_ekrani.dart';
+import 'online/hata_raporu.dart';
 import 'online/online_servis.dart';
 import 'online/supabase_ayar.dart';
 import 'screens/ana_iskelet.dart';
@@ -16,6 +18,15 @@ Future<void> main() async {
   // FAZ 2: Supabase yalnizca --dart-define ile yapilandirildiysa baslar;
   // aksi halde uygulama tamamen cevrimdisi (hot-seat) calisir.
   await OnlineServis.baslat();
+  // FAZ 2.8: yakalanmamis TUM hatalar admin'e raporlanir (kullanici gormez).
+  FlutterError.onError = (d) {
+    FlutterError.presentError(d); // gelistirici konsolu icin
+    hataBildir('global.flutter', d.exception, d.stack);
+  };
+  PlatformDispatcher.instance.onError = (e, s) {
+    hataBildir('global.platform', e, s);
+    return true; // uygulamayi dusurme
+  };
   runApp(const GolrivaApp());
 }
 
@@ -50,7 +61,8 @@ class _LoaderState extends State<_Loader> {
     super.initState();
     GolrivaRepos.load().then((r) {
       if (mounted) setState(() => repos = r);
-    }, onError: (e) {
+    }, onError: (e, StackTrace s) {
+      hataBildir('main._Loader', e as Object, s);
       if (mounted) setState(() => hata = e);
     });
   }
@@ -58,7 +70,17 @@ class _LoaderState extends State<_Loader> {
   @override
   Widget build(BuildContext context) {
     if (hata != null) {
-      return Scaffold(body: Center(child: Text('Veri yüklenemedi: $hata')));
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Veriler yüklenemedi. Lütfen uygulamayı kapatıp tekrar aç.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
     }
     if (repos == null) {
       // ACILIS EKRANI — K1 Beyin-Top + marka (veri yuklenirken)

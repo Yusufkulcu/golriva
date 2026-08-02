@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/golriva_theme.dart';
+import 'hata_raporu.dart';
 import 'online_servis.dart';
 
 /// Misafir kayit: kullanici adi sec (3-14) → profil + 500 RIVA hos geldin.
@@ -29,12 +30,13 @@ class _KayitEkraniState extends State<KayitEkrani> {
     try {
       await OnlineServis().kayitOl(ad);
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
+    } catch (e, s) {
       setState(() {
         mesgul = false;
         hata = '$e'.contains('duplicate') || '$e'.contains('23505')
             ? 'Bu kullanıcı adı alınmış — başka bir tane dene'
-            : 'Kayıt başarısız: $e';
+            : temizMesaj('kayit._kaydet', e,
+                'Kayıt şu an tamamlanamadı — tekrar dene.', s);
       });
     }
   }

@@ -12,6 +12,7 @@ import '../games/serbest_kadro/screen.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'hata_raporu.dart';
 import 'arama_ekrani.dart';
 import 'mac_kanali.dart';
 import 'online_servis.dart';
@@ -607,8 +608,13 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
     super.initState();
     widget.kanal.kapat(); // hamle yoklamasi biter
     widget.kanal.sonucBildir(widget.kazananSeat).then(
-        (d) => mounted ? setState(() => durum = d) : null, onError: (e) {
-      if (mounted) setState(() => hata = '$e');
+        (d) => mounted ? setState(() => durum = d) : null,
+        onError: (e, StackTrace s) {
+      if (mounted) {
+        setState(() => hata = temizMesaj('sonuc._bildir', e as Object,
+            'Sonuç işlenirken sorun oluştu — Riva ödülün güvende, '
+            'lobiden kontrol edebilirsin.', s));
+      }
     });
   }
 
@@ -616,7 +622,7 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
   Widget build(BuildContext context) {
     if (hata != null) {
       return Column(mainAxisSize: MainAxisSize.min, children: [
-        Text('Sonuç işlenemedi: $hata',
+        Text('$hata',
             textAlign: TextAlign.center,
             style: GoogleFonts.figtree(
                 fontSize: 12, color: GolrivaColors.bad)),

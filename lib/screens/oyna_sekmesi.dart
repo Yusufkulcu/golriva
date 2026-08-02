@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../online/arama_ekrani.dart';
+import '../online/hata_raporu.dart';
 import '../online/kayit_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
@@ -75,7 +76,9 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
           galibiyet = g;
         });
       }
-    } catch (_) {}
+    } catch (e, s) {
+      hataBildir('oyna._yenile', e, s);
+    }
   }
 
   Masa? get _seciliMasaBilgi {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "682885725594",
+    "project_id": "golriva-abbcb",
+    "storage_bucket": "golriva-abbcb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:682885725594:android:680b930152bdf92b844e23",
+        "android_client_info": {
+          "package_name": "com.golriva"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8dWqOACcZIqucuTUGuDEUSKXUd8Ii2KU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

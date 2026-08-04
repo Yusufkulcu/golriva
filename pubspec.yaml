@@ -34,12 +34,6 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
 
-dependency_overrides:
-  # vibration → device_info_plus zinciri: 12.4.0+ iOS'ta 'isiOSAppOnVision'
-  # kullaniyor ve eski Xcode SDK'larinda derleme kiriliyor.
-  # 12.3.0 bu API'siz son surum — Xcode guncellenince bu blok silinebilir.
-  device_info_plus: 12.3.0
-
 flutter:
   uses-material-design: true
   assets:

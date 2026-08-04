@@ -14,6 +14,15 @@ const _androidBirim = String.fromEnvironment('REKLAM_ODUL_ANDROID',
 const _iosBirim = String.fromEnvironment('REKLAM_ODUL_IOS',
     defaultValue: 'ca-app-pub-3940256099942544/1712485313');
 
+/// Maç sonu GEÇİŞ (interstitial) reklam birimleri — varsayılan Google TEST
+/// kimlikleri. Gerçek gelir için AdMob'da interstitial birimi açıp:
+///   --dart-define=REKLAM_GECIS_ANDROID=ca-app-pub-XXXX/YYYY
+///   --dart-define=REKLAM_GECIS_IOS=ca-app-pub-XXXX/ZZZZ
+const _gecisAndroid = String.fromEnvironment('REKLAM_GECIS_ANDROID',
+    defaultValue: 'ca-app-pub-3940256099942544/1033173712');
+const _gecisIos = String.fromEnvironment('REKLAM_GECIS_IOS',
+    defaultValue: 'ca-app-pub-3940256099942544/4411468910');
+
 /// Odullu reklam akisi (yalniz Android/iOS).
 class ReklamServis {
   static bool _baslatildi = false;
@@ -68,6 +77,63 @@ class ReklamServis {
         },
       ),
     );
+    return tamam.future;
+  }
+
+  // ───────── MAÇ SONU GEÇİŞ (INTERSTITIAL) REKLAMI ─────────
+  static InterstitialAd? _gecis;
+  static bool _gecisYukleniyor = false;
+
+  /// Geçiş reklamını önceden yükler (maç bitmeden çağır ki hazır olsun).
+  static void gecisHazirla() {
+    if (!destekleniyor || _gecis != null || _gecisYukleniyor) return;
+    _gecisYukleniyor = true;
+    _hazirla().then((_) {
+      InterstitialAd.load(
+        adUnitId: Platform.isAndroid ? _gecisAndroid : _gecisIos,
+        request: const AdRequest(),
+        adLoadCallback: InterstitialAdLoadCallback(
+          onAdLoaded: (ad) {
+            _gecis = ad;
+            _gecisYukleniyor = false;
+          },
+          onAdFailedToLoad: (e) {
+            sonHata = 'geçiş yükleme (kod ${e.code}): ${e.message}';
+            _gecis = null;
+            _gecisYukleniyor = false;
+          },
+        ),
+      );
+    }).catchError((Object e) {
+      sonHata = 'SDK başlatılamadı: $e';
+      _gecisYukleniyor = false;
+    });
+  }
+
+  /// Hazırsa geçiş reklamını gösterir. Gösterildiyse true döner.
+  /// Sonraki maç için bir sonrakini de önceden yükler.
+  static Future<bool> gecisGoster() async {
+    final ad = _gecis;
+    if (ad == null) {
+      gecisHazirla(); // bir sonraki sefere hazır olsun
+      return false;
+    }
+    _gecis = null;
+    final tamam = Completer<bool>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        gecisHazirla(); // sonraki maç için önden yükle
+        if (!tamam.isCompleted) tamam.complete(true);
+      },
+      onAdFailedToShowFullScreenContent: (a, e) {
+        sonHata = 'geçiş gösterim (kod ${e.code}): ${e.message}';
+        a.dispose();
+        gecisHazirla();
+        if (!tamam.isCompleted) tamam.complete(false);
+      },
+    );
+    ad.show();
     return tamam.future;
   }
 

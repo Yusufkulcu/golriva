@@ -72,6 +72,41 @@ class OnlineServis {
     } catch (_) {/* çıkış akışını bloklama */}
   }
 
+  // ---------- FAZ 2.10: HESAP SİLME ----------
+  /// Kullanıcının kendi hesabını ve tüm verilerini kalıcı olarak siler.
+  /// Başarılıysa oturum artık geçersizdir (auth kullanıcısı silindi).
+  Future<void> hesabimiSil() async {
+    if (!girisYapildi) return;
+    await _c.rpc('hesabimi_sil');
+    try {
+      await _c.auth.signOut();
+    } catch (_) {/* kullanıcı zaten silindi — oturum çökebilir, sorun değil */}
+  }
+
+  // ---------- FAZ 2.10: MAÇ SONU REKLAMI ----------
+  /// Bugün kalan maç-sonu reklam hakkı (0 → gösterme). Admin panelden
+  /// belirlenen günlük limite göre sunucu hesaplar.
+  Future<int> reklamHakki() async {
+    if (!girisYapildi) return 0;
+    try {
+      final r = await _c.rpc('reklam_gosterim_hakki');
+      return (r as num?)?.toInt() ?? 0;
+    } catch (e, s) {
+      hataBildir('online.reklamHakki', e, s);
+      return 0;
+    }
+  }
+
+  /// Bir maç-sonu reklamı gösterildi → sunucuya kaydet (günlük sayaç).
+  Future<void> reklamGosterildi() async {
+    if (!girisYapildi) return;
+    try {
+      await _c.rpc('reklam_gosterildi');
+    } catch (e, s) {
+      hataBildir('online.reklamGosterildi', e, s);
+    }
+  }
+
   /// Misafir oturumu (Supabase panelinde "Anonymous sign-ins" ACIK olmali).
   Future<void> misafirGiris() async {
     if (_c.auth.currentUser == null) await _c.auth.signInAnonymously();

@@ -683,21 +683,56 @@ async function urunEkle(){
 async function reklamYukle(){
   const p = $('#panel-reklam');
   p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  const bugunISO = new Date(new Date().setHours(0,0,0,0)).toISOString();
   const r = hataAt(await sb.from('reklam_odulleri').select('*').order('created_at',{ascending:false}).limit(100));
   const bugun = hataAt(await sb.from('reklam_odulleri').select('id',{count:'exact',head:true})
-    .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString())).count ?? 0;
+    .gte('created_at', bugunISO)).count ?? 0;
   await adYukle(r.data.map(x=>x.user_id));
+
+  // MAÇ SONU reklam limiti (ayarlar) + bugünkü gösterim (faz2_10)
+  let limit = null, gecisBugun = 0, gecisEksik = false;
+  try{
+    const a = hataAt(await sb.from('ayarlar').select('deger').eq('anahtar','gunluk_reklam').maybeSingle());
+    limit = a.data ? a.data.deger : '0';
+    gecisBugun = hataAt(await sb.from('reklam_gosterimleri').select('id',{count:'exact',head:true})
+      .gte('created_at', bugunISO)).count ?? 0;
+  }catch(_){ gecisEksik = true; }
+
+  const gecisKart = gecisEksik
+    ? `<div class="blok card">MAÇ SONU reklamı için sunucu güncellemesi gerekli:
+        Supabase SQL editöründe <b>supabase/faz2_10_hesap_reklam.sql</b> çalıştırılmalı.</div>`
+    : `<div class="blok card"><div class="baslik">MAÇ SONU REKLAMI (geçiş) — günlük limit
+        <span class="etiket">kullanıcı başına GÜNde kaç kez maç sonunda reklam çıksın</span></div>
+        <div class="satirform">
+          <span class="etiket">Günlük gösterim / kullanıcı</span>
+          <input id="rk-limit" type="number" min="0" max="50" value="${kacir(limit)}" style="width:90px">
+          <button class="altin kucuk" onclick="reklamLimitKaydet()">KAYDET</button>
+          <span class="etiket">0 = maç sonu reklamı kapalı</span>
+        </div>
+        <div class="etiket" style="margin-top:8px">Bugün gösterilen maç-sonu reklamı: <b style="color:var(--gold-hi)">${gecisBugun}</b></div>
+      </div>`;
+
   p.innerHTML = `
     <div class="statlar">
-      <div class="stat gcard"><div class="deger">${bugun}</div><div class="ad">BUGÜN İZLENEN</div></div>
+      <div class="stat gcard"><div class="deger">${bugun}</div><div class="ad">BUGÜN ÖDÜLLÜ İZLENEN</div></div>
       <div class="stat gcard"><div class="deger">${bugun*50}</div><div class="ad">BUGÜN DAĞITILAN RIVA</div></div>
+      <div class="stat gcard"><div class="deger">${gecisBugun}</div><div class="ad">BUGÜN MAÇ-SONU REKLAMI</div></div>
     </div>
-    <div class="blok card"><div class="baslik">REKLAM ÖDÜLLERİ (son 100)</div>
+    ${gecisKart}
+    <div class="blok card"><div class="baslik">ÖDÜLLÜ REKLAM KAYITLARI (son 100)</div>
     <table><tr><th>Kullanıcı</th><th>Ağ</th><th>İşlem</th><th>Miktar</th><th>Tarih</th></tr>
     ${r.data.map(x=>`<tr><td><b>${kacir(ad(x.user_id))}</b></td><td class="num">${kacir(x.ag)}</td>
       <td class="mono">${kacir(x.ssv_islem_id)}</td><td class="num arti">+${x.miktar}</td>
       <td class="mono">${tarih(x.created_at)}</td></tr>`).join('') || '<tr><td colspan="5" class="etiket">kayıt yok</td></tr>'}
     </table></div>`;
+}
+async function reklamLimitKaydet(){
+  const v = parseInt($('#rk-limit').value);
+  if(isNaN(v) || v < 0){ toast('Geçerli bir sayı gir (0 veya üzeri)', true); return; }
+  if(await dene(async()=>hataAt(await sb.from('ayarlar').upsert(
+      {anahtar:'gunluk_reklam', deger:String(v), guncel_at:new Date().toISOString()},
+      {onConflict:'anahtar'})),
+    'Günlük maç-sonu reklam limiti kaydedildi: ' + v)) reklamYukle();
 }
 
 /* ═══════════ 9. İTİRAZLAR ═══════════ */

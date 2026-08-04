@@ -337,10 +337,81 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
                 ]),
               ),
             ),
+            const SizedBox(height: 7),
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _hesabiSil,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+                decoration: kartDekor(r: 14),
+                child: Row(children: [
+                  gIkon('carpi', 15, GolrivaColors.dim2),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text('Hesabımı sil',
+                        style: GoogleFonts.figtree(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: GolrivaColors.dim)),
+                  ),
+                  Text('kalıcı',
+                      style: GoogleFonts.figtree(
+                          fontSize: 10, color: GolrivaColors.dim2)),
+                ]),
+              ),
+            ),
           ],
         ],
       ),
     );
+  }
+
+  /// HESABIMI SİL — çift onaylı, geri alınamaz. Tüm veriler silinir.
+  Future<void> _hesabiSil() async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: GolrivaColors.card,
+        title: Text('Hesabımı sil?',
+            style: GoogleFonts.bigShouldersDisplay(
+                fontWeight: FontWeight.w900, color: GolrivaColors.bad)),
+        content: Text(
+            'Bu işlem GERİ ALINAMAZ. Profilin, Riva bakiyen, maç geçmişin, '
+            'arkadaşların ve tüm verilerin kalıcı olarak silinir.',
+            style: GoogleFonts.figtree(color: GolrivaColors.dim)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('VAZGEÇ')),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('SİL',
+                  style: TextStyle(color: GolrivaColors.bad))),
+        ],
+      ),
+    );
+    if (onay != true || !mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+          child: CircularProgressIndicator(color: GolrivaColors.gold)),
+    );
+    try {
+      await BildirimServis.cikistaTemizle();
+      await OnlineServis().hesabimiSil();
+      if (!mounted) return;
+      Navigator.of(context).pop(); // yükleniyor diyaloğu
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+    } catch (e, s) {
+      if (mounted) Navigator.of(context).pop(); // yükleniyor diyaloğu
+      hataBildir('profil._hesabiSil', e, s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Hesap şu an silinemedi — tekrar dene.')));
+      }
+    }
   }
 
   Widget _duelloKarti(

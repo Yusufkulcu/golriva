@@ -840,11 +840,6 @@ async function bildirimYukle(){
             <option value="kullanici">TEK KULLANICI</option>
           </select>
           <input id="bd-kullanici" placeholder="kullanıcı adı" style="width:170px;display:none">
-          <select id="bd-ses" style="min-width:130px" title="Android'de sesler uygulamaya gömülüdür">
-            <option value="cinlama">🔔 Çınlama</option>
-            <option value="zil">🎐 Zil</option>
-            <option value="sessiz">🔕 Sessiz</option>
-          </select>
         </div>
         <input id="bd-baslik" placeholder="Başlık (örn. Yeni sezon başladı!)" maxlength="60">
         <textarea id="bd-govde" placeholder="Mesaj metni…" maxlength="180" rows="3"
@@ -856,15 +851,14 @@ async function bildirimYukle(){
       </div>
     </div>
     <div class="blok card"><div class="baslik">GÖNDERİM GEÇMİŞİ (son 50)</div>
-    <table><tr><th>Tarih</th><th>Hedef</th><th>Başlık</th><th>Mesaj</th><th>Ses</th><th>İletildi</th><th>Başarısız</th></tr>
+    <table><tr><th>Tarih</th><th>Hedef</th><th>Başlık</th><th>Mesaj</th><th>İletildi</th><th>Başarısız</th></tr>
     ${gecmis.map(x=>`<tr><td class="mono">${tarih(x.created_at)}</td>
       <td>${x.hedef==='tum'?'<span class="hap gold">TÜMÜ</span>':`<b>${kacir(ad(x.user_id))}</b>`}</td>
       <td><b>${kacir(x.baslik)}</b></td>
       <td style="max-width:280px">${kacir(x.govde)}</td>
-      <td class="num">${kacir(x.ses||'—')}</td>
       <td class="num arti">${x.gonderildi}</td>
       <td class="num ${x.basarisiz>0?'eksi':''}">${x.basarisiz}</td></tr>`).join('')
-      || '<tr><td colspan="7" class="etiket">henüz gönderim yok</td></tr>'}
+      || '<tr><td colspan="6" class="etiket">henüz gönderim yok</td></tr>'}
     </table></div>`;
 }
 function bildirimHedefDegis(){
@@ -875,14 +869,13 @@ async function bildirimGonder(){
   const kullanici_adi = $('#bd-kullanici').value.trim();
   const baslik = $('#bd-baslik').value.trim();
   const govde = $('#bd-govde').value.trim();
-  const ses = $('#bd-ses').value;
   if(!baslik || !govde){ toast('Başlık ve mesaj gerekli', true); return; }
   if(hedef==='kullanici' && !kullanici_adi){ toast('Kullanıcı adı gir', true); return; }
   if(hedef==='tum' && !confirm('TÜM kullanıcılara bildirim gönderilsin mi?')) return;
   const btn = $('#bd-gonder'); btn.disabled = true; btn.textContent = 'GÖNDERİLİYOR…';
   try{
     const { data, error } = await sb.functions.invoke('bildirim-gonder', {
-      body: { hedef, kullanici_adi, baslik, govde, ses },
+      body: { hedef, kullanici_adi, baslik, govde },
     });
     if(error) throw error;
     if(data && data.hata) throw new Error(data.hata);

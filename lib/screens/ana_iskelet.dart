@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../main.dart' show rotaGozcusu;
+import '../online/oturum_bekcisi.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'magaza_sekmesi.dart';
@@ -27,6 +28,13 @@ class AnaIskelet extends StatefulWidget {
 class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
   int sekme = 0;
   int tazelik = 0; // her artis aktif sekmeyi sifirdan kurar
+
+  @override
+  void initState() {
+    super.initState();
+    // TEK CİHAZ OTURUMU: bu cihazı aktif yap + yoklamayı başlat.
+    OturumBekcisi().baslat();
+  }
 
   @override
   void didChangeDependencies() {

@@ -25,12 +25,10 @@ class BildirimServis {
 
   static bool get destekleniyor => Platform.isAndroid || Platform.isIOS;
 
-  // Ses → Android kanal eşlemesi (Edge Function ile AYNI kanal adları).
-  static const _kanallar = [
-    ('golriva_cinlama', 'Çınlama', 'cinlama'),
-    ('golriva_zil', 'Zil', 'zil'),
-    ('golriva_sessiz', 'Sessiz', null),
-  ];
+  // TEK TİP bildirim: cihazın varsayılan bildirim sesi/kanalı.
+  // (Edge Function ve AndroidManifest ile AYNI kanal kimliği.)
+  static const _kanalId = 'golriva_bildirim';
+  static const _kanalAd = 'GOLRIVA Bildirimleri';
 
   static Future<void> baslat() async {
     if (!SupabaseAyar.yapilandirildi || !destekleniyor) return;
@@ -83,38 +81,28 @@ class BildirimServis {
     final eklenti = _yerel.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     if (eklenti == null) return;
-    for (final (id, ad, ses) in _kanallar) {
-      await eklenti.createNotificationChannel(AndroidNotificationChannel(
-        id, ad,
-        importance: Importance.high,
-        playSound: ses != null,
-        sound: ses == null ? null : RawResourceAndroidNotificationSound(ses),
-      ));
-    }
+    // Tek kanal — cihazın varsayılan bildirim sesiyle.
+    await eklenti.createNotificationChannel(const AndroidNotificationChannel(
+      _kanalId, _kanalAd,
+      importance: Importance.high,
+    ));
   }
 
   static void _ondeGoster(RemoteMessage mesaj) {
     final bildirim = mesaj.notification;
     if (bildirim == null) return;
-    final kanalId = bildirim.android?.channelId ?? 'golriva_cinlama';
-    final kayit = _kanallar.firstWhere((k) => k.$1 == kanalId,
-        orElse: () => _kanallar.first);
     _yerel.show(
       id: bildirim.hashCode,
       title: bildirim.title,
       body: bildirim.body,
-      notificationDetails: NotificationDetails(
+      notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
-          kayit.$1, kayit.$2,
+          _kanalId, _kanalAd,
           importance: Importance.high,
           priority: Priority.high,
-          playSound: kayit.$3 != null,
-          sound: kayit.$3 == null
-              ? null
-              : RawResourceAndroidNotificationSound(kayit.$3!),
           icon: '@mipmap/ic_launcher',
         ),
-        iOS: const DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(),
       ),
     );
   }

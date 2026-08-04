@@ -7,6 +7,7 @@ import '../widgets/golriva_ui.dart';
 import 'hata_raporu.dart';
 import 'mac_kanali.dart' show siraRakibeTitresim;
 import 'online_servis.dart';
+import 'oturum_bekcisi.dart';
 import 'oyun_yonlendirici.dart';
 
 /// RAKİP ARAMA — lobiden HIZLI DÜELLO / BO3 SERİ ile gelinir; masa ve mod
@@ -39,6 +40,9 @@ class _AramaEkraniState extends State<AramaEkrani> {
 
   Future<void> _basla() async {
     try {
+      // ANTİ-HİLE: kuyruğa girmeden önce bu cihazın aktif oturum olduğunu
+      // doğrula. Değilse (başka cihazdan giriş yapılmış) çıkış yaptırır.
+      if (!await OturumBekcisi().dogrula()) return;
       await servis.kuyrugaGir(widget.mod, widget.masaKod);
       // HAYALET ESLESME KALKANI: yalnizca kuyruga giristen SONRA kurulan
       // seriler kabul edilir (5 sn saat payi).

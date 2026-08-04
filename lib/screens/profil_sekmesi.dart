@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../online/bildirim_servis.dart';
+import '../online/oturum_bekcisi.dart';
 import '../online/hata_raporu.dart';
 import '../online/kayit_ekrani.dart';
 import '../online/online_servis.dart';
@@ -132,6 +133,7 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
       ),
     );
     if (onay != true || !mounted) return;
+    OturumBekcisi().durdur();
     await BildirimServis.cikistaTemizle(); // bu cihaza artık bildirim gitmesin
     await OnlineServis().cikisYap();
     if (mounted) {
@@ -399,6 +401,7 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
           child: CircularProgressIndicator(color: GolrivaColors.gold)),
     );
     try {
+      OturumBekcisi().durdur();
       await BildirimServis.cikistaTemizle();
       await OnlineServis().hesabimiSil();
       if (!mounted) return;

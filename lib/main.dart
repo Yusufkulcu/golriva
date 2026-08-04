@@ -14,6 +14,11 @@ import 'theme/golriva_theme.dart';
 /// Sayfa donuslerini dinlemek icin (sekmeler donuste kendini tazeler).
 final rotaGozcusu = RouteObserver<ModalRoute<void>>();
 
+/// Global gezinme + snackbar anahtarlari (ornegin baska cihazdan giris
+/// yapilinca herhangi bir ekrandan cikis yaptirmak icin).
+final navigatorKey = GlobalKey<NavigatorState>();
+final mesajKey = GlobalKey<ScaffoldMessengerState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // FAZ 2: Supabase yalnizca --dart-define ile yapilandirildiysa baslar;
@@ -42,6 +47,8 @@ class GolrivaApp extends StatelessWidget {
       title: 'GOLRIVA',
       debugShowCheckedModeBanner: false,
       theme: GolrivaTheme.dark(),
+      navigatorKey: navigatorKey,
+      scaffoldMessengerKey: mesajKey,
       navigatorObservers: [rotaGozcusu],
       home: const _Loader(),
     );

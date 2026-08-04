@@ -52,6 +52,30 @@ class OnlineServis {
       SupabaseAyar.yapilandirildi && _c.auth.currentUser != null;
   String? get uid => _c.auth.currentUser?.id;
 
+  // ---------- FAZ 2.11: TEK CİHAZ OTURUMU ----------
+  /// Bu cihazı hesabın aktif cihazı yapar (giriş + açılış).
+  Future<void> oturumSahiplen(String cihazId) async {
+    if (!girisYapildi) return;
+    try {
+      await _c.rpc('oturum_sahiplen', params: {'cihaz_p': cihazId});
+    } catch (e, s) {
+      hataBildir('online.oturumSahiplen', e, s);
+    }
+  }
+
+  /// Bu cihaz hâlâ aktif mi? false → başka cihaz devraldı.
+  /// Hata/ağ sorununda true döner (yanlışlıkla çıkış yaptırmamak için).
+  Future<bool> oturumBenimMi(String cihazId) async {
+    if (!girisYapildi) return true;
+    try {
+      final r = await _c.rpc('oturum_benim_mi', params: {'cihaz_p': cihazId});
+      return (r as bool?) ?? true;
+    } catch (e, s) {
+      hataBildir('online.oturumBenimMi', e, s);
+      return true;
+    }
+  }
+
   // ---------- FAZ 2.9: PUSH BİLDİRİMİ (FCM) ----------
   /// Cihazın FCM jetonunu sunucuya yazar (aç­ılışta/girişte, jeton yenilenince).
   Future<void> cihazTokenKaydet(String token, String platform) async {

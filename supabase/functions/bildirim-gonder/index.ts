@@ -27,11 +27,8 @@ const CORS = {
 // ── Ses → Android kanal + iOS ses dosyası eşlemesi ──
 // (Android'de kanal sesi kanal oluşturulurken sabitlenir; bu yüzden her ses
 //  için ayrı kanal. Uygulama tarafı bu kanalları aynı adla oluşturur.)
-const SES_HARITASI: Record<string, { kanal: string; iosSes: string }> = {
-  cinlama: { kanal: "golriva_cinlama", iosSes: "cinlama.wav" },
-  zil: { kanal: "golriva_zil", iosSes: "zil.wav" },
-  sessiz: { kanal: "golriva_sessiz", iosSes: "" },
-};
+// TEK TİP bildirim: tek kanal + cihaz varsayılan sesi.
+const KANAL = "golriva_bildirim";
 
 function b64url(data: Uint8Array): string {
   let s = btoa(String.fromCharCode(...data));
@@ -126,7 +123,6 @@ Deno.serve(async (istek) => {
       kullanici_adi = null,
       baslik,
       govde,
-      ses = "cinlama",
       veri = {},
     } = await istek.json();
 
@@ -159,7 +155,7 @@ Deno.serve(async (istek) => {
     if (tokHata) return json({ hata: "Jetonlar okunamadı: " + tokHata.message }, 500);
     if (!cihazlar || cihazlar.length === 0) {
       await sb.from("bildirim_gecmisi").insert({
-        hedef, user_id: hedefUid, baslik, govde, ses, gonderildi: 0, basarisiz: 0,
+        hedef, user_id: hedefUid, baslik, govde, gonderildi: 0, basarisiz: 0,
       });
       return json({ gonderildi: 0, basarisiz: 0, not: "Hedefte kayıtlı cihaz yok." });
     }
@@ -169,9 +165,8 @@ Deno.serve(async (istek) => {
     const jeton = await erisimJetonu(sa);
     const projeId = sa.project_id;
     const fcmUrl = `https://fcm.googleapis.com/v1/projects/${projeId}/messages:send`;
-    const s = SES_HARITASI[ses] ?? SES_HARITASI.cinlama;
 
-    // ── Her cihaza gönder ──
+    // ── Her cihaza gönder (tek tip: varsayılan ses) ──
     let ok = 0, fail = 0;
     const olu: string[] = [];
     for (const c of cihazlar) {
@@ -183,15 +178,10 @@ Deno.serve(async (istek) => {
         ),
         android: {
           priority: "high",
-          notification: {
-            channel_id: s.kanal,
-            ...(ses !== "sessiz" ? { sound: ses } : {}),
-          },
+          notification: { channel_id: KANAL, sound: "default" },
         },
         apns: {
-          payload: {
-            aps: ses === "sessiz" ? { sound: "" } : { sound: s.iosSes },
-          },
+          payload: { aps: { sound: "default" } },
         },
       };
       try {
@@ -226,7 +216,7 @@ Deno.serve(async (istek) => {
       await sb.from("cihaz_tokenleri").delete().in("token", olu);
     }
     await sb.from("bildirim_gecmisi").insert({
-      hedef, user_id: hedefUid, baslik, govde, ses, gonderildi: ok, basarisiz: fail,
+      hedef, user_id: hedefUid, baslik, govde, gonderildi: ok, basarisiz: fail,
     });
 
     return json({ gonderildi: ok, basarisiz: fail, temizlenen: olu.length });

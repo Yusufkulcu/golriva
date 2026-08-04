@@ -80,6 +80,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .mono{font-family:var(--num);font-size:11px;color:var(--dim2)}
 .satirform{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px;background:rgba(212,175,55,.04);border-radius:9px;margin-top:6px}
 .satirform input,.satirform select{padding:5px 8px;font-size:12px}
+/* İSTATİSTİK grafikleri */
+.cgraf{display:flex;align-items:flex-end;gap:2px;height:110px;padding:4px 0}
+.cbar{flex:1;display:flex;align-items:flex-end;height:100%;min-width:3px}
+.cbar-dolgu{width:100%;border-radius:3px 3px 0 0;min-height:2px;transition:height .2s}
+.cgraf-alt{display:flex;justify-content:space-between;margin-top:4px;font-size:9px;letter-spacing:1px;color:var(--dim2);font-family:var(--num)}
+.ybar{display:flex;align-items:center;gap:9px;margin:6px 0}
+.ybar-ad{width:150px;font-size:12px;color:var(--ink);text-align:right;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ybar-yol{flex:1;height:16px;background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden}
+.ybar-dolgu{height:100%;border-radius:8px;min-width:2px}
+.ybar-deg{width:64px;font-family:var(--num);font-size:12px;color:var(--gold-hi);flex:none}
 </style>
 </head>
 <body>
@@ -212,7 +222,7 @@ function cikis(){ try{localStorage.removeItem('glr_admin');}catch(_){} location.
 
 /* ═══════════ SEKMELER ═══════════ */
 const SEKMELER = [
-  ['pano','PANO'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
+  ['pano','PANO'], ['istatistik','İSTATİSTİK'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
   ['kuyruk','KUYRUK & DAVET'], ['arkadas','ARKADAŞLIKLAR'], ['lig','LİGLER & SEZON'],
   ['ekonomi','EKONOMİ'], ['market','MARKET'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
   ['bildirim','BİLDİRİM'], ['hatalar','HATALAR'],
@@ -890,7 +900,89 @@ async function bildirimGonder(){
   }
 }
 
-const YUKLE = { pano:panoYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
+/* ═══════════ İSTATİSTİK (detaylı) ═══════════ */
+// oyun kodunu okunur ada çevir (bilinmeyen kod olduğu gibi güzelleştirilir)
+function oyunAdi(k){
+  const m = {en_kisa_kadro:'En Kısa Kadro', kupa_drafti:'Kupa Draftı',
+    en_genc_kadro:'En Genç Kadro', bayrak_yarisi:'Bayrak Yarışı',
+    hedefi_tuttur:'Hedefi Tuttur', bonservis_avi:'Bonservis Avı',
+    sari_kart_avi:'Sarı Kart Avı', mac_rekortmenleri:'Maç Rekortmenleri',
+    milli_gol_krallari:'Milli Gol Kralları', kariyer_ikizi:'Kariyer İkizi'};
+  return m[k] || String(k||'?').replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+}
+function gunlukGrafik(gun, alan, renk, baslik, altbilgi){
+  const max = Math.max(1, ...gun.map(x=>+x[alan]||0));
+  const bars = gun.map(x=>{
+    const v = +x[alan]||0;
+    return `<div class="cbar" title="${x.gun}: ${v}"><div class="cbar-dolgu" style="height:${Math.round(v/max*100)}%;background:${renk}"></div></div>`;
+  }).join('');
+  const ilk = gun[0] ? gun[0].gun : '';
+  return `<div class="blok card"><div class="baslik">${baslik}
+      <span class="etiket">son 30 gün · tepe ${max}${altbilgi?' · '+altbilgi:''}</span></div>
+    <div class="cgraf">${bars}</div>
+    <div class="cgraf-alt"><span>${ilk}</span><span>bugün</span></div></div>`;
+}
+function yatayBar(satirlar, adAlan, degerAlan, renk, cevir){
+  if(!satirlar.length) return '<div class="etiket">kayıt yok</div>';
+  const max = Math.max(1, ...satirlar.map(x=>+x[degerAlan]||0));
+  return satirlar.map(x=>{
+    const ad = cevir ? cevir(x[adAlan]) : x[adAlan];
+    const v = +x[degerAlan]||0;
+    return `<div class="ybar"><div class="ybar-ad" title="${kacir(String(ad))}">${kacir(String(ad))}</div>
+      <div class="ybar-yol"><div class="ybar-dolgu" style="width:${Math.round(v/max*100)}%;background:${renk}"></div></div>
+      <div class="ybar-deg">${v}</div></div>`;
+  }).join('');
+}
+async function istatistikYukle(){
+  const p = $('#panel-istatistik');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  let g, gun, oyun, saat, paket;
+  try{
+    g     = hataAt(await sb.from('v_ist_genel').select('*').single()).data;
+    gun   = hataAt(await sb.from('v_ist_gunluk').select('*')).data;
+    oyun  = hataAt(await sb.from('v_ist_oyun').select('*')).data;
+    saat  = hataAt(await sb.from('v_ist_saat').select('*')).data;
+    paket = hataAt(await sb.from('v_ist_paket').select('*')).data;
+  }catch(e){
+    p.innerHTML = `<div class="blok card">İSTATİSTİK için sunucu güncellemesi gerekli:
+      Supabase SQL editöründe <b>supabase/faz2_12_istatistik.sql</b> çalıştırılmalı.<br>
+      <span class="etiket">${kacir(e.message||e)}</span></div>`;
+    return;
+  }
+  const yogun = saat.reduce((a,b)=> (+b.adet> +a.adet? b : a), {saat:0,adet:0});
+  const macRekor = Math.max(0, ...gun.map(x=>+x.mac||0));
+  const uyeRekor = Math.max(0, ...gun.map(x=>+x.yeni_uye||0));
+  const S=(d,a)=>`<div class="stat gcard"><div class="deger">${d}</div><div class="ad">${a}</div></div>`;
+  p.innerHTML = `
+    <div class="statlar">
+      ${S(g.toplam_uye,'TOPLAM ÜYE')} ${S(g.bugun_uye,'BUGÜN YENİ ÜYE')}
+      ${S(g.aktif_oyun,'ANLIK AKTİF OYUN')} ${S(g.kuyrukta,'ANLIK KUYRUKTA')}
+      ${S(g.toplam_seri,'TOPLAM DÜELLO')} ${S(g.toplam_mac,'TOPLAM OYUN')}
+      ${S(g.dostluk_seri,'DOSTLUK MAÇI')} ${S(macRekor,'GÜN REKORU (OYUN)')}
+      ${S(g.riva_dolasim,'DOLAŞIMDAKİ RIVA')} ${S(g.kasa_rake,'KASA (RAKE)')}
+      ${S(g.satin_adet,'SATIN ALMA')} ${S(g.satin_riva,'SATILAN RIVA')}
+      ${S(g.reklam_odul_adet,'ÖDÜLLÜ REKLAM')} ${S(g.reklam_gecis_adet,'MAÇ-SONU REKLAM')}
+      ${S(g.cihaz_android,'ANDROID CİHAZ')} ${S(g.cihaz_ios,'iOS CİHAZ')}
+    </div>
+    <div class="blok card"><div class="baslik">ÖZET
+      <span class="etiket">en yoğun saat: <b style="color:var(--gold-hi)">${String(yogun.saat).padStart(2,'0')}:00</b> (${yogun.adet} oyun / son 7 gün)
+      · günlük üye rekoru: <b style="color:var(--gold-hi)">${uyeRekor}</b></span></div></div>
+    ${gunlukGrafik(gun,'yeni_uye','#5FE08C','GÜNLÜK YENİ ÜYE')}
+    ${gunlukGrafik(gun,'mac','#F0D67C','GÜNLÜK OYNANAN OYUN (maç)')}
+    ${gunlukGrafik(gun,'seri','#D4AF37','GÜNLÜK DÜELLO (seri)')}
+    ${gunlukGrafik(gun,'reklam_odul','#7FB4FF','GÜNLÜK ÖDÜLLÜ REKLAM')}
+    ${gunlukGrafik(gun,'reklam_gecis','#7FB4FF','GÜNLÜK MAÇ-SONU REKLAM')}
+    ${gunlukGrafik(gun,'satin_riva','#FF7A6E','GÜNLÜK SATILAN RIVA')}
+    <div class="blok card"><div class="baslik">SAAT YOĞUNLUĞU <span class="etiket">son 7 gün · oynanan oyun</span></div>
+      <div class="cgraf">${saat.map(s=>`<div class="cbar" title="${String(s.saat).padStart(2,'0')}:00 — ${s.adet}"><div class="cbar-dolgu" style="height:${Math.round((+s.adet||0)/Math.max(1,...saat.map(x=>+x.adet||0))*100)}%;background:#F0D67C"></div></div>`).join('')}</div>
+      <div class="cgraf-alt"><span>00:00</span><span>12:00</span><span>23:00</span></div></div>
+    <div class="blok card"><div class="baslik">OYUN MODU DAĞILIMI <span class="etiket">hangi oyun ne kadar oynanmış</span></div>
+      ${yatayBar(oyun,'oyun_kodu','adet','#D4AF37', oyunAdi)}</div>
+    <div class="blok card"><div class="baslik">MAĞAZA PAKET DAĞILIMI <span class="etiket">hangi paket kaç kez alınmış</span></div>
+      ${yatayBar(paket,'urun','adet','#5FE08C')}</div>`;
+}
+
+const YUKLE = { pano:panoYukle, istatistik:istatistikYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
   arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, market:marketYukle,
   reklam:reklamYukle, itiraz:itirazYukle, bildirim:bildirimYukle, hatalar:hatalarYukle };
 </script>

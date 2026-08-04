@@ -52,10 +52,12 @@ class BildirimServis {
           alert: true, badge: true, sound: true);
 
       await _kanallariKur();
-      await _yerel.initialize(const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(),
-      ));
+      await _yerel.initialize(
+        settings: const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+        ),
+      );
 
       // Öndeyken gelen mesajı elle göster (Android otomatik göstermez).
       FirebaseMessaging.onMessage.listen(_ondeGoster);
@@ -98,10 +100,10 @@ class BildirimServis {
     final kayit = _kanallar.firstWhere((k) => k.$1 == kanalId,
         orElse: () => _kanallar.first);
     _yerel.show(
-      bildirim.hashCode,
-      bildirim.title,
-      bildirim.body,
-      NotificationDetails(
+      id: bildirim.hashCode,
+      title: bildirim.title,
+      body: bildirim.body,
+      notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           kayit.$1, kayit.$2,
           importance: Importance.high,

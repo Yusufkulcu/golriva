@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
 import 'online/auth_ekrani.dart';
+import 'online/bildirim_servis.dart';
 import 'online/hata_raporu.dart';
 import 'online/online_servis.dart';
 import 'online/supabase_ayar.dart';
@@ -27,6 +28,8 @@ Future<void> main() async {
     hataBildir('global.platform', e, s);
     return true; // uygulamayi dusurme
   };
+  // FAZ 2.9: push bildirimi (Firebase config yoksa sessizce kapali kalir).
+  await BildirimServis.baslat();
   runApp(const GolrivaApp());
 }
 

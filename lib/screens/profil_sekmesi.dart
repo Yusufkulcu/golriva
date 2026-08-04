@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../online/bildirim_servis.dart';
 import '../online/hata_raporu.dart';
 import '../online/kayit_ekrani.dart';
 import '../online/online_servis.dart';
@@ -131,6 +132,7 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
       ),
     );
     if (onay != true || !mounted) return;
+    await BildirimServis.cikistaTemizle(); // bu cihaza artık bildirim gitmesin
     await OnlineServis().cikisYap();
     if (mounted) {
       // uygulamayi giris ekranindan yeniden baslat

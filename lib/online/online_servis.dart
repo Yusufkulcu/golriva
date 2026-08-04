@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'hata_raporu.dart';
 import 'mac_kanali.dart';
 import 'supabase_ayar.dart';
 
@@ -50,6 +51,26 @@ class OnlineServis {
   bool get girisYapildi =>
       SupabaseAyar.yapilandirildi && _c.auth.currentUser != null;
   String? get uid => _c.auth.currentUser?.id;
+
+  // ---------- FAZ 2.9: PUSH BİLDİRİMİ (FCM) ----------
+  /// Cihazın FCM jetonunu sunucuya yazar (aç­ılışta/girişte, jeton yenilenince).
+  Future<void> cihazTokenKaydet(String token, String platform) async {
+    if (!girisYapildi) return;
+    try {
+      await _c.rpc('cihaz_token_kaydet',
+          params: {'token_p': token, 'platform_p': platform});
+    } catch (e, s) {
+      hataBildir('online.cihazTokenKaydet', e, s);
+    }
+  }
+
+  /// Çıkışta bu cihazın jetonunu siler (artık bildirim gitmesin).
+  Future<void> cihazTokenSil(String token) async {
+    if (!SupabaseAyar.yapilandirildi) return;
+    try {
+      await _c.rpc('cihaz_token_sil', params: {'token_p': token});
+    } catch (_) {/* çıkış akışını bloklama */}
+  }
 
   /// Misafir oturumu (Supabase panelinde "Anonymous sign-ins" ACIK olmali).
   Future<void> misafirGiris() async {

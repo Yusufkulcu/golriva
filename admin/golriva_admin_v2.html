@@ -215,7 +215,7 @@ const SEKMELER = [
   ['pano','PANO'], ['kullanici','KULLANICILAR'], ['seri','SERİLER & MAÇLAR'],
   ['kuyruk','KUYRUK & DAVET'], ['arkadas','ARKADAŞLIKLAR'], ['lig','LİGLER & SEZON'],
   ['ekonomi','EKONOMİ'], ['market','MARKET'], ['reklam','REKLAM'], ['itiraz','İTİRAZLAR'],
-  ['hatalar','HATALAR'],
+  ['bildirim','BİLDİRİM'], ['hatalar','HATALAR'],
 ];
 for(const [k, adx] of SEKMELER){
   const b = document.createElement('div');
@@ -772,9 +772,99 @@ async function hataTemizle(){
     'Eski hata kayıtları silindi')) hatalarYukle();
 }
 
+/* ═══════════ 11. BİLDİRİM (push gönder) ═══════════ */
+/* İstediğin kullanıcıya ya da TÜM kullanıcılara Firebase push bildirimi
+   gönderir. Gönderimi 'bildirim-gonder' Edge Function yapar (FCM v1). */
+async function bildirimYukle(){
+  const p = $('#panel-bildirim');
+  p.innerHTML = '<div class="etiket">yükleniyor…</div>';
+  // kayıtlı cihaz sayısı + geçmiş (sunucu güncel değilse yönlendir)
+  let cihaz = 0, gecmis = [];
+  try{
+    cihaz = hataAt(await sb.from('cihaz_tokenleri').select('token',{count:'exact',head:true})).count ?? 0;
+    gecmis = hataAt(await sb.from('bildirim_gecmisi').select('*')
+      .order('created_at',{ascending:false}).limit(50)).data;
+  }catch(e){
+    p.innerHTML = `<div class="blok card">BİLDİRİM için sunucu güncellemesi gerekli:
+      Supabase SQL editöründe <b>supabase/faz2_9_bildirim.sql</b> çalıştırılmalı,
+      ayrıca <b>bildirim-gonder</b> Edge Function'ı kurulmalı.<br>
+      <span class="etiket">${kacir(e.message||e)}</span></div>`;
+    return;
+  }
+  await adYukle(gecmis.filter(x=>x.user_id).map(x=>x.user_id));
+  p.innerHTML = `
+    <div class="statlar">
+      <div class="stat gcard"><div class="deger">${cihaz}</div><div class="ad">KAYITLI CİHAZ</div></div>
+      <div class="stat gcard"><div class="deger">${gecmis.length}</div><div class="ad">SON GÖNDERİM</div></div>
+    </div>
+    <div class="blok card"><div class="baslik">YENİ BİLDİRİM GÖNDER</div>
+      <div class="satirform" style="flex-direction:column;align-items:stretch;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="bd-hedef" onchange="bildirimHedefDegis()" style="min-width:170px">
+            <option value="tum">TÜM KULLANICILAR</option>
+            <option value="kullanici">TEK KULLANICI</option>
+          </select>
+          <input id="bd-kullanici" placeholder="kullanıcı adı" style="width:170px;display:none">
+          <select id="bd-ses" style="min-width:130px" title="Android'de sesler uygulamaya gömülüdür">
+            <option value="cinlama">🔔 Çınlama</option>
+            <option value="zil">🎐 Zil</option>
+            <option value="sessiz">🔕 Sessiz</option>
+          </select>
+        </div>
+        <input id="bd-baslik" placeholder="Başlık (örn. Yeni sezon başladı!)" maxlength="60">
+        <textarea id="bd-govde" placeholder="Mesaj metni…" maxlength="180" rows="3"
+          style="resize:vertical;font-family:var(--govde)"></textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="altin" onclick="bildirimGonder()" id="bd-gonder">GÖNDER</button>
+          <span class="etiket">gönderim geri alınamaz — hedefi kontrol et</span>
+        </div>
+      </div>
+    </div>
+    <div class="blok card"><div class="baslik">GÖNDERİM GEÇMİŞİ (son 50)</div>
+    <table><tr><th>Tarih</th><th>Hedef</th><th>Başlık</th><th>Mesaj</th><th>Ses</th><th>İletildi</th><th>Başarısız</th></tr>
+    ${gecmis.map(x=>`<tr><td class="mono">${tarih(x.created_at)}</td>
+      <td>${x.hedef==='tum'?'<span class="hap gold">TÜMÜ</span>':`<b>${kacir(ad(x.user_id))}</b>`}</td>
+      <td><b>${kacir(x.baslik)}</b></td>
+      <td style="max-width:280px">${kacir(x.govde)}</td>
+      <td class="num">${kacir(x.ses||'—')}</td>
+      <td class="num arti">${x.gonderildi}</td>
+      <td class="num ${x.basarisiz>0?'eksi':''}">${x.basarisiz}</td></tr>`).join('')
+      || '<tr><td colspan="7" class="etiket">henüz gönderim yok</td></tr>'}
+    </table></div>`;
+}
+function bildirimHedefDegis(){
+  $('#bd-kullanici').style.display = $('#bd-hedef').value==='kullanici' ? 'inline-block' : 'none';
+}
+async function bildirimGonder(){
+  const hedef = $('#bd-hedef').value;
+  const kullanici_adi = $('#bd-kullanici').value.trim();
+  const baslik = $('#bd-baslik').value.trim();
+  const govde = $('#bd-govde').value.trim();
+  const ses = $('#bd-ses').value;
+  if(!baslik || !govde){ toast('Başlık ve mesaj gerekli', true); return; }
+  if(hedef==='kullanici' && !kullanici_adi){ toast('Kullanıcı adı gir', true); return; }
+  if(hedef==='tum' && !confirm('TÜM kullanıcılara bildirim gönderilsin mi?')) return;
+  const btn = $('#bd-gonder'); btn.disabled = true; btn.textContent = 'GÖNDERİLİYOR…';
+  try{
+    const { data, error } = await sb.functions.invoke('bildirim-gonder', {
+      body: { hedef, kullanici_adi, baslik, govde, ses },
+    });
+    if(error) throw error;
+    if(data && data.hata) throw new Error(data.hata);
+    const not = data?.not ? ' ('+data.not+')' : '';
+    toast(`Gönderildi: ${data?.gonderildi ?? 0} cihaz${data?.basarisiz ? ', '+data.basarisiz+' başarısız' : ''}${not}`);
+    $('#bd-baslik').value = ''; $('#bd-govde').value = '';
+    bildirimYukle();
+  }catch(e){
+    toast('Gönderilemedi: ' + (e.message||e), true);
+  }finally{
+    btn.disabled = false; btn.textContent = 'GÖNDER';
+  }
+}
+
 const YUKLE = { pano:panoYukle, kullanici:kullaniciYukle, seri:seriYukle, kuyruk:kuyrukYukle,
   arkadas:arkadasYukle, lig:ligYukle, ekonomi:ekonomiYukle, market:marketYukle,
-  reklam:reklamYukle, itiraz:itirazYukle, hatalar:hatalarYukle };
+  reklam:reklamYukle, itiraz:itirazYukle, bildirim:bildirimYukle, hatalar:hatalarYukle };
 </script>
 </body>
 </html>

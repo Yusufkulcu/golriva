@@ -8,7 +8,7 @@ import 'supabase_ayar.dart';
 /// panelinin HATALAR sekmesinde okunur. Sunucu tarafi: faz2_8_hata.sql.
 
 /// pubspec.yaml surumuyle birlikte guncellenir.
-const uygulamaSurumu = '1.0.0+2';
+const uygulamaSurumu = '1.0.4+6';
 
 String get _platformAdi =>
     kIsWeb ? 'web' : defaultTargetPlatform.name; // android / ios / ...

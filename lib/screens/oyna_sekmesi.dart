@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../online/arama_ekrani.dart';
 import '../online/hata_raporu.dart';
-import '../online/kayit_ekrani.dart';
+import '../online/auth_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
@@ -101,10 +101,13 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
       return;
     }
     if (profil == null) {
-      final oldu = await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const KayitEkrani()));
+      // Oturum yok ya da profil tamamlanmamış: tek doğru yer giriş/kayıt
+      // ekranıdır (AuthEkrani doğru adımı kendisi seçer).
+      await Navigator.push(context,
+          MaterialPageRoute(builder: (_) => AuthEkrani(repos: widget.repos)));
+      if (!mounted) return;
       await _yenile();
-      if (oldu != true || profil == null) return;
+      if (profil == null) return;
     }
     final m = _seciliMasaBilgi;
     if (m != null && _kilitli(m, mod)) {

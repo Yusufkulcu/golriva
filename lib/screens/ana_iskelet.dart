@@ -60,7 +60,7 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
     final sayfa = switch (sekme) {
       1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
       2 => MagazaSekmesi(key: ValueKey('magaza-$tazelik')),
-      3 => ProfilSekmesi(key: ValueKey('profil-$tazelik')),
+      3 => ProfilSekmesi(key: ValueKey('profil-$tazelik'), repos: widget.repos),
       _ => OynaSekmesi(
           key: ValueKey('oyna-$tazelik'),
           repos: widget.repos,

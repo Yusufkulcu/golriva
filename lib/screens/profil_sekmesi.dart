@@ -4,7 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../online/bildirim_servis.dart';
 import '../online/oturum_bekcisi.dart';
 import '../online/hata_raporu.dart';
-import '../online/kayit_ekrani.dart';
+import '../data/repos.dart';
+import '../online/auth_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/oyun_yonlendirici.dart';
 import '../online/supabase_ayar.dart';
@@ -22,7 +23,8 @@ const _aylar = [
 /// EKRAN 10 · PROFİL — avatar, kimlik, ELO/SERİ/GALİBİYET, lig kartı,
 /// oyun performansı, rozetler.
 class ProfilSekmesi extends StatefulWidget {
-  const ProfilSekmesi({super.key});
+  final GolrivaRepos repos;
+  const ProfilSekmesi({super.key, required this.repos});
 
   @override
   State<ProfilSekmesi> createState() => _ProfilSekmesiState();
@@ -488,9 +490,11 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
               SizedBox(
                 width: 220,
                 child: goldButon('HESAP AÇ · +500 RIVA', () async {
-                  await Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const KayitEkrani()));
-                  _yukle();
+                  await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => AuthEkrani(repos: widget.repos)));
+                  if (mounted) _yukle();
                 }, yazi: 15),
               ),
             ],

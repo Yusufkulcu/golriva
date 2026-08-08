@@ -41,6 +41,27 @@ class _AuthEkraniState extends State<AuthEkrani> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // TEK GİRİŞ NOKTASI KURALI: bu ekran, oturum durumu ne olursa olsun
+    // doğru adımı gösterir. Oturum açık ama profil yoksa (yarım kalmış
+    // kayıt) doğrudan kullanıcı adı seçimine geçilir; profil de varsa bu
+    // ekranın işi yoktur, ana sayfaya gidilir.
+    if (servis.girisYapildi) {
+      servis.profilGetir().then((p) {
+        if (!mounted) return;
+        if (p == null) {
+          _gec(_Adim.kullaniciAdi);
+        } else {
+          _anaSayfa();
+        }
+      }).catchError((Object e, StackTrace s) {
+        hataBildir('auth.initState', e, s); // giriş adımında kal
+      });
+    }
+  }
+
   void _gec(_Adim a) => setState(() {
         adim = a;
         hata = null;
@@ -58,8 +79,11 @@ class _AuthEkraniState extends State<AuthEkrani> {
     }
   }
 
-  void _anaSayfa() => Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => AnaIskelet(repos: widget.repos)));
+  // Alttaki eski rotalar da temizlenir: bu ekran bir sekmenin içinden
+  // açılmış olsa bile giriş sonrası yığın tertemiz ana iskelettir.
+  void _anaSayfa() => Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => AnaIskelet(repos: widget.repos)),
+      (_) => false);
 
   Future<void> _calistir(Future<void> Function() is_) async {
     setState(() {

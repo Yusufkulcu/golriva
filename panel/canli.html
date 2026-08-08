@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Canlı Oyunlar · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'canli', baslik:'Canlı Oyunlar', alt:'Kuyruk, süren düellolar ve davetler — kendiliğinden tazelenir'})) return;
+  document.getElementById('ust-sag').innerHTML = tazeleGostergeHtml();
+
+  document.getElementById('govde').innerHTML =
+    '<div class="izgara k4" id="olcutler" style="margin-bottom:14px"></div>'+
+    '<div class="kart" style="margin-bottom:14px">'+
+      '<div class="kart-bas"><h2>Süren düellolar</h2><span class="ipucu" id="seri-say"></span></div>'+
+      '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli">'+
+      '<thead><tr><th>Oyuncular</th><th>Masa / Mod</th><th>Skor</th><th>Şu anki oyun</th><th>Süre</th><th></th></tr></thead>'+
+      '<tbody id="seriler"><tr><td colspan="6"><div class="yukleniyor">Yükleniyor…</div></td></tr></tbody>'+
+      '</table></div></div></div>'+
+
+    '<div class="izgara k2">'+
+      '<div class="kart">'+
+        '<div class="kart-bas"><h2>Eşleşme kuyruğu</h2><span class="ipucu" id="kuyruk-say"></span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli">'+
+        '<thead><tr><th>Oyuncu</th><th>Masa / Mod</th><th>Elo</th><th>Bekleme</th><th></th></tr></thead>'+
+        '<tbody id="kuyruk"></tbody></table></div></div></div>'+
+
+      '<div class="kart">'+
+        '<div class="kart-bas"><h2>Bekleyen davetler</h2><span class="ipucu" id="davet-say"></span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli">'+
+        '<thead><tr><th>Kod</th><th>Kuran</th><th>Mod</th><th>Açılış</th><th></th></tr></thead>'+
+        '<tbody id="davetler"></tbody></table></div></div></div>'+
+    '</div>';
+
+  function sure(iso){
+    var dk = Math.floor((Date.now()-new Date(iso).getTime())/60000);
+    var sinif = dk>15 ? 'kotu' : (dk>7 ? 'uyari' : 'notr');
+    return '<span class="rz '+sinif+'">'+(dk<1?'<1':dk)+' dk</span>';
+  }
+
+  async function yukle(){
+    // ── veriler ──
+    var seriler = hataAt(await sb.from('seriler')
+        .select('id,mod,masa_kod,dostluk,p1,p2,skor1,skor2,oyun_sayisi,created_at')
+        .eq('durum','oyunda').order('created_at',{ascending:false}).limit(60)).data || [];
+    var kuyruk = hataAt(await sb.from('eslestirme_kuyrugu')
+        .select('user_id,mod,masa_kod,elo,created_at').order('created_at')).data || [];
+    var davetler = hataAt(await sb.from('davetler')
+        .select('kod,kurucu,mod,oyun_kodu,created_at').eq('durum','bekliyor')
+        .order('created_at',{ascending:false}).limit(30)).data || [];
+
+    // süren maçlar (hangi oyun oynanıyor)
+    var seriIds = seriler.map(function(s){return s.id;});
+    var maclar = [];
+    if(seriIds.length){
+      maclar = hataAt(await sb.from('maclar').select('seri_id,oyun_kodu,seri_sira,durum')
+                 .in('seri_id', seriIds).eq('durum','oyunda')).data || [];
+    }
+    var macHar = {}; maclar.forEach(function(m){ macHar[m.seri_id] = m; });
+
+    // isimler
+    var uidler = [];
+    seriler.forEach(function(s){ uidler.push(s.p1, s.p2); });
+    kuyruk.forEach(function(k){ uidler.push(k.user_id); });
+    davetler.forEach(function(d){ uidler.push(d.kurucu); });
+    await adlariYukle(uidler);
+
+    // ── ölçütler ──
+    document.getElementById('olcutler').innerHTML =
+      ['<div class="olcut"><div class="etiket">Süren düello</div><div class="deger">'+seriler.length+'</div>'+
+         '<div class="not">'+maclar.length+' oyun aktif</div></div>',
+       '<div class="olcut"><div class="etiket">Kuyrukta bekleyen</div><div class="deger">'+kuyruk.length+'</div>'+
+         '<div class="not">'+(kuyruk.length?('en uzun '+gecen(kuyruk[0].created_at)):'boş')+'</div></div>',
+       '<div class="olcut"><div class="etiket">Bekleyen davet</div><div class="deger">'+davetler.length+'</div></div>',
+       '<div class="olcut"><div class="etiket">Dostluk maçı</div><div class="deger">'+
+         seriler.filter(function(s){return s.dostluk;}).length+'</div><div class="not">ekonomisiz</div></div>'
+      ].join('');
+
+    // ── seriler ──
+    document.getElementById('seri-say').textContent = seriler.length + ' kayıt';
+    document.getElementById('seriler').innerHTML = seriler.length ? seriler.map(function(s){
+      var m = macHar[s.id];
+      return '<tr>'+
+        '<td data-bas="Oyuncular"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          kisiHtml(s.p1)+'<span class="mono">vs</span>'+kisiHtml(s.p2)+'</div></td>'+
+        '<td data-bas="Masa">'+E(s.masa_kod)+' · '+E(s.mod)+
+          (s.dostluk?' <span class="rz vurgu">dostluk</span>':'')+'</td>'+
+        '<td data-bas="Skor" class="sayi">'+s.skor1+' – '+s.skor2+'</td>'+
+        '<td data-bas="Oyun">'+(m ? E(m.oyun_kodu)+' <span class="mono">('+m.seri_sira+'. oyun)</span>'
+                                  : '<span class="mono">bekliyor</span>')+'</td>'+
+        '<td data-bas="Süre">'+sure(s.created_at)+'</td>'+
+        '<td class="sag"><a class="kucuk sade dugme" href="karsilasmalar.html?seri='+s.id+'">Detay</a> '+
+          '<button class="kucuk tehlike" onclick="seriIptal(\''+s.id+'\')">İptal</button></td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="6">'+bosDurum('Şu anda süren düello yok')+'</td></tr>';
+
+    // ── kuyruk ──
+    document.getElementById('kuyruk-say').textContent = kuyruk.length + ' kişi';
+    document.getElementById('kuyruk').innerHTML = kuyruk.length ? kuyruk.map(function(k){
+      return '<tr><td data-bas="Oyuncu">'+kisiHtml(k.user_id)+'</td>'+
+        '<td data-bas="Masa">'+E(k.masa_kod)+' · '+E(k.mod)+'</td>'+
+        '<td data-bas="Elo" class="sayi">'+S(k.elo)+'</td>'+
+        '<td data-bas="Bekleme">'+sure(k.created_at)+'</td>'+
+        '<td class="sag"><button class="kucuk sade" onclick="kuyruktanCikar(\''+k.user_id+'\')">Çıkar</button></td></tr>';
+    }).join('') : '<tr><td colspan="5">'+bosDurum('Kuyruk boş')+'</td></tr>';
+
+    // ── davetler ──
+    document.getElementById('davet-say').textContent = davetler.length + ' davet';
+    document.getElementById('davetler').innerHTML = davetler.length ? davetler.map(function(d){
+      return '<tr><td data-bas="Kod" class="mono"><b>'+E(d.kod)+'</b></td>'+
+        '<td data-bas="Kuran">'+kisiHtml(d.kurucu)+'</td>'+
+        '<td data-bas="Mod">'+E(d.mod)+(d.oyun_kodu?' · '+E(d.oyun_kodu):' · rulet')+'</td>'+
+        '<td data-bas="Açılış">'+gecen(d.created_at)+' önce</td>'+
+        '<td class="sag"><button class="kucuk sade" onclick="davetSil(\''+E(d.kod)+'\')">Sil</button></td></tr>';
+    }).join('') : '<tr><td colspan="5">'+bosDurum('Bekleyen davet yok')+'</td></tr>';
+  }
+
+  window.seriIptal = async function(id){
+    var neden = prompt('İptal nedeni (oyunculara giriş ücreti iade edilir):', 'yönetici iptali');
+    if(neden === null) return;
+    if(await dene(async function(){ hataAt(await sb.rpc('admin_seri_iptal', {sid:id, neden:neden})); },
+                  'Düello iptal edildi, ücretler iade edildi')) Tazele.calistir();
+  };
+  window.kuyruktanCikar = async function(uid){
+    if(await dene(async function(){ hataAt(await sb.from('eslestirme_kuyrugu').delete().eq('user_id', uid)); },
+                  'Kuyruktan çıkarıldı')) Tazele.calistir();
+  };
+  window.davetSil = async function(kod){
+    if(await dene(async function(){ hataAt(await sb.from('davetler').delete().eq('kod', kod)); },
+                  'Davet silindi')) Tazele.calistir();
+  };
+
+  Tazele.baslat(yukle, 5000);
+})();
+</script>
+</body>
+</html>

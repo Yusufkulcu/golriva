@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veri İtirazları · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'itiraz', baslik:'Veri İtirazları', alt:'Oyuncuların bildirdiği futbolcu verisi hataları'})) return;
+  var G = document.getElementById('govde');
+  var DURUMLAR = {acik:'Açık', inceleniyor:'İnceleniyor', duzeltildi:'Düzeltildi', red:'Reddedildi'};
+  var RENK = {acik:'uyari', inceleniyor:'vurgu', duzeltildi:'iyi', red:'notr'};
+  var filtre = 'acik';
+
+  async function yukle(){
+    var q = sb.from('veri_itirazlari').select('*').order('created_at',{ascending:false}).limit(200);
+    if(filtre) q = q.eq('durum', filtre);
+    var kayitlar;
+    try{ kayitlar = hataAt(await q).data || []; }
+    catch(e){ G.innerHTML = sunucuEksik('supabase/admin_ek.sql', e); return; }
+    await adlariYukle(kayitlar.map(function(x){return x.user_id;}));
+
+    var sayilar = {};
+    for(var k in DURUMLAR){
+      try{ sayilar[k] = hataAt(await sb.from('veri_itirazlari')
+             .select('id',{count:'exact',head:true}).eq('durum',k)).count || 0; }catch(e){ sayilar[k]=0; }
+    }
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        Object.keys(DURUMLAR).map(function(k){
+          return '<div class="olcut"><div class="etiket">'+DURUMLAR[k]+'</div>'+
+                 '<div class="deger">'+S(sayilar[k])+'</div></div>';
+        }).join('')+
+      '</div>'+
+      '<div class="kart"><div class="kart-bas">'+
+        '<h2>İtirazlar</h2>'+
+        '<div class="sag"><select id="f" style="width:auto">'+
+          '<option value="">Tümü</option>'+
+          Object.keys(DURUMLAR).map(function(k){
+            return '<option value="'+k+'"'+(k===filtre?' selected':'')+'>'+DURUMLAR[k]+'</option>';}).join('')+
+        '</select></div></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Bildiren</th><th>Futbolcu</th><th>İtiraz</th><th>Durum</th><th>Yönetici notu</th><th></th>'+
+        '</tr></thead><tbody>'+
+        (kayitlar.length ? kayitlar.map(function(x){
+          return '<tr>'+
+            '<td data-bas="Bildiren">'+kisiHtml(x.user_id, TGun(x.created_at))+'</td>'+
+            '<td data-bas="Futbolcu"><b>'+E(x.oyuncu_adi)+'</b></td>'+
+            '<td data-bas="İtiraz" style="max-width:280px">'+E(x.mesaj)+'</td>'+
+            '<td data-bas="Durum"><select id="d-'+x.id+'" style="width:auto">'+
+              Object.keys(DURUMLAR).map(function(k){
+                return '<option value="'+k+'"'+(k===x.durum?' selected':'')+'>'+DURUMLAR[k]+'</option>';}).join('')+
+              '</select></td>'+
+            '<td data-bas="Not"><input id="n-'+x.id+'" value="'+E(x.admin_notu||'')+'" placeholder="not…"></td>'+
+            '<td class="sag"><button class="kucuk ana" onclick="kaydet('+x.id+')">Kaydet</button></td></tr>';
+        }).join('') : '<tr><td colspan="6">'+bosDurum('Bu durumda itiraz yok')+'</td></tr>')+
+        '</tbody></table></div></div></div>';
+
+    document.getElementById('f').onchange = function(){ filtre = this.value; yukle(); };
+  }
+
+  window.kaydet = async function(id){
+    if(await dene(async function(){
+      hataAt(await sb.from('veri_itirazlari').update({
+        durum: document.getElementById('d-'+id).value,
+        admin_notu: document.getElementById('n-'+id).value,
+        updated_at: new Date().toISOString()
+      }).eq('id', id));
+    }, 'İtiraz güncellendi')) yukle();
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

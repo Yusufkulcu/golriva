@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kullanıcılar · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'kullanici', baslik:'Kullanıcılar', alt:'Ara, incele, Riva düzelt, yasakla'})) return;
+
+  document.getElementById('govde').innerHTML =
+    '<div class="kart" style="margin-bottom:14px"><div class="kart-govde">'+
+      '<div class="satir-form">'+
+        '<div class="ara-kutu">'+IK.ara+'<input id="ara" placeholder="Kullanıcı adı ara…" autocomplete="off"></div>'+
+        '<select id="filtre"><option value="">Tüm kullanıcılar</option>'+
+          '<option value="yasakli">Yasaklılar</option><option value="aktif">Yasaksızlar</option></select>'+
+        '<select id="sirala"><option value="created_at">En yeni kayıt</option>'+
+          '<option value="elo">En yüksek Elo</option><option value="kullanici_adi">Ada göre (A-Z)</option></select>'+
+        '<button class="sade kucuk" onclick="yenile()">Yenile</button>'+
+        '<span class="ipucu" id="sonuc-say" style="margin-left:auto;color:var(--metin-3);font-size:12.5px"></span>'+
+      '</div>'+
+    '</div></div>'+
+    '<div class="kart"><div class="kart-govde sifir"><div class="tablo-sar">'+
+      '<table class="duyarli"><thead><tr>'+
+        '<th>Kullanıcı</th><th>Elo</th><th>Lig</th><th>Riva</th><th>Durum</th><th>Kayıt</th><th></th>'+
+      '</tr></thead><tbody id="liste"><tr><td colspan="7"><div class="yukleniyor">Yükleniyor…</div></td></tr></tbody></table>'+
+    '</div></div></div>';
+
+  async function yenile(){
+    var q = document.getElementById('ara').value.trim();
+    var f = document.getElementById('filtre').value;
+    var s = document.getElementById('sirala').value;
+
+    var sorgu = sb.from('profiller').select('id,kullanici_adi,elo,lig_kod,lig_puan,yasakli,yasak_nedeni,avatar_url,created_at');
+    if(q) sorgu = sorgu.ilike('kullanici_adi', '%'+q+'%');
+    if(f==='yasakli') sorgu = sorgu.eq('yasakli', true);
+    if(f==='aktif')   sorgu = sorgu.eq('yasakli', false);
+    sorgu = sorgu.order(s, {ascending: s==='kullanici_adi'}).limit(100);
+
+    var r;
+    try { r = hataAt(await sorgu); }
+    catch(e){ document.getElementById('liste').innerHTML =
+      '<tr><td colspan="7">'+bosDurum('Liste okunamadı: '+(e.message||e))+'</td></tr>'; return; }
+    var kisiler = r.data || [];
+
+    // cüzdanlar
+    var cuz = {};
+    if(kisiler.length){
+      var c = hataAt(await sb.from('cuzdanlar').select('user_id,bakiye')
+                .in('user_id', kisiler.map(function(k){return k.id;})));
+      (c.data||[]).forEach(function(x){ cuz[x.user_id] = x.bakiye; });
+    }
+    kisiler.forEach(function(k){ adlar[k.id] = {ad:k.kullanici_adi, avatar:k.avatar_url}; });
+
+    document.getElementById('sonuc-say').textContent = kisiler.length + ' kullanıcı' + (kisiler.length===100?' (ilk 100)':'');
+    document.getElementById('liste').innerHTML = kisiler.length ? kisiler.map(function(k){
+      return '<tr>'+
+        '<td data-bas="Kullanıcı">'+kisiHtml(k.id, k.id.slice(0,8))+'</td>'+
+        '<td data-bas="Elo" class="sayi">'+S(k.elo)+'</td>'+
+        '<td data-bas="Lig">'+E(k.lig_kod||'—')+' <span class="mono">'+S(k.lig_puan)+'</span></td>'+
+        '<td data-bas="Riva" class="sayi">'+S(cuz[k.id]!=null?cuz[k.id]:0)+'</td>'+
+        '<td data-bas="Durum">'+(k.yasakli
+            ? '<span class="rz kotu"><span class="nokta"></span>yasaklı</span>'
+            : '<span class="rz iyi"><span class="nokta"></span>aktif</span>')+'</td>'+
+        '<td data-bas="Kayıt" class="mono">'+TGun(k.created_at)+'</td>'+
+        '<td class="sag"><button class="kucuk" onclick="detay(\''+k.id+'\')">İncele</button></td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="7">'+bosDurum(q?'Eşleşen kullanıcı yok':'Henüz kullanıcı yok')+'</td></tr>';
+  }
+  window.yenile = yenile;
+
+  var zaman=null;
+  document.getElementById('ara').addEventListener('input', function(){
+    clearTimeout(zaman); zaman = setTimeout(yenile, 280);
+  });
+  document.getElementById('filtre').onchange = yenile;
+  document.getElementById('sirala').onchange = yenile;
+
+  window.detay = async function(uid){
+    cekmeceAc('Kullanıcı', '<div class="yukleniyor">Yükleniyor…</div>');
+    var p = hataAt(await sb.from('profiller').select('*').eq('id',uid).single()).data;
+    var c = (await sb.from('cuzdanlar').select('bakiye,updated_at').eq('user_id',uid).maybeSingle()).data;
+    var seriler = (await sb.from('seriler').select('id,mod,masa_kod,p1,p2,skor1,skor2,durum,kazanan,created_at')
+        .or('p1.eq.'+uid+',p2.eq.'+uid).order('created_at',{ascending:false}).limit(5)).data || [];
+    var defter = (await sb.from('defter').select('tip,miktar,aciklama,created_at')
+        .eq('user_id',uid).order('created_at',{ascending:false}).limit(8)).data || [];
+    var cihaz = (await sb.from('cihaz_tokenleri').select('platform,guncel_at').eq('user_id',uid)).data || [];
+
+    var rakipler = [];
+    seriler.forEach(function(s){ rakipler.push(s.p1===uid?s.p2:s.p1); });
+    await adlariYukle(rakipler);
+
+    var h =
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">'+
+        '<div class="avt" style="width:46px;height:46px;font-size:17px">'+
+          (p.avatar_url?'<img src="'+E(p.avatar_url)+'">':E(bas(p.kullanici_adi)))+'</div>'+
+        '<div><div style="font-size:16px;font-weight:650">'+E(p.kullanici_adi)+'</div>'+
+        '<div class="mono">'+E(p.id)+'</div></div></div>'+
+      (p.yasakli ? '<div class="uyari-kutu" style="background:var(--kotu-yumusak);border-color:var(--kotu);margin-bottom:12px">'+
+         '<b style="color:var(--kotu)">Yasaklı</b><br>'+E(p.yasak_nedeni||'neden belirtilmemiş')+'</div>' : '')+
+
+      '<div class="ozet-satir"><span>Riva bakiyesi</span><span>'+S(c?c.bakiye:0)+'</span></div>'+
+      '<div class="ozet-satir"><span>Elo</span><span>'+S(p.elo)+'</span></div>'+
+      '<div class="ozet-satir"><span>Lig</span><span>'+E(p.lig_kod||'—')+' · '+S(p.lig_puan)+' puan</span></div>'+
+      '<div class="ozet-satir"><span>Kayıt</span><span>'+T(p.created_at)+'</span></div>'+
+      '<div class="ozet-satir"><span>Cihaz</span><span>'+
+        (cihaz.length ? cihaz.map(function(x){return E(x.platform||'?');}).join(', ') : 'bildirim kaydı yok')+'</span></div>'+
+
+      '<div style="margin-top:18px"><label>Riva düzeltmesi</label>'+
+        '<div class="satir-form">'+
+          '<input id="d-miktar" type="number" placeholder="+100 / -50" style="width:110px">'+
+          '<input id="d-neden" placeholder="neden" style="flex:1;min-width:120px">'+
+          '<button class="ana kucuk" onclick="rivaDuzelt(\''+uid+'\')">Uygula</button>'+
+        '</div></div>'+
+
+      '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'+
+        (p.yasakli
+          ? '<button class="kucuk" onclick="yasakla(\''+uid+'\',false)">Yasağı kaldır</button>'
+          : '<button class="kucuk tehlike" onclick="yasakla(\''+uid+'\',true)">Yasakla</button>')+
+        '<button class="kucuk tehlike" onclick="kullaniciSil(\''+uid+'\',\''+E(p.kullanici_adi)+'\')">Hesabı sil</button>'+
+      '</div>'+
+
+      '<h4 style="margin:20px 0 8px;font-size:13px;color:var(--metin-2)">Son düellolar</h4>'+
+      (seriler.length ? seriler.map(function(s){
+        var rakip = s.p1===uid ? s.p2 : s.p1;
+        var benimSkor = s.p1===uid ? s.skor1 : s.skor2;
+        var rakipSkor = s.p1===uid ? s.skor2 : s.skor1;
+        var d = s.durum!=='bitti' ? '<span class="rz uyari">'+E(s.durum)+'</span>'
+              : (s.kazanan===uid ? '<span class="rz iyi">kazandı</span>'
+              : (s.kazanan==null ? '<span class="rz notr">berabere</span>' : '<span class="rz kotu">kaybetti</span>'));
+        return '<div class="ozet-satir"><span>'+E(ad(rakip))+' <span class="mono">'+E(s.masa_kod)+'</span></span>'+
+               '<span>'+benimSkor+'–'+rakipSkor+' '+d+'</span></div>';
+      }).join('') : '<div class="bos" style="padding:14px">Düello yok</div>')+
+
+      '<h4 style="margin:20px 0 8px;font-size:13px;color:var(--metin-2)">Son Riva hareketleri</h4>'+
+      (defter.length ? defter.map(function(x){
+        return '<div class="ozet-satir"><span>'+E(x.tip)+' <span class="mono">'+TGun(x.created_at)+'</span></span>'+
+               '<span class="'+(x.miktar>=0?'arti':'eksi')+'">'+(x.miktar>=0?'+':'')+S(x.miktar)+'</span></div>';
+      }).join('') : '<div class="bos" style="padding:14px">Hareket yok</div>');
+
+    document.getElementById('cekmece-baslik').textContent = p.kullanici_adi;
+    document.getElementById('cekmece-govde').innerHTML = h;
+  };
+
+  window.rivaDuzelt = async function(uid){
+    var m = parseInt(document.getElementById('d-miktar').value, 10);
+    var n = document.getElementById('d-neden').value.trim();
+    if(isNaN(m) || m===0){ toast('Geçerli bir miktar gir (örn. 100 ya da -50)', true); return; }
+    if(!n){ toast('Neden yazmalısın', true); return; }
+    if(await dene(async function(){ hataAt(await sb.rpc('admin_duzeltme',{u:uid, m:m, neden:n})); },
+        (m>0?'+':'')+m+' Riva işlendi')){ detay(uid); yenile(); }
+  };
+  window.yasakla = async function(uid, durum){
+    var neden = '';
+    if(durum){ neden = prompt('Yasak nedeni:', 'kural ihlali'); if(neden===null) return; }
+    if(await dene(async function(){ hataAt(await sb.rpc('admin_yasak',{u:uid, durum:durum, neden:neden})); },
+        durum?'Kullanıcı yasaklandı':'Yasak kaldırıldı')){ detay(uid); yenile(); }
+  };
+  window.kullaniciSil = async function(uid, isim){
+    if(!confirm(isim+' kalıcı olarak silinecek (profil, cüzdan, geçmiş). Emin misin?')) return;
+    if(prompt('Onaylamak için kullanıcı adını yaz: '+isim) !== isim){ toast('Onay eşleşmedi, iptal', true); return; }
+    if(await dene(async function(){ hataAt(await sb.from('profiller').delete().eq('id', uid)); },
+        'Kullanıcı silindi')){ cekmeceKapat(); yenile(); }
+  };
+
+  yenile();
+})();
+</script>
+</body>
+</html>

@@ -51,3 +51,6 @@ key.properties
 # admin panel yerel gizli anahtar dosyasi (service_role) — ASLA repoya girmez
 admin/golriva_admin_key.js
 golriva_admin_key.js
+
+# gecici silinecekler (device_bash rm yapamiyor)
+_to_delete/

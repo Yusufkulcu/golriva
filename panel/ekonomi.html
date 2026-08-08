@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riva Ekonomisi · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'ekonomi', baslik:'Riva Ekonomisi', alt:'Para akışı, kasa ve elle düzeltme'})) return;
+
+  var TIPLER = {baslangic:'Hoş geldin', seri_giris:'Düello girişi', seri_odul:'Düello ödülü',
+    berabere_iade:'Berabere iade', rake:'Kasa (rake)', reklam:'Reklam ödülü',
+    paket:'Satın alma', duzeltme:'Yönetici düzeltmesi'};
+
+  document.getElementById('govde').innerHTML =
+    '<div class="izgara k4" id="olcutler" style="margin-bottom:14px"></div>'+
+    '<div class="izgara k2" style="margin-bottom:14px">'+
+      '<div class="kart"><div class="kart-bas"><h2>Riva nereden geliyor / nereye gidiyor</h2>'+
+        '<span class="ipucu">tüm zamanlar</span></div>'+
+        '<div class="kart-govde" id="dagilim"></div></div>'+
+      '<div class="kart"><div class="kart-bas"><h2>Elle Riva düzeltmesi</h2></div>'+
+        '<div class="kart-govde">'+
+          '<div class="alan"><label>Kullanıcı</label><div id="e-kul"></div></div>'+
+          '<div class="satir-form">'+
+            '<input id="e-miktar" type="number" placeholder="+100 / -50" style="width:120px">'+
+            '<input id="e-neden" placeholder="neden (kayda geçer)" style="flex:1;min-width:140px">'+
+            '<button class="ana" onclick="duzelt()">Uygula</button>'+
+          '</div>'+
+          '<div class="uyari-kutu" style="margin-top:12px">Pozitif sayı Riva ekler, negatif sayı düşer. '+
+          'Her düzeltme deftere “yönetici düzeltmesi” olarak yazılır.</div>'+
+        '</div></div>'+
+    '</div>'+
+    '<div class="kart"><div class="kart-bas"><h2>Defter hareketleri</h2>'+
+      '<div class="sag"><select id="tip-filtre" style="width:auto"><option value="">Tüm tipler</option>'+
+        Object.keys(TIPLER).map(function(k){return '<option value="'+k+'">'+TIPLER[k]+'</option>';}).join('')+
+      '</select><button class="sade kucuk" onclick="defteriYukle()">Yenile</button></div></div>'+
+      '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli">'+
+      '<thead><tr><th>Kullanıcı</th><th>Tip</th><th>Miktar</th><th>Açıklama</th><th>Tarih</th></tr></thead>'+
+      '<tbody id="defter"><tr><td colspan="5"><div class="yukleniyor">Yükleniyor…</div></td></tr></tbody>'+
+      '</table></div></div></div>';
+
+  async function ozetYukle(){
+    var o = hataAt(await sb.from('v_ozet').select('*').single()).data;
+    var toplamCuzdan = o.dolasimdaki_riva;
+    document.getElementById('olcutler').innerHTML =
+      '<div class="olcut"><div class="etiket">Dolaşımdaki Riva</div><div class="deger">'+S(toplamCuzdan)+'</div>'+
+        '<div class="not">tüm cüzdanların toplamı</div></div>'+
+      '<div class="olcut"><div class="etiket">Kasa (rake)</div><div class="deger">'+S(o.kasa_toplam)+'</div>'+
+        '<div class="not artis">+'+S(o.kasa_bugun)+' bugün</div></div>'+
+      '<div class="olcut"><div class="etiket">Bugünkü düello</div><div class="deger">'+S(o.bugun_seri)+'</div></div>'+
+      '<div class="olcut"><div class="etiket">Bugün reklam ödülü</div><div class="deger">'+S(o.bugun_reklam)+'</div>'+
+        '<div class="not">'+S(o.bugun_reklam*50)+' Riva dağıtıldı</div></div>';
+  }
+
+  async function dagilimYukle(){
+    // tip bazında toplam (tek tek sorgu — küçük veri)
+    var kutu = document.getElementById('dagilim');
+    var satirlar = [];
+    for(var k in TIPLER){
+      var r = await sb.from('defter').select('miktar').eq('tip', k).limit(5000);
+      var toplam = (r.data||[]).reduce(function(t,x){ return t + (x.miktar||0); }, 0);
+      satirlar.push({ad:TIPLER[k], deger:toplam});
+    }
+    var max = Math.max(1, ...satirlar.map(function(s){ return Math.abs(s.deger); }));
+    kutu.innerHTML = satirlar.map(function(s){
+      return '<div class="yatay"><div class="ad">'+E(s.ad)+'</div>'+
+        '<div class="yol"><div class="dolgu" style="width:'+Math.round(Math.abs(s.deger)/max*100)+'%;'+
+        (s.deger<0?'background:var(--kotu)':'')+'"></div></div>'+
+        '<div class="deg '+(s.deger>=0?'arti':'eksi')+'">'+(s.deger>=0?'+':'')+S(s.deger)+'</div></div>';
+    }).join('');
+  }
+
+  async function defteriYukle(){
+    var t = document.getElementById('tip-filtre').value;
+    var q = sb.from('defter').select('user_id,tip,miktar,aciklama,created_at')
+             .order('created_at',{ascending:false}).limit(100);
+    if(t) q = q.eq('tip', t);
+    var r = hataAt(await q);
+    var kayitlar = r.data || [];
+    await adlariYukle(kayitlar.map(function(x){return x.user_id;}));
+    document.getElementById('defter').innerHTML = kayitlar.length ? kayitlar.map(function(x){
+      return '<tr><td data-bas="Kullanıcı">'+kisiHtml(x.user_id)+'</td>'+
+        '<td data-bas="Tip"><span class="rz notr">'+E(TIPLER[x.tip]||x.tip)+'</span></td>'+
+        '<td data-bas="Miktar" class="sayi '+(x.miktar>=0?'arti':'eksi')+'">'+(x.miktar>=0?'+':'')+S(x.miktar)+'</td>'+
+        '<td data-bas="Açıklama">'+E(x.aciklama||'—')+'</td>'+
+        '<td data-bas="Tarih" class="mono">'+T(x.created_at)+'</td></tr>';
+    }).join('') : '<tr><td colspan="5">'+bosDurum('Kayıt yok')+'</td></tr>';
+  }
+  window.defteriYukle = defteriYukle;
+  document.getElementById('tip-filtre').onchange = defteriYukle;
+
+  kullaniciSecici('e-kul', {yerTutucu:'kullanıcı ara (en az 3 harf)'});
+
+  window.duzelt = async function(){
+    var k = secilenKullanici('e-kul');
+    var m = parseInt(document.getElementById('e-miktar').value,10);
+    var n = document.getElementById('e-neden').value.trim();
+    if(!k){ toast('Önce listeden bir kullanıcı seç', true); return; }
+    if(isNaN(m) || m===0 || !n){ toast('Miktar ve neden gerekli', true); return; }
+    await dene(async function(){
+      hataAt(await sb.rpc('admin_duzeltme', {u:k.id, m:m, neden:n}));
+    }, k.kullanici_adi+' → '+(m>0?'+':'')+m+' Riva işlendi');
+    document.getElementById('e-miktar').value=''; document.getElementById('e-neden').value='';
+    seciciTemizle('e-kul');
+    ozetYukle(); defteriYukle();
+  };
+
+  try { await ozetYukle(); } catch(e){ document.getElementById('olcutler').innerHTML = sunucuEksik('supabase/admin_ek.sql', e); }
+  dagilimYukle(); defteriYukle();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GolRiva · Yönetim Girişi</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<!-- İSTEĞE BAĞLI: panelin yanında golriva_admin_key.js varsa otomatik giriş yapılır -->
+<script src="golriva_admin_key.js" onerror="void 0"></script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<div class="giris-sar">
+  <div class="giris">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <div style="width:36px;height:36px;border-radius:10px;background:var(--vurgu);color:#fff;
+        display:flex;align-items:center;justify-content:center;font-weight:700">GR</div>
+      <div>
+        <div style="font-size:17px;font-weight:650;letter-spacing:-.3px">GolRiva Yönetim</div>
+        <div style="font-size:12.5px;color:var(--metin-3)">Sunucuya bağlan</div>
+      </div>
+      <button class="kucuk sade" style="margin-left:auto" onclick="temaDegistir()" id="tema-btn"></button>
+    </div>
+
+    <div class="alan">
+      <label for="g-url">Supabase proje URL</label>
+      <input id="g-url" placeholder="https://xxxx.supabase.co" autocomplete="off">
+    </div>
+    <div class="alan">
+      <label for="g-anahtar">service_role anahtarı</label>
+      <input id="g-anahtar" type="password" placeholder="sb_secret_… ya da eyJ…" autocomplete="off">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:450;color:var(--metin-2);margin:2px 0 14px">
+      <input type="checkbox" id="g-hatirla" checked style="width:auto"> Bu tarayıcıda hatırla
+    </label>
+
+    <button class="ana" style="width:100%;justify-content:center;padding:10px" onclick="baglan()" id="g-btn">Bağlan</button>
+    <div class="hata-metin" id="g-hata"></div>
+
+    <div class="uyari-kutu">
+      <b style="color:var(--uyari)">Dikkat:</b> service_role anahtarı veritabanında her şeyi yapabilir.
+      Bu paneli yalnızca kendi bilgisayarında aç; anahtarı ya da ekran görüntüsünü kimseyle paylaşma.
+      <br><br>Anahtar: Supabase → Project Settings → API keys → <b>service_role</b>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('tema-btn').innerHTML = temaIkon();
+
+// kayıtlı bilgiler / gizli dosya
+(function(){
+  var o = oturumOku();
+  if(window.GLR_ADMIN && window.GLR_ADMIN.url && window.GLR_ADMIN.anahtar) o = window.GLR_ADMIN;
+  if(o){
+    document.getElementById('g-url').value = o.url || '';
+    document.getElementById('g-anahtar').value = o.anahtar || '';
+    if(o.url && o.anahtar) baglan(true);
+  }
+})();
+
+async function baglan(otomatik){
+  var url = document.getElementById('g-url').value.trim();
+  var anahtar = document.getElementById('g-anahtar').value.trim();
+  var h = document.getElementById('g-hata');
+  var btn = document.getElementById('g-btn');
+  h.textContent = '';
+  if(!url || !anahtar){ h.textContent = 'URL ve anahtar gerekli.'; return; }
+  if(typeof supabase === 'undefined'){ h.textContent = 'Supabase kütüphanesi yüklenemedi — bağlantını kontrol et.'; return; }
+
+  var uyari = anahtarOnKontrol(anahtar);
+  if(uyari){ h.textContent = uyari; return; }
+
+  btn.disabled = true; btn.textContent = 'Bağlanıyor…';
+  try{
+    await baglantiSina(url, anahtar);
+    if(document.getElementById('g-hatirla').checked || otomatik) oturumYaz({url:url, anahtar:anahtar});
+    location.href = 'pano.html';
+  }catch(e){
+    h.textContent = (e.message||e);
+    btn.disabled = false; btn.textContent = 'Bağlan';
+  }
+}
+document.addEventListener('keydown', function(e){ if(e.key==='Enter') baglan(); });
+</script>
+</body>
+</html>

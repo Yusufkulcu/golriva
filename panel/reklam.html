@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reklam · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'reklam', baslik:'Reklam', alt:'Maç sonu reklam limiti ve ödül kayıtları'})) return;
+  var G = document.getElementById('govde');
+
+  async function yukle(){
+    var bugunISO = new Date(new Date().setHours(0,0,0,0)).toISOString();
+    var oduller = [], bugunOdul = 0, limit = null, gecisBugun = 0, gecisToplam = 0, faz10 = true;
+    try{
+      oduller = hataAt(await sb.from('reklam_odulleri').select('*')
+                  .order('created_at',{ascending:false}).limit(100)).data || [];
+      bugunOdul = hataAt(await sb.from('reklam_odulleri').select('id',{count:'exact',head:true})
+                  .gte('created_at', bugunISO)).count || 0;
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_5_reklam.sql', e); return; }
+    try{
+      var a = hataAt(await sb.from('ayarlar').select('deger').eq('anahtar','gunluk_reklam').maybeSingle());
+      limit = a.data ? a.data.deger : '0';
+      gecisBugun  = hataAt(await sb.from('reklam_gosterimleri').select('id',{count:'exact',head:true})
+                     .gte('created_at', bugunISO)).count || 0;
+      gecisToplam = hataAt(await sb.from('reklam_gosterimleri').select('id',{count:'exact',head:true})).count || 0;
+    }catch(e){ faz10 = false; }
+
+    await adlariYukle(oduller.map(function(x){return x.user_id;}));
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        '<div class="olcut"><div class="etiket">Bugün ödüllü reklam</div><div class="deger">'+S(bugunOdul)+'</div>'+
+          '<div class="not">'+S(bugunOdul*50)+' Riva dağıtıldı</div></div>'+
+        '<div class="olcut"><div class="etiket">Bugün maç sonu reklamı</div><div class="deger">'+S(gecisBugun)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Toplam maç sonu</div><div class="deger">'+S(gecisToplam)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Günlük limit</div><div class="deger">'+(faz10?E(limit):'—')+'</div>'+
+          '<div class="not">kullanıcı başına</div></div>'+
+      '</div>'+
+
+      (faz10 ?
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>Maç sonu reklam limiti</h2>'+
+        '<span class="ipucu">bir kullanıcıya günde en fazla kaç kez maç sonunda reklam çıksın</span></div>'+
+        '<div class="kart-govde"><div class="satir-form">'+
+          '<input id="limit" type="number" min="0" max="50" value="'+E(limit)+'" style="width:100px">'+
+          '<button class="ana" onclick="limitKaydet()">Kaydet</button>'+
+          '<span style="color:var(--metin-3);font-size:12.5px">0 yazarsan maç sonu reklamı tamamen kapanır</span>'+
+        '</div></div></div>'
+      : '<div class="kart" style="margin-bottom:14px"><div class="kart-govde">'+
+          'Maç sonu reklam limiti için <code>supabase/faz2_10_hesap_reklam.sql</code> çalıştırılmalı.</div></div>')+
+
+      '<div class="kart"><div class="kart-bas"><h2>Ödüllü reklam kayıtları</h2><span class="ipucu">son 100</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Kullanıcı</th><th>Ağ</th><th>İşlem</th><th>Ödül</th><th>Tarih</th></tr></thead><tbody>'+
+        (oduller.length ? oduller.map(function(x){
+          return '<tr><td data-bas="Kullanıcı">'+kisiHtml(x.user_id)+'</td>'+
+            '<td data-bas="Ağ"><span class="rz notr">'+E(x.ag)+'</span></td>'+
+            '<td data-bas="İşlem" class="mono">'+E(x.ssv_islem_id)+'</td>'+
+            '<td data-bas="Ödül" class="sayi arti">+'+S(x.miktar)+'</td>'+
+            '<td data-bas="Tarih" class="mono">'+T(x.created_at)+'</td></tr>';
+        }).join('') : '<tr><td colspan="5">'+bosDurum('Henüz reklam ödülü yok')+'</td></tr>')+
+        '</tbody></table></div></div></div>';
+  }
+
+  window.limitKaydet = async function(){
+    var v = parseInt(document.getElementById('limit').value,10);
+    if(isNaN(v) || v<0){ toast('0 veya üzeri bir sayı gir', true); return; }
+    if(await dene(async function(){
+      hataAt(await sb.from('ayarlar').upsert({anahtar:'gunluk_reklam', deger:String(v),
+        guncel_at:new Date().toISOString()}, {onConflict:'anahtar'}));
+    }, 'Günlük limit '+v+' olarak kaydedildi')) yukle();
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

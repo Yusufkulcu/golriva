@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İstatistik · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'istatistik', baslik:'İstatistik', alt:'Büyüme, oynanış ve gelir kırılımı'})) return;
+  var G = document.getElementById('govde');
+
+  var OYUN_AD = {en_kisa_kadro:'En Kısa Kadro', kupa_drafti:'Kupa Draftı', en_genc_kadro:'En Genç Kadro',
+    bayrak_yarisi:'Bayrak Yarışı', hedefi_tuttur:'Hedefi Tuttur', bonservis_avi:'Bonservis Avı',
+    sari_kart_avi:'Sarı Kart Avı', mac_rekortmenleri:'Maç Rekortmenleri',
+    milli_gol_krallari:'Milli Gol Kralları', kariyer_ikizi:'Kariyer İkizi'};
+  function oyunAdi(k){ return OYUN_AD[k] || String(k||'?').replace(/_/g,' '); }
+
+  function cubukGrafik(veri, alan, baslik, ipucu){
+    var max = Math.max(1, ...veri.map(function(x){ return +x[alan]||0; }));
+    var c = veri.map(function(x){
+      var v = +x[alan]||0;
+      return '<div class="cubuk" style="height:'+Math.max(3, Math.round(v/max*100))+'%" title="'+
+             TGun(x.gun)+': '+v+'"></div>';
+    }).join('');
+    return '<div class="kart"><div class="kart-bas"><h2>'+E(baslik)+'</h2>'+
+      '<span class="ipucu">'+E(ipucu||'son 30 gün')+' · tepe '+S(max)+'</span></div>'+
+      '<div class="kart-govde"><div class="cubuklar">'+c+'</div>'+
+      '<div class="cubuk-alt"><span>'+TGun(veri[0]&&veri[0].gun)+'</span><span>bugün</span></div></div></div>';
+  }
+  function yatayGrafik(satirlar, adAlan, degerAlan, cevir){
+    if(!satirlar.length) return bosDurum('Veri yok');
+    var max = Math.max(1, ...satirlar.map(function(x){ return +x[degerAlan]||0; }));
+    return satirlar.map(function(x){
+      var v = +x[degerAlan]||0;
+      return '<div class="yatay"><div class="ad">'+E(cevir?cevir(x[adAlan]):x[adAlan])+'</div>'+
+        '<div class="yol"><div class="dolgu" style="width:'+Math.round(v/max*100)+'%"></div></div>'+
+        '<div class="deg">'+S(v)+'</div></div>';
+    }).join('');
+  }
+
+  async function yukle(){
+    var g, gun, oyun, saat, paket;
+    try{
+      g     = hataAt(await sb.from('v_ist_genel').select('*').single()).data;
+      gun   = hataAt(await sb.from('v_ist_gunluk').select('*')).data || [];
+      oyun  = hataAt(await sb.from('v_ist_oyun').select('*')).data || [];
+      saat  = hataAt(await sb.from('v_ist_saat').select('*')).data || [];
+      paket = hataAt(await sb.from('v_ist_paket').select('*')).data || [];
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_12_istatistik.sql', e); return; }
+
+    gun = gun.slice().sort(function(a,b){ return a.gun<b.gun?-1:1; });
+    var yogun = saat.reduce(function(a,b){ return (+b.adet > +a.adet) ? b : a; }, {saat:0,adet:0});
+    var macRekor = Math.max(0, ...gun.map(function(x){ return +x.mac||0; }));
+    var uyeRekor = Math.max(0, ...gun.map(function(x){ return +x.yeni_uye||0; }));
+    var maxSaat = Math.max(1, ...saat.map(function(s){ return +s.adet||0; }));
+
+    function o(deger, etiket, not){
+      return '<div class="olcut"><div class="etiket">'+etiket+'</div><div class="deger">'+deger+'</div>'+
+             (not?'<div class="not">'+not+'</div>':'')+'</div>';
+    }
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        o(S(g.toplam_uye),'Toplam üye','+'+S(g.bugun_uye)+' bugün')+
+        o(S(g.aktif_oyun),'Anlık aktif oyun', S(g.kuyrukta)+' kuyrukta')+
+        o(S(g.toplam_seri),'Toplam düello', S(g.dostluk_seri)+' dostluk')+
+        o(S(g.toplam_mac),'Toplam oyun','gün rekoru '+S(macRekor))+
+        o(S(g.riva_dolasim),'Dolaşımdaki Riva','kasa '+S(g.kasa_rake))+
+        o(S(g.satin_adet),'Satın alma',S(g.satin_riva)+' Riva')+
+        o(S(g.reklam_odul_adet),'Ödüllü reklam',S(g.reklam_gecis_adet)+' maç sonu')+
+        o(S(g.cihaz_android)+' / '+S(g.cihaz_ios),'Android / iOS','kayıtlı cihaz')+
+      '</div>'+
+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-govde" style="display:flex;gap:24px;flex-wrap:wrap">'+
+        '<div><div class="etiket" style="font-size:11.5px;color:var(--metin-3)">EN YOĞUN SAAT</div>'+
+          '<div style="font-size:20px;font-weight:650;margin-top:3px">'+
+          String(yogun.saat).padStart(2,'0')+':00</div>'+
+          '<div class="mono">'+S(yogun.adet)+' oyun · son 7 gün</div></div>'+
+        '<div><div class="etiket" style="font-size:11.5px;color:var(--metin-3)">GÜNLÜK ÜYE REKORU</div>'+
+          '<div style="font-size:20px;font-weight:650;margin-top:3px">'+S(uyeRekor)+'</div>'+
+          '<div class="mono">son 30 günde</div></div>'+
+        '<div><div class="etiket" style="font-size:11.5px;color:var(--metin-3)">GÜNLÜK OYUN REKORU</div>'+
+          '<div style="font-size:20px;font-weight:650;margin-top:3px">'+S(macRekor)+'</div>'+
+          '<div class="mono">son 30 günde</div></div>'+
+      '</div></div>'+
+
+      '<div class="izgara k2" style="margin-bottom:14px">'+
+        cubukGrafik(gun,'yeni_uye','Günlük yeni üye')+
+        cubukGrafik(gun,'mac','Günlük oynanan oyun')+
+        cubukGrafik(gun,'seri','Günlük düello')+
+        cubukGrafik(gun,'reklam_gecis','Günlük maç sonu reklamı')+
+      '</div>'+
+
+      '<div class="izgara k2">'+
+        '<div class="kart"><div class="kart-bas"><h2>Saat yoğunluğu</h2>'+
+          '<span class="ipucu">son 7 gün · oynanan oyun</span></div><div class="kart-govde">'+
+          '<div class="cubuklar">'+saat.map(function(s){
+            return '<div class="cubuk" style="height:'+Math.max(3,Math.round((+s.adet||0)/maxSaat*100))+'%" title="'+
+                   String(s.saat).padStart(2,'0')+':00 — '+s.adet+'"></div>';
+          }).join('')+'</div>'+
+          '<div class="cubuk-alt"><span>00:00</span><span>12:00</span><span>23:00</span></div></div></div>'+
+
+        '<div class="kart"><div class="kart-bas"><h2>Oyun modu dağılımı</h2></div>'+
+          '<div class="kart-govde">'+yatayGrafik(oyun,'oyun_kodu','adet',oyunAdi)+'</div></div>'+
+
+        '<div class="kart"><div class="kart-bas"><h2>Satılan paketler</h2></div>'+
+          '<div class="kart-govde">'+yatayGrafik(paket,'urun','adet')+'</div></div>'+
+
+        '<div class="kart"><div class="kart-bas"><h2>Günlük satılan Riva</h2></div>'+
+          '<div class="kart-govde"><div class="cubuklar">'+
+          (function(){
+            var m = Math.max(1, ...gun.map(function(x){ return +x.satin_riva||0; }));
+            return gun.map(function(x){
+              return '<div class="cubuk" style="height:'+Math.max(3,Math.round((+x.satin_riva||0)/m*100))+'%" title="'+
+                     TGun(x.gun)+': '+S(x.satin_riva)+'"></div>';
+            }).join('');
+          })()+
+          '</div><div class="cubuk-alt"><span>'+TGun(gun[0]&&gun[0].gun)+'</span><span>bugün</span></div></div></div>'+
+      '</div>';
+  }
+
+  yukle();
+})();
+</script>
+</body>
+</html>

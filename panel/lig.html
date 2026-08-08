@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ligler & Sezon · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'lig', baslik:'Ligler & Sezon', alt:'Lig kademeleri, dağılım ve sezon yönetimi'})) return;
+  var G = document.getElementById('govde');
+
+  async function yukle(){
+    var ligler=[], dagilim=[], sezon=null, enIyiler=[];
+    try{ ligler = hataAt(await sb.from('ligler').select('*').order('sira')).data || []; }
+    catch(e){ G.innerHTML = sunucuEksik('supabase/lig_ek.sql', e); return; }
+    try{ dagilim = hataAt(await sb.from('v_lig_dagilim').select('*')).data || []; }catch(e){}
+    try{ sezon = (await sb.from('sezonlar').select('*').eq('aktif',true).maybeSingle()).data; }catch(e){}
+    try{ enIyiler = hataAt(await sb.from('profiller').select('id,kullanici_adi,elo,lig_kod,lig_puan,avatar_url')
+            .order('elo',{ascending:false}).limit(10)).data || []; }catch(e){}
+    enIyiler.forEach(function(p){ adlar[p.id] = {ad:p.kullanici_adi, avatar:p.avatar_url}; });
+
+    var dagHar = {}; dagilim.forEach(function(d){ dagHar[d.ad] = d.oyuncu; });
+    var maxOyuncu = Math.max(1, ...dagilim.map(function(d){ return +d.oyuncu||0; }));
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        '<div class="olcut"><div class="etiket">Lig kademesi</div><div class="deger">'+ligler.length+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Aktif sezon</div><div class="deger" style="font-size:18px">'+
+          E(sezon ? sezon.ad : '—')+'</div>'+
+          (sezon ? '<div class="not">'+TGun(sezon.baslangic)+' başladı</div>' : '')+'</div>'+
+        '<div class="olcut"><div class="etiket">En yüksek Elo</div><div class="deger">'+
+          S(enIyiler.length?enIyiler[0].elo:0)+'</div>'+
+          (enIyiler.length?'<div class="not">'+E(enIyiler[0].kullanici_adi)+'</div>':'')+'</div>'+
+        '<div class="olcut"><div class="etiket">Toplam oyuncu</div><div class="deger">'+
+          S(dagilim.reduce(function(t,d){return t+(+d.oyuncu||0);},0))+'</div></div>'+
+      '</div>'+
+
+      '<div class="izgara k2" style="margin-bottom:14px">'+
+        '<div class="kart"><div class="kart-bas"><h2>Lig dağılımı</h2></div><div class="kart-govde">'+
+          (dagilim.length ? dagilim.map(function(d){
+            return '<div class="yatay"><div class="ad">'+E(d.ad)+'</div>'+
+              '<div class="yol"><div class="dolgu" style="width:'+Math.round((+d.oyuncu||0)/maxOyuncu*100)+'%"></div></div>'+
+              '<div class="deg">'+S(d.oyuncu)+'</div></div>';
+          }).join('') : bosDurum('Veri yok'))+'</div></div>'+
+
+        '<div class="kart"><div class="kart-bas"><h2>Elo sıralaması</h2><span class="ipucu">ilk 10</span></div>'+
+          '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><tbody>'+
+          (enIyiler.length ? enIyiler.map(function(p,i){
+            return '<tr><td data-bas="#" style="width:44px" class="sayi">'+(i+1)+'</td>'+
+              '<td data-bas="Oyuncu">'+kisiHtml(p.id, p.lig_kod)+'</td>'+
+              '<td data-bas="Elo" class="sag sayi"><b>'+S(p.elo)+'</b></td></tr>';
+          }).join('') : '<tr><td>'+bosDurum('Oyuncu yok')+'</td></tr>')+
+          '</tbody></table></div></div></div>'+
+      '</div>'+
+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>Lig kademeleri</h2>'+
+        '<span class="ipucu">terfi eşiği ve maç puanları</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>#</th><th>Lig</th><th>Oyuncu</th><th>Terfi eşiği</th><th>Bo1 G/M</th><th>Bo3 G/M</th>'+
+        '</tr></thead><tbody>'+
+        ligler.map(function(l){
+          return '<tr><td data-bas="#" class="sayi">'+l.sira+'</td>'+
+            '<td data-bas="Lig"><b>'+E(l.ad)+'</b> <span class="mono">'+E(l.kod)+'</span></td>'+
+            '<td data-bas="Oyuncu" class="sayi">'+S(dagHar[l.ad]||0)+'</td>'+
+            '<td data-bas="Eşik" class="sayi">'+S(l.terfi_esigi)+'</td>'+
+            '<td data-bas="Bo1" class="sayi">+'+l.g_bo1+' / '+l.k_bo1+'</td>'+
+            '<td data-bas="Bo3" class="sayi">+'+l.g_bo3+' / '+l.k_bo3+'</td></tr>';
+        }).join('')+
+        '</tbody></table></div></div></div>'+
+
+      '<div class="kart"><div class="kart-bas"><h2>Sezon sıfırlama</h2>'+
+        '<span class="ipucu">tüm oyuncuların lig puanı sıfırlanır, yeni sezon açılır</span></div>'+
+        '<div class="kart-govde">'+
+          '<div class="uyari-kutu" style="margin-top:0;margin-bottom:12px">'+
+            '<b style="color:var(--uyari)">Dikkat:</b> Bu işlem geri alınamaz. Aktif sezon kapanır, '+
+            'lig puanları sıfırlanır ve oyuncular başlangıç ligine döner.</div>'+
+          '<div class="satir-form">'+
+            '<input id="sezon-ad" placeholder="Yeni sezon adı (örn. Sezon 2)" style="min-width:220px">'+
+            '<button class="tehlike" onclick="sezonSifirla()">Sezonu sıfırla</button>'+
+          '</div>'+
+        '</div></div>';
+  }
+
+  window.sezonSifirla = async function(){
+    var ad = document.getElementById('sezon-ad').value.trim();
+    if(!ad){ toast('Yeni sezon adı gerekli', true); return; }
+    if(!confirm('"'+ad+'" başlatılacak. Tüm lig puanları sıfırlanacak. Emin misin?')) return;
+    if(prompt('Onaylamak için sezon adını tekrar yaz:') !== ad){ toast('Onay eşleşmedi, iptal', true); return; }
+    if(await dene(async function(){ hataAt(await sb.rpc('sezon_sifirla', {yeni_ad: ad})); },
+      'Yeni sezon başlatıldı: '+ad)) yukle();
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

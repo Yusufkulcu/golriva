@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Push Bildirim · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'bildirim', baslik:'Push Bildirim', alt:'Tek kullanıcıya ya da herkese bildirim gönder'})) return;
+  var G = document.getElementById('govde');
+
+  async function yukle(){
+    var cihaz=0, android=0, ios=0, gecmis=[];
+    try{
+      cihaz   = hataAt(await sb.from('cihaz_tokenleri').select('token',{count:'exact',head:true})).count || 0;
+      android = hataAt(await sb.from('cihaz_tokenleri').select('token',{count:'exact',head:true}).eq('platform','android')).count || 0;
+      ios     = hataAt(await sb.from('cihaz_tokenleri').select('token',{count:'exact',head:true}).eq('platform','ios')).count || 0;
+      gecmis  = hataAt(await sb.from('bildirim_gecmisi').select('*')
+                  .order('created_at',{ascending:false}).limit(50)).data || [];
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_9_bildirim.sql', e); return; }
+    await adlariYukle(gecmis.filter(function(x){return x.user_id;}).map(function(x){return x.user_id;}));
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        '<div class="olcut"><div class="etiket">Kayıtlı cihaz</div><div class="deger">'+S(cihaz)+'</div>'+
+          '<div class="not">bildirim alabilir</div></div>'+
+        '<div class="olcut"><div class="etiket">Android</div><div class="deger">'+S(android)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">iOS</div><div class="deger">'+S(ios)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Gönderim</div><div class="deger">'+gecmis.length+'</div>'+
+          '<div class="not">son kayıtlar</div></div>'+
+      '</div>'+
+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>Yeni bildirim</h2></div>'+
+        '<div class="kart-govde" style="max-width:560px">'+
+          '<div class="satir-form" style="margin-bottom:12px">'+
+            '<select id="hedef" onchange="hedefDegis()" style="min-width:180px">'+
+              '<option value="tum">Tüm kullanıcılar</option><option value="kullanici">Tek kullanıcı</option></select>'+
+            '<div id="bd-kul" style="display:none;min-width:230px"></div>'+
+          '</div>'+
+          '<div class="alan"><label>Başlık</label><input id="baslik" maxlength="60" placeholder="örn. Yeni sezon başladı!"></div>'+
+          '<div class="alan"><label>Mesaj</label><textarea id="govde-metin" rows="3" maxlength="180" '+
+            'placeholder="Bildirimde görünecek metin…"></textarea></div>'+
+          '<div class="satir-form">'+
+            '<button class="ana" id="gonder-btn" onclick="gonder()">Gönder</button>'+
+            '<span style="color:var(--metin-3);font-size:12.5px">gönderim geri alınamaz — hedefi kontrol et</span>'+
+          '</div>'+
+        '</div></div>'+
+
+      '<div class="kart"><div class="kart-bas"><h2>Gönderim geçmişi</h2><span class="ipucu">son 50</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Tarih</th><th>Hedef</th><th>Başlık</th><th>Mesaj</th><th>İletildi</th><th>Başarısız</th>'+
+        '</tr></thead><tbody>'+
+        (gecmis.length ? gecmis.map(function(x){
+          return '<tr><td data-bas="Tarih" class="mono">'+T(x.created_at)+'</td>'+
+            '<td data-bas="Hedef">'+(x.hedef==='tum'?'<span class="rz vurgu">herkes</span>':kisiHtml(x.user_id))+'</td>'+
+            '<td data-bas="Başlık"><b>'+E(x.baslik)+'</b></td>'+
+            '<td data-bas="Mesaj">'+E(x.govde)+'</td>'+
+            '<td data-bas="İletildi" class="sayi arti">'+S(x.gonderildi)+'</td>'+
+            '<td data-bas="Başarısız" class="sayi '+(x.basarisiz>0?'eksi':'')+'">'+S(x.basarisiz)+'</td></tr>';
+        }).join('') : '<tr><td colspan="6">'+bosDurum('Henüz bildirim gönderilmedi')+'</td></tr>')+
+        '</tbody></table></div></div></div>';
+
+    kullaniciSecici('bd-kul', {yerTutucu:'kullanıcı ara (en az 3 harf)'});
+    hedefDegis();
+  }
+
+  window.hedefDegis = function(){
+    document.getElementById('bd-kul').style.display =
+      document.getElementById('hedef').value==='kullanici' ? 'block' : 'none';
+  };
+
+  window.gonder = async function(){
+    var hedef = document.getElementById('hedef').value;
+    var k = secilenKullanici('bd-kul');
+    var baslik = document.getElementById('baslik').value.trim();
+    var govde  = document.getElementById('govde-metin').value.trim();
+    if(!baslik || !govde){ toast('Başlık ve mesaj gerekli', true); return; }
+    if(hedef==='kullanici' && !k){ toast('Önce listeden bir kullanıcı seç', true); return; }
+    if(hedef==='tum' && !confirm('Tüm kullanıcılara bildirim gönderilsin mi?')) return;
+
+    var btn = document.getElementById('gonder-btn');
+    btn.disabled = true; btn.textContent = 'Gönderiliyor…';
+    try{
+      var r = await sb.functions.invoke('bildirim-gonder',
+        {body:{hedef:hedef, user_id:(k?k.id:null), kullanici_adi:(k?k.kullanici_adi:''),
+               baslik:baslik, govde:govde}});
+      if(r.error) throw r.error;
+      if(r.data && r.data.hata) throw new Error(r.data.hata);
+      var d = r.data || {};
+      toast('Gönderildi: '+(d.gonderildi||0)+' cihaz'+(d.basarisiz?', '+d.basarisiz+' başarısız':'')+
+            (d.not?' ('+d.not+')':''));
+      document.getElementById('baslik').value=''; document.getElementById('govde-metin').value='';
+      yukle();
+    }catch(e){ toast('Gönderilemedi: '+(e.message||e), true); }
+    btn.disabled = false; btn.textContent = 'Gönder';
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

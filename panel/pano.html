@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pano · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'pano', baslik:'Pano', alt:'Sistemin genel durumu'})) return;
+  document.getElementById('ust-sag').innerHTML = tazeleGostergeHtml();
+
+  var G = document.getElementById('govde');
+
+  function olcut(deger, etiket, not, sinif){
+    return '<div class="olcut"><div class="etiket">'+E(etiket)+'</div>'+
+      '<div class="deger">'+deger+'</div>'+
+      (not ? '<div class="not '+(sinif||'')+'">'+E(not)+'</div>' : '')+'</div>';
+  }
+
+  async function yukle(){
+    var ozet, gunluk, ligler, kuyruk=0, davet=0, sonUyeler=[];
+    try{
+      ozet   = hataAt(await sb.from('v_ozet').select('*').single()).data;
+      gunluk = hataAt(await sb.from('v_gunluk').select('*')).data || [];
+      kuyruk = hataAt(await sb.from('eslestirme_kuyrugu').select('user_id',{count:'exact',head:true})).count || 0;
+      davet  = hataAt(await sb.from('davetler').select('kod',{count:'exact',head:true}).eq('durum','bekliyor')).count || 0;
+      sonUyeler = hataAt(await sb.from('profiller').select('id,kullanici_adi,elo,lig_kod,created_at')
+                     .order('created_at',{ascending:false}).limit(6)).data || [];
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/admin_ek.sql', e); return; }
+    try{ ligler = hataAt(await sb.from('v_lig_dagilim').select('*')).data || []; }catch(e){ ligler=[]; }
+
+    gunluk = gunluk.slice().sort(function(a,b){ return a.gun<b.gun?-1:1; });   // eskiden yeniye
+    var maxUye = Math.max(1, ...gunluk.map(function(x){return +x.yeni_kullanici||0;}));
+    var maxSeri= Math.max(1, ...gunluk.map(function(x){return +x.seri||0;}));
+
+    function cubukGrafik(alan, max, baslik){
+      var c = gunluk.map(function(x){
+        var v = +x[alan]||0;
+        return '<div class="cubuk" style="height:'+Math.max(3, Math.round(v/max*100))+'%" title="'+
+               TGun(x.gun)+': '+v+'"></div>';
+      }).join('');
+      return '<div class="kart"><div class="kart-bas"><h2>'+E(baslik)+'</h2>'+
+        '<span class="ipucu">son 14 gün · tepe '+max+'</span></div>'+
+        '<div class="kart-govde"><div class="cubuklar">'+c+'</div>'+
+        '<div class="cubuk-alt"><span>'+TGun(gunluk[0]&&gunluk[0].gun)+'</span><span>bugün</span></div>'+
+        '</div></div>';
+    }
+
+    var maxLig = Math.max(1, ...ligler.map(function(l){return +l.oyuncu||0;}));
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        olcut(S(ozet.toplam_kullanici),'Toplam kullanıcı', '+'+S(ozet.bugun_yeni)+' bugün','artis')+
+        olcut(S(ozet.aktif_seri),'Süren düello', kuyruk+' kişi kuyrukta')+
+        olcut(S(ozet.bugun_seri),'Bugünkü düello', davet+' bekleyen davet')+
+        olcut(S(ozet.dolasimdaki_riva),'Dolaşımdaki Riva','')+
+        olcut(S(ozet.kasa_toplam),'Kasa (rake)', '+'+S(ozet.kasa_bugun)+' bugün','artis')+
+        olcut(S(ozet.bugun_reklam),'Bugün izlenen reklam','')+
+        olcut(S(ozet.acik_itiraz),'Açık veri itirazı', ozet.acik_itiraz>0?'ilgilenilmeli':'temiz',
+              ozet.acik_itiraz>0?'dusus':'artis')+
+        olcut(S(sonUyeler.length? sonUyeler.length : 0),'Son kayıtlar','aşağıda')+
+      '</div>'+
+
+      '<div class="izgara k2" style="margin-bottom:14px">'+
+        cubukGrafik('yeni_kullanici', maxUye, 'Günlük yeni kullanıcı')+
+        cubukGrafik('seri', maxSeri, 'Günlük düello')+
+      '</div>'+
+
+      '<div class="izgara k2">'+
+        '<div class="kart"><div class="kart-bas"><h2>Son kaydolanlar</h2>'+
+          '<div class="sag"><a class="dugme kucuk" href="kullanicilar.html">Tümü</a></div></div>'+
+          '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><tbody>'+
+          (sonUyeler.length ? sonUyeler.map(function(u){
+            return '<tr><td data-bas="Kullanıcı">'+
+              '<div class="kisi"><div class="avt">'+E(bas(u.kullanici_adi))+'</div>'+
+              '<div><div class="isim">'+E(u.kullanici_adi)+'</div>'+
+              '<div class="ikincil">'+E(u.lig_kod||'—')+' · Elo '+S(u.elo)+'</div></div></div></td>'+
+              '<td data-bas="Kayıt" class="sag mono">'+gecen(u.created_at)+' önce</td></tr>';
+          }).join('') : '<tr><td>'+bosDurum('Henüz kullanıcı yok')+'</td></tr>')+
+          '</tbody></table></div></div></div>'+
+
+        '<div class="kart"><div class="kart-bas"><h2>Lig dağılımı</h2>'+
+          '<div class="sag"><a class="dugme kucuk" href="lig.html">Yönet</a></div></div>'+
+          '<div class="kart-govde">'+
+          (ligler.length ? ligler.map(function(l){
+            return '<div class="yatay"><div class="ad">'+E(l.ad)+'</div>'+
+              '<div class="yol"><div class="dolgu" style="width:'+Math.round((+l.oyuncu||0)/maxLig*100)+'%"></div></div>'+
+              '<div class="deg">'+S(l.oyuncu)+'</div></div>';
+          }).join('') : bosDurum('Lig verisi yok'))+
+          '</div></div>'+
+      '</div>';
+  }
+
+  Tazele.baslat(yukle, 15000);
+  document.querySelector('#ust-sag select').value = '10000';
+  Tazele.degistir(15000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karşılaşmalar · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'karsilasma', baslik:'Karşılaşmalar',
+                      alt:'Geçmiş düellolar, sonuçlar ve karşılaşma detayı'})) return;
+
+  var SAYFA_BOY = 40;
+  var sayfaNo = 0, toplam = 0, seriHar = {};
+  var OYUN = {}, MASALAR = [];
+
+  /* ── referans veriler ── */
+  try{
+    (hataAt(await sb.from('oyunlar').select('kod,ad')).data || [])
+      .forEach(function(o){ OYUN[o.kod] = o.ad; });
+    MASALAR = hataAt(await sb.from('masalar').select('kod').order('kod')).data || [];
+  }catch(e){ /* referans yoksa kodlar ham gösterilir */ }
+
+  function oyunAd(k){ return OYUN[k] || k || '—'; }
+  function sureMetni(a, b){
+    if(!a || !b) return '—';
+    var sn = Math.round((new Date(b) - new Date(a)) / 1000);
+    if(sn < 0 || isNaN(sn)) return '—';
+    var dk = Math.floor(sn/60), kalan = sn % 60;
+    return dk ? (dk + ' dk ' + (kalan<10?'0':'') + kalan + ' sn') : (sn + ' sn');
+  }
+  function sonucRozet(s){
+    if(s.durum === 'iptal')  return '<span class="rz kotu">iptal</span>';
+    if(s.durum === 'oyunda') return '<span class="rz vurgu"><span class="nokta canli"></span> sürüyor</span>';
+    if(!s.kazanan)           return '<span class="rz notr">berabere</span>';
+    return '<span class="rz iyi">'+E(ad(s.kazanan))+'</span>';
+  }
+  function turRozet(s){
+    return s.dostluk ? '<span class="rz notr">dostluk</span>' : '<span class="rz vurgu">dereceli</span>';
+  }
+
+  /* ── iskelet ── */
+  document.getElementById('govde').innerHTML =
+    '<div class="izgara k4" id="olcutler" style="margin-bottom:14px"></div>'+
+
+    '<div class="kart" style="margin-bottom:14px"><div class="kart-govde">'+
+      '<div class="satir-form" style="flex-wrap:wrap">'+
+        '<select id="f-durum" style="width:auto"><option value="bitti">Biten</option>'+
+          '<option value="iptal">İptal</option><option value="oyunda">Süren</option>'+
+          '<option value="">Tüm durumlar</option></select>'+
+        '<select id="f-mod" style="width:auto"><option value="">Tüm modlar</option>'+
+          '<option value="bo1">Bo1</option><option value="bo3">Bo3</option></select>'+
+        '<select id="f-masa" style="width:auto"><option value="">Tüm masalar</option>'+
+          MASALAR.map(function(m){ return '<option value="'+E(m.kod)+'">'+E(m.kod)+'</option>'; }).join('')+
+        '</select>'+
+        '<select id="f-tur" style="width:auto"><option value="">Dereceli + dostluk</option>'+
+          '<option value="false">Sadece dereceli</option><option value="true">Sadece dostluk</option></select>'+
+        '<select id="f-zaman" style="width:auto"><option value="1">Son 24 saat</option>'+
+          '<option value="7" selected>Son 7 gün</option><option value="30">Son 30 gün</option>'+
+          '<option value="">Tüm zamanlar</option></select>'+
+        '<button class="sade kucuk" onclick="filtreSifirla()">Sıfırla</button>'+
+      '</div>'+
+      '<div class="satir-form" style="margin-top:10px;flex-wrap:wrap;align-items:flex-end">'+
+        '<div style="flex:0 1 280px"><label style="font-size:12px;color:var(--metin-2);display:block;margin-bottom:5px">'+
+          'Oyuncuya göre süz</label><div id="f-kul"></div></div>'+
+        '<button class="sade kucuk" onclick="oyuncuTemizle()">Oyuncu süzgecini kaldır</button>'+
+      '</div>'+
+    '</div></div>'+
+
+    '<div class="kart">'+
+      '<div class="kart-bas"><h2>Karşılaşmalar</h2><span class="ipucu" id="say"></span>'+
+        '<div class="sag"><button class="sade kucuk" onclick="yenile()">Yenile</button></div></div>'+
+      '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli">'+
+        '<thead><tr><th>Oyuncular</th><th>Skor</th><th>Masa / Mod</th><th>Tür</th>'+
+        '<th>Sonuç</th><th>Süre</th><th>Tarih</th><th></th></tr></thead>'+
+        '<tbody id="satirlar"><tr><td colspan="8"><div class="yukleniyor">Yükleniyor…</div></td></tr></tbody>'+
+      '</table></div>'+
+      '<div class="sayfalama">'+
+        '<span id="aralik"></span>'+
+        '<button class="sade kucuk" id="onceki" onclick="sayfaGit(-1)">‹ Önceki</button>'+
+        '<button class="sade kucuk" id="sonraki" onclick="sayfaGit(1)">Sonraki ›</button>'+
+      '</div></div>'+
+    '</div>';
+
+  kullaniciSecici('f-kul', {yerTutucu:'oyuncu ara (en az 3 harf)', secildi:function(){ sayfaNo=0; yenile(); }});
+
+  ['f-durum','f-mod','f-masa','f-tur','f-zaman'].forEach(function(id){
+    document.getElementById(id).onchange = function(){ sayfaNo = 0; yenile(); };
+  });
+
+  /* ── sorgu ── */
+  function sorguKur(sayimIcin){
+    var q = sb.from('seriler').select(
+      'id,mod,masa_kod,dostluk,sabit_oyun,p1,p2,skor1,skor2,oyun_sayisi,durum,kazanan,created_at,finished_at',
+      sayimIcin ? {count:'exact'} : undefined);
+    var durum = document.getElementById('f-durum').value;
+    var mod   = document.getElementById('f-mod').value;
+    var masa  = document.getElementById('f-masa').value;
+    var tur   = document.getElementById('f-tur').value;
+    var gun   = document.getElementById('f-zaman').value;
+    var kul   = secilenKullanici('f-kul');
+    if(durum) q = q.eq('durum', durum);
+    if(mod)   q = q.eq('mod', mod);
+    if(masa)  q = q.eq('masa_kod', masa);
+    if(tur)   q = q.eq('dostluk', tur === 'true');
+    if(gun)   q = q.gte('created_at', new Date(Date.now() - (+gun)*86400000).toISOString());
+    if(kul)   q = q.or('p1.eq.'+kul.id+',p2.eq.'+kul.id);
+    return q;
+  }
+
+  async function olcutleriYukle(){
+    var k = document.getElementById('olcutler');
+    try{
+      var gun1 = new Date(Date.now()-86400000).toISOString();
+      var bitti = hataAt(await sb.from('seriler').select('id',{count:'exact',head:true}).eq('durum','bitti')).count||0;
+      var bugun = hataAt(await sb.from('seriler').select('id',{count:'exact',head:true})
+                    .eq('durum','bitti').gte('finished_at',gun1)).count||0;
+      var iptal = hataAt(await sb.from('seriler').select('id',{count:'exact',head:true}).eq('durum','iptal')).count||0;
+      var berab = hataAt(await sb.from('seriler').select('id',{count:'exact',head:true})
+                    .eq('durum','bitti').is('kazanan',null)).count||0;
+      k.innerHTML =
+        '<div class="olcut"><div class="etiket">Biten düello</div><div class="deger">'+S(bitti)+'</div>'+
+          '<div class="not">tüm zamanlar</div></div>'+
+        '<div class="olcut"><div class="etiket">Son 24 saat</div><div class="deger">'+S(bugun)+'</div>'+
+          '<div class="not">biten karşılaşma</div></div>'+
+        '<div class="olcut"><div class="etiket">Berabere</div><div class="deger">'+S(berab)+'</div>'+
+          '<div class="not">'+(bitti? (Math.round(berab/bitti*1000)/10)+'%' : '—')+' oranında</div></div>'+
+        '<div class="olcut"><div class="etiket">İptal</div><div class="deger">'+S(iptal)+'</div>'+
+          '<div class="not">ücret iadeli</div></div>';
+    }catch(e){ k.innerHTML = ''; }
+  }
+
+  async function yenile(){
+    var govde = document.getElementById('satirlar');
+    govde.innerHTML = '<tr><td colspan="8"><div class="yukleniyor">Yükleniyor…</div></td></tr>';
+    var r;
+    try{
+      r = hataAt(await sorguKur(true)
+            .order('created_at',{ascending:false})
+            .range(sayfaNo*SAYFA_BOY, sayfaNo*SAYFA_BOY + SAYFA_BOY - 1));
+    }catch(e){
+      govde.innerHTML = '<tr><td colspan="8">'+bosDurum('Kayıtlar okunamadı: '+(e.message||e))+'</td></tr>';
+      return;
+    }
+    var liste = r.data || [];
+    toplam = r.count == null ? liste.length : r.count;
+    seriHar = {}; liste.forEach(function(s){ seriHar[s.id] = s; });
+
+    var uidler = [];
+    liste.forEach(function(s){ uidler.push(s.p1, s.p2, s.kazanan); });
+    await adlariYukle(uidler);
+
+    document.getElementById('say').textContent = S(toplam) + ' karşılaşma';
+    var bas = toplam ? sayfaNo*SAYFA_BOY + 1 : 0;
+    var son = Math.min((sayfaNo+1)*SAYFA_BOY, toplam);
+    document.getElementById('aralik').textContent = bas + '–' + son + ' / ' + S(toplam);
+    document.getElementById('onceki').disabled  = sayfaNo === 0;
+    document.getElementById('sonraki').disabled = son >= toplam;
+
+    govde.innerHTML = liste.length ? liste.map(function(s){
+      var k1 = s.kazanan && s.kazanan === s.p1, k2 = s.kazanan && s.kazanan === s.p2;
+      return '<tr>'+
+        '<td data-bas="Oyuncular"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<span class="'+(k1?'kazandi':'')+'">'+kisiHtml(s.p1)+'</span>'+
+          '<span class="mono">vs</span>'+
+          '<span class="'+(k2?'kazandi':'')+'">'+kisiHtml(s.p2)+'</span></div></td>'+
+        '<td data-bas="Skor" class="sayi"><b>'+s.skor1+' – '+s.skor2+'</b></td>'+
+        '<td data-bas="Masa / Mod">'+E(s.masa_kod)+' · '+E(s.mod)+'</td>'+
+        '<td data-bas="Tür">'+turRozet(s)+'</td>'+
+        '<td data-bas="Sonuç">'+sonucRozet(s)+'</td>'+
+        '<td data-bas="Süre" class="mono">'+sureMetni(s.created_at, s.finished_at)+'</td>'+
+        '<td data-bas="Tarih" class="mono">'+T(s.finished_at || s.created_at)+'</td>'+
+        '<td class="sag"><button class="kucuk sade" onclick="detay(\''+s.id+'\')">Detay</button></td>'+
+      '</tr>';
+    }).join('') : '<tr><td colspan="8">'+bosDurum('Bu süzgeçlerle karşılaşma bulunamadı')+'</td></tr>';
+  }
+  window.yenile = yenile;
+
+  window.sayfaGit = function(yon){
+    var yeni = sayfaNo + yon;
+    if(yeni < 0 || yeni*SAYFA_BOY >= toplam) return;
+    sayfaNo = yeni; yenile();
+    window.scrollTo({top:0, behavior:'smooth'});
+  };
+  window.filtreSifirla = function(){
+    document.getElementById('f-durum').value = 'bitti';
+    document.getElementById('f-mod').value = '';
+    document.getElementById('f-masa').value = '';
+    document.getElementById('f-tur').value = '';
+    document.getElementById('f-zaman').value = '7';
+    seciciTemizle('f-kul');
+    sayfaNo = 0; yenile();
+  };
+  window.oyuncuTemizle = function(){ seciciTemizle('f-kul'); sayfaNo = 0; yenile(); };
+
+  /* ══════ KARŞILAŞMA DETAYI (modal) ══════ */
+  window.detay = async function(id){
+    modalAc('Karşılaşma detayı<small class="mono">'+E(id)+'</small>',
+            '<div class="yukleniyor">Detay yükleniyor…</div>', true);
+    try{
+      var s = hataAt(await sb.from('seriler').select('*').eq('id', id).single()).data;
+      var maclar = hataAt(await sb.from('maclar')
+            .select('id,seri_sira,oyun_kodu,durum,kazanan,created_at,finished_at')
+            .eq('seri_id', id).order('seri_sira')).data || [];
+
+      var defter = [];
+      try{
+        defter = hataAt(await sb.from('defter').select('user_id,tip,miktar,aciklama,created_at')
+                   .eq('seri_id', id).order('created_at')).data || [];
+      }catch(e){ /* defter okunamazsa blok gizlenir */ }
+
+      var hamleSay = {};
+      if(maclar.length){
+        try{
+          (hataAt(await sb.from('hamleler').select('mac_id')
+             .in('mac_id', maclar.map(function(m){return m.id;})).limit(5000)).data || [])
+            .forEach(function(h){ hamleSay[h.mac_id] = (hamleSay[h.mac_id]||0) + 1; });
+        }catch(e){}
+      }
+
+      await adlariYukle([s.p1, s.p2, s.kazanan].concat(defter.map(function(d){return d.user_id;})));
+
+      var k1 = s.kazanan && s.kazanan === s.p1, k2 = s.kazanan && s.kazanan === s.p2;
+      var bitti = s.durum === 'bitti';
+
+      var ust =
+        '<div class="mac-ust">'+
+          '<div class="taraf '+(k1?'kazandi':(bitti&&k2?'kaybetti':''))+'">'+kisiHtml(s.p1)+'</div>'+
+          '<div class="mac-skor"><span class="'+(k1?'kazandi':'')+'">'+s.skor1+'</span>'+
+            '<span class="ayrac">–</span><span class="'+(k2?'kazandi':'')+'">'+s.skor2+'</span></div>'+
+          '<div class="taraf sagda '+(k2?'kazandi':(bitti&&k1?'kaybetti':''))+'">'+kisiHtml(s.p2)+'</div>'+
+        '</div>';
+
+      var bilgi =
+        '<div class="izgara k2" style="gap:0 24px">'+
+          '<div>'+
+            satir('Durum', sonucRozet(s))+
+            satir('Masa', E(s.masa_kod))+
+            satir('Mod', E(s.mod) + (s.mod==='bo3' ? ' (3 oyunun 2\'si)' : ' (tek oyun)'))+
+            satir('Tür', turRozet(s) + (s.sabit_oyun ? ' · '+E(oyunAd(s.sabit_oyun)) : ''))+
+          '</div>'+
+          '<div>'+
+            satir('Oynanan oyun', s.oyun_sayisi)+
+            satir('Başlangıç', T(s.created_at))+
+            satir('Bitiş', s.finished_at ? T(s.finished_at) : '—')+
+            satir('Toplam süre', sureMetni(s.created_at, s.finished_at))+
+          '</div>'+
+        '</div>';
+
+      var oyunlarHtml = maclar.length ? maclar.map(function(m){
+        var kz = m.kazanan ? ad(m.kazanan) : null;
+        var rz = m.durum !== 'bitti' ? '<span class="rz vurgu">sürüyor</span>'
+               : (kz ? '<span class="rz iyi">'+E(kz)+'</span>' : '<span class="rz notr">berabere</span>');
+        var hs = hamleSay[m.id] || 0;
+        return '<div class="oyun-satir">'+
+            '<div class="sira">'+m.seri_sira+'</div>'+
+            '<div class="oyun-ad">'+E(oyunAd(m.oyun_kodu))+'</div>'+
+            '<div class="sag">'+
+              '<span class="mono" style="color:var(--metin-3);font-size:12px">'+
+                sureMetni(m.created_at, m.finished_at)+'</span>'+ rz +
+              (hs ? '<button class="hamle-ac" onclick="hamleAc(\''+m.id+'\',this)">'+hs+' hamle</button>'
+                  : '<span class="mono" style="color:var(--metin-3);font-size:11.5px">hamle yok</span>')+
+            '</div>'+
+          '</div>'+
+          '<div id="hm-'+m.id+'"></div>';
+      }).join('') : bosDurum('Bu düelloda kayıtlı oyun yok');
+
+      var ekonomiHtml = '';
+      if(defter.length){
+        ekonomiHtml = '<div class="blok-bas">Ekonomi hareketleri</div>'+
+          '<div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+          '<th>Kullanıcı</th><th>Tip</th><th>Miktar</th><th>Açıklama</th></tr></thead><tbody>'+
+          defter.map(function(d){
+            return '<tr><td data-bas="Kullanıcı">'+kisiHtml(d.user_id)+'</td>'+
+              '<td data-bas="Tip"><span class="rz notr">'+E(d.tip)+'</span></td>'+
+              '<td data-bas="Miktar" class="sayi '+(d.miktar>=0?'arti':'eksi')+'">'+
+                (d.miktar>=0?'+':'')+S(d.miktar)+'</td>'+
+              '<td data-bas="Açıklama">'+E(d.aciklama||'—')+'</td></tr>';
+          }).join('')+'</tbody></table></div>';
+      }
+
+      modalYaz(ust + bilgi +
+        '<div class="blok-bas">Oyunlar</div>' + oyunlarHtml +
+        ekonomiHtml +
+        (s.durum === 'oyunda'
+          ? '<div class="satir-form" style="margin-top:16px"><button class="kucuk tehlike" '+
+            'onclick="modalIptal(\''+s.id+'\')">Düelloyu iptal et</button>'+
+            '<span style="font-size:12.5px;color:var(--metin-3)">giriş ücretleri iade edilir</span></div>'
+          : ''));
+    }catch(e){
+      modalYaz(bosDurum('Detay yüklenemedi: '+(e.message||e)));
+    }
+  };
+
+  function satir(etiket, deger){
+    return '<div class="ozet-satir"><span>'+E(etiket)+'</span><span>'+
+           (deger==null||deger==='' ? '—' : deger)+'</span></div>';
+  }
+
+  window.hamleAc = async function(macId, btn){
+    var kutu = document.getElementById('hm-'+macId);
+    if(!kutu) return;
+    if(kutu.innerHTML){ kutu.innerHTML = ''; btn.textContent = btn.dataset.eski || 'hamleler'; return; }
+    btn.dataset.eski = btn.textContent;
+    btn.textContent = 'gizle';
+    kutu.innerHTML = '<div class="hamle-kutu">yükleniyor…</div>';
+    try{
+      var h = hataAt(await sb.from('hamleler').select('user_id,hamle_no,icerik,sunucu_ts')
+                .eq('mac_id', macId).order('hamle_no').limit(400)).data || [];
+      await adlariYukle(h.map(function(x){ return x.user_id; }));
+      kutu.innerHTML = '<div class="hamle-kutu">' + (h.length ? h.map(function(x){
+        var i = x.icerik || {};
+        var ne = i.tip === 'sec'      ? 'seçim → ' + (i.idx != null ? '#'+i.idx : '?')
+               : i.tip === 'sure'     ? 'süre doldu'
+               : i.tip === 'hazir'    ? 'hazır'
+               : i.tip === 'cekildi'  ? 'çekildi'
+               : JSON.stringify(i).slice(0, 80);
+        return '<div class="hamle-sat"><span class="no">'+x.hamle_no+'</span>'+
+               '<span class="kim">'+E(ad(x.user_id))+'</span>'+
+               '<span class="ne">'+E(ne)+'</span>'+
+               '<span class="ne" style="margin-left:auto">'+
+                 new Date(x.sunucu_ts).toLocaleTimeString('tr-TR')+'</span></div>';
+      }).join('') : 'hamle kaydı yok') + '</div>';
+    }catch(e){
+      kutu.innerHTML = '<div class="hamle-kutu">hamleler okunamadı: '+E(e.message||e)+'</div>';
+    }
+  };
+
+  window.modalIptal = async function(id){
+    var neden = prompt('İptal nedeni (oyunculara giriş ücreti iade edilir):', 'yönetici iptali');
+    if(neden === null) return;
+    if(await dene(async function(){ hataAt(await sb.rpc('admin_seri_iptal', {sid:id, neden:neden})); },
+                  'Düello iptal edildi, ücretler iade edildi')){
+      modalKapat(); yenile(); olcutleriYukle();
+    }
+  };
+
+  await yenile();
+  olcutleriYukle();
+
+  // canli.html’den gelen derin bağlantı:  karsilasmalar.html?seri=<id>
+  var derin = new URLSearchParams(location.search).get('seri');
+  if(derin) detay(derin);
+})();
+</script>
+</body>
+</html>

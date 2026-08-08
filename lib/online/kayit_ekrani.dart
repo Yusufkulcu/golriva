@@ -14,6 +14,7 @@ class KayitEkrani extends StatefulWidget {
 
 class _KayitEkraniState extends State<KayitEkrani> {
   final ctrl = TextEditingController();
+  final refCtrl = TextEditingController();
   String? hata;
   bool mesgul = false;
 
@@ -29,6 +30,7 @@ class _KayitEkraniState extends State<KayitEkrani> {
     });
     try {
       await OnlineServis().kayitOl(ad);
+      await _referansUygula();
       if (mounted) Navigator.pop(context, true);
     } catch (e, s) {
       setState(() {
@@ -41,9 +43,36 @@ class _KayitEkraniState extends State<KayitEkrani> {
     }
   }
 
+  /// İsteğe bağlı referans kodu — hesap açıldıktan SONRA denenir,
+  /// başarısızlık kaydı asla engellemez (sonuç SnackBar ile bildirilir).
+  Future<void> _referansUygula() async {
+    final kod = refCtrl.text.trim();
+    if (kod.isEmpty || !mounted) return;
+    String mesaj;
+    try {
+      final odul = await OnlineServis().referansKullan(kod);
+      mesaj = odul > 0
+          ? 'Referans kodu uygulandı: +$odul RIVA'
+          : 'Referans kodu kaydedildi';
+    } catch (e, s) {
+      final m = '$e';
+      mesaj = m.contains('geçersiz')
+          ? 'Referans kodu geçersiz — hesabın yine de açıldı'
+          : m.contains('zaten')
+              ? 'Bu hesapta referans kodu zaten kullanılmış'
+              : temizMesaj('kayit._referans', e,
+                  'Referans kodu şu an uygulanamadı.', s);
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mesaj)));
+    }
+  }
+
   @override
   void dispose() {
     ctrl.dispose();
+    refCtrl.dispose();
     super.dispose();
   }
 
@@ -72,6 +101,15 @@ class _KayitEkraniState extends State<KayitEkrani> {
               enabled: !mesgul,
               decoration: const InputDecoration(
                   hintText: 'Kullanıcı adı (3-14)', counterText: ''),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: refCtrl,
+              maxLength: 20,
+              enabled: !mesgul,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                  hintText: 'Referans kodu (isteğe bağlı)', counterText: ''),
             ),
             if (hata != null) ...[
               const SizedBox(height: 8),

@@ -29,12 +29,13 @@ class _AuthEkraniState extends State<AuthEkrani> {
   final sifre2 = TextEditingController();
   final kod = TextEditingController();
   final kullaniciAdi = TextEditingController();
+  final referans = TextEditingController();
   String? hata, bilgi;
   bool mesgul = false;
 
   @override
   void dispose() {
-    for (final c in [eposta, sifre, sifre2, kod, kullaniciAdi]) {
+    for (final c in [eposta, sifre, sifre2, kod, kullaniciAdi, referans]) {
       c.dispose();
     }
     super.dispose();
@@ -110,8 +111,35 @@ class _AuthEkraniState extends State<AuthEkrani> {
           return;
         }
         await servis.profilOlustur(kullaniciAdi.text.trim());
+        await _referansUygula();
         if (mounted) _anaSayfa();
       });
+
+  /// İsteğe bağlı referans kodu — profil açıldıktan SONRA denenir,
+  /// başarısızlık girişi asla engellemez (sonuç SnackBar ile bildirilir).
+  Future<void> _referansUygula() async {
+    final k = referans.text.trim();
+    if (k.isEmpty || !mounted) return;
+    String mesaj;
+    try {
+      final odul = await servis.referansKullan(k);
+      mesaj = odul > 0
+          ? 'Referans kodu uygulandı: +$odul RIVA'
+          : 'Referans kodu kaydedildi';
+    } catch (e, s) {
+      final m = '$e';
+      mesaj = m.contains('geçersiz')
+          ? 'Referans kodu geçersiz — hesabın yine de açıldı'
+          : m.contains('zaten')
+              ? 'Bu hesapta referans kodu zaten kullanılmış'
+              : temizMesaj('auth._referans', e,
+                  'Referans kodu şu an uygulanamadı.', s);
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(mesaj)));
+    }
+  }
 
   Future<void> _misafir() => _calistir(() async {
         await servis.misafirGiris();
@@ -137,6 +165,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
           throw 'Kullanıcı adı 3-14 karakter olmalı.';
         }
         await servis.profilOlustur(ad);
+        await _referansUygula();
         if (mounted) _anaSayfa();
       });
 
@@ -270,6 +299,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
           _kutu(eposta, 'E-posta', tip: TextInputType.emailAddress),
           _kutu(sifre, 'Şifre (en az 6)', gizli: true),
           _kutu(sifre2, 'Şifre (tekrar)', gizli: true),
+          _kutu(referans, 'Referans kodu (isteğe bağlı)'),
           const SizedBox(height: 12),
           goldButon(mesgul ? '…' : 'HESAP AÇ · +500 RIVA',
               mesgul ? null : _kayit,
@@ -318,6 +348,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
               style: GoogleFonts.figtree(
                   fontSize: 12, color: GolrivaColors.dim)),
           _kutu(kullaniciAdi, 'Kullanıcı adı (3-14)'),
+          _kutu(referans, 'Referans kodu (isteğe bağlı)'),
           const SizedBox(height: 12),
           goldButon(mesgul ? '…' : 'BAŞLA', mesgul ? null : _adKaydet,
               yazi: 16),

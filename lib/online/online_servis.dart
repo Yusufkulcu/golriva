@@ -144,6 +144,13 @@ class OnlineServis {
         params: {'u': uid, 'ad': kullaniciAdi});
   }
 
+  /// Referans kodu (kayıtta isteğe bağlı) — ödül Riva'sını döner.
+  /// Sunucu kuralları: aktif kod, kullanıcı başına 1 kez, taze profil.
+  Future<int> referansKullan(String kod) async {
+    final r = await _c.rpc('referans_kullan', params: {'p_kod': kod.trim()});
+    return (r as num?)?.toInt() ?? 0;
+  }
+
   Future<OnlineProfil?> profilGetir() async {
     if (!girisYapildi) return null;
     final p = await _c

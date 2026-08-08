@@ -101,13 +101,13 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
       return;
     }
     if (profil == null) {
-      // Oturum yok ya da profil tamamlanmamış: tek doğru yer giriş/kayıt
-      // ekranıdır (AuthEkrani doğru adımı kendisi seçer).
-      await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => AuthEkrani(repos: widget.repos)));
-      if (!mounted) return;
-      await _yenile();
-      if (profil == null) return;
+      // Oturum yok ya da profil tamamlanmamış: uygulama ekranlarına dönüş
+      // YOKTUR — giriş/kayıt kök olarak açılır (geri tuşu sekmelere getiremez;
+      // AuthEkrani doğru adımı kendisi seçer).
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => AuthEkrani(repos: widget.repos)),
+          (_) => false);
+      return;
     }
     final m = _seciliMasaBilgi;
     if (m != null && _kilitli(m, mod)) {

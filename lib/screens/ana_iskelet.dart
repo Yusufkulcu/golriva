@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../main.dart' show rotaGozcusu;
+import '../online/online_servis.dart';
 import '../online/oturum_bekcisi.dart';
+import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'magaza_sekmesi.dart';
@@ -29,9 +31,22 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
   int sekme = 0;
   int tazelik = 0; // her artis aktif sekmeyi sifirdan kurar
 
+  /// OTURUM KALKANI: çevrimiçi yapıda oturum yoksa iskelet HİÇBİR yoldan
+  /// gösterilmez (kullanıcı kuralı) — köke dönülür, orası girişe yönlendirir.
+  bool get _oturumsuz =>
+      SupabaseAyar.yapilandirildi && !OnlineServis().girisYapildi;
+
   @override
   void initState() {
     super.initState();
+    if (_oturumsuz) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+        }
+      });
+      return;
+    }
     // TEK CİHAZ OTURUMU: bu cihazı aktif yap + yoklamayı başlat.
     OturumBekcisi().baslat();
   }
@@ -57,6 +72,7 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    if (_oturumsuz) return const Scaffold(body: SizedBox()); // yönlendirme bekleniyor
     final sayfa = switch (sekme) {
       1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
       2 => MagazaSekmesi(key: ValueKey('magaza-$tazelik')),

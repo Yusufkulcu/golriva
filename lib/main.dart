@@ -65,6 +65,7 @@ class _Loader extends StatefulWidget {
 class _LoaderState extends State<_Loader> {
   GolrivaRepos? repos;
   Object? hata;
+  bool? profilVar; // çevrimiçi: oturum açıkken profil var mı (null = kontrol sürüyor)
 
   @override
   void initState() {
@@ -75,6 +76,16 @@ class _LoaderState extends State<_Loader> {
       hataBildir('main._Loader', e as Object, s);
       if (mounted) setState(() => hata = e);
     });
+    // OTURUM KURALI (kullanıcı isteği): oturum yoksa YA DA oturum var ama
+    // profil tamamlanmamışsa uygulama ekranları AÇILMAZ — giriş/kayıt gelir.
+    if (SupabaseAyar.yapilandirildi && OnlineServis().girisYapildi) {
+      OnlineServis().profilGetir().then((p) {
+        if (mounted) setState(() => profilVar = p != null);
+      }, onError: (Object e, StackTrace s) {
+        hataBildir('main._profilKontrol', e, s);
+        if (mounted) setState(() => profilVar = false); // şüphede: girişe
+      });
+    }
   }
 
   @override
@@ -92,8 +103,11 @@ class _LoaderState extends State<_Loader> {
         ),
       );
     }
-    if (repos == null) {
-      // ACILIS EKRANI — K1 Beyin-Top + marka (veri yuklenirken)
+    final oturumBeklemede = SupabaseAyar.yapilandirildi &&
+        OnlineServis().girisYapildi &&
+        profilVar == null;
+    if (repos == null || oturumBeklemede) {
+      // ACILIS EKRANI — K1 Beyin-Top + marka (veri/oturum kontrolu surerken)
       return Scaffold(
         body: Center(
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -134,10 +148,11 @@ class _LoaderState extends State<_Loader> {
         ),
       );
     }
-    // ILK ACILIS KURALI: cevrimici yapida oturum yoksa once
-    // Giris/Kayit/Misafir ekrani (kullanici istegi). Cevrimdisi derleme
-    // (Supabase yapilandirilmamis) dogrudan ana iskelete gider.
-    if (SupabaseAyar.yapilandirildi && !OnlineServis().girisYapildi) {
+    // ILK ACILIS KURALI: cevrimici yapida oturum yoksa YA DA profil
+    // tamamlanmamissa once Giris/Kayit/Misafir ekrani (kullanici istegi).
+    // Cevrimdisi derleme (Supabase yapilandirilmamis) dogrudan iskelete gider.
+    if (SupabaseAyar.yapilandirildi &&
+        (!OnlineServis().girisYapildi || profilVar == false)) {
       return AuthEkrani(repos: repos!);
     }
     return AnaIskelet(repos: repos!);

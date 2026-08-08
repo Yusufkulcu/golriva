@@ -489,12 +489,12 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
               const SizedBox(height: 14),
               SizedBox(
                 width: 220,
-                child: goldButon('HESAP AÇ · +500 RIVA', () async {
-                  await Navigator.push(
-                      context,
+                child: goldButon('HESAP AÇ · +500 RIVA', () {
+                  // Geri dönüş YOK: giriş/kayıt kök olarak açılır.
+                  Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
-                          builder: (_) => AuthEkrani(repos: widget.repos)));
-                  if (mounted) _yukle();
+                          builder: (_) => AuthEkrani(repos: widget.repos)),
+                      (_) => false);
                 }, yazi: 15),
               ),
             ],

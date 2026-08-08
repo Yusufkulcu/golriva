@@ -35,20 +35,13 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
   /// gösterilmez (kullanıcı kuralı) — köke dönülür, orası girişe yönlendirir.
   bool get _oturumsuz =>
       SupabaseAyar.yapilandirildi && !OnlineServis().girisYapildi;
+  bool _yonlendirildi = false;
 
   @override
   void initState() {
     super.initState();
-    if (_oturumsuz) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
-        }
-      });
-      return;
-    }
     // TEK CİHAZ OTURUMU: bu cihazı aktif yap + yoklamayı başlat.
-    OturumBekcisi().baslat();
+    if (!_oturumsuz) OturumBekcisi().baslat();
   }
 
   @override
@@ -72,7 +65,19 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    if (_oturumsuz) return const Scaffold(body: SizedBox()); // yönlendirme bekleniyor
+    if (_oturumsuz) {
+      // Hangi anda fark edilirse edilsin (ilk kurulum ya da sonradan bir
+      // yeniden çizim) tek kare bile sekme göstermeden köke dön.
+      if (!_yonlendirildi) {
+        _yonlendirildi = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+          }
+        });
+      }
+      return const Scaffold(body: SizedBox());
+    }
     final sayfa = switch (sekme) {
       1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
       2 => MagazaSekmesi(key: ValueKey('magaza-$tazelik')),

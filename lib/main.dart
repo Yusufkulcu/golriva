@@ -35,6 +35,13 @@ Future<void> main() async {
   };
   // FAZ 2.9: push bildirimi (Firebase config yoksa sessizce kapali kalir).
   await BildirimServis.baslat();
+  // OTURUM KURALI: oturum hangi yoldan kapanirsa kapansin (cikis, hesap
+  // silme, baska cihazdan atilma) uygulama KOKE doner; kok girise yonlendirir.
+  if (SupabaseAyar.yapilandirildi) {
+    OnlineServis().cikisiDinle(() {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (_) => false);
+    });
+  }
   runApp(const GolrivaApp());
 }
 

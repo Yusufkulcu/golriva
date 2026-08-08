@@ -206,6 +206,14 @@ class OnlineServis {
 
   Future<void> cikisYap() => _c.auth.signOut();
 
+  /// Oturum KAPANDIGI anda tepki cagirir — manuel cikis, hesap silme,
+  /// baska cihazdan atilma dahil. Girise donus TEK yerden garanti edilir.
+  void cikisiDinle(void Function() tepki) {
+    _c.auth.onAuthStateChange.listen((d) {
+      if (d.event == AuthChangeEvent.signedOut) tepki();
+    });
+  }
+
   /// Oturum acikken profil olustur (kullanici adi sec) — 500 RIVA hediye.
   Future<void> profilOlustur(String ad) =>
       _c.rpc('yeni_kullanici', params: {'u': uid, 'ad': ad});

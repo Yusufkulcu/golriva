@@ -5,6 +5,7 @@ import '../online/bildirim_servis.dart';
 import '../online/oturum_bekcisi.dart';
 import '../online/hata_raporu.dart';
 import '../data/repos.dart';
+import '../main.dart' show navigatorKey;
 import '../online/auth_ekrani.dart';
 import '../online/online_servis.dart';
 import '../online/oyun_yonlendirici.dart';
@@ -136,12 +137,19 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
     );
     if (onay != true || !mounted) return;
     OturumBekcisi().durdur();
-    await BildirimServis.cikistaTemizle(); // bu cihaza artık bildirim gitmesin
-    await OnlineServis().cikisYap();
-    if (mounted) {
-      // uygulamayi giris ekranindan yeniden baslat
-      Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
+    try {
+      await BildirimServis.cikistaTemizle(); // bu cihaza artık bildirim gitmesin
+    } catch (e, s) {
+      hataBildir('profil.cikisBildirim', e, s); // çıkışı asla engellemez
     }
+    try {
+      await OnlineServis().cikisYap();
+    } catch (e, s) {
+      hataBildir('profil.cikis', e, s);
+    }
+    // Girişe dönüş asıl olarak main'deki merkezi cikisiDinle dinleyicisiyle
+    // olur; bu satır yalnız emniyettir (çift çağrı zararsız — kök tekildir).
+    navigatorKey.currentState?.pushNamedAndRemoveUntil('/', (_) => false);
   }
 
   @override

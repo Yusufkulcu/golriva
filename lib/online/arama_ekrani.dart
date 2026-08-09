@@ -5,7 +5,7 @@ import '../data/repos.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'hata_raporu.dart';
-import 'mac_kanali.dart' show siraRakibeTitresim;
+import 'mac_kanali.dart' show OnlineMacBilgi, siraRakibeTitresim;
 import 'online_servis.dart';
 import 'oturum_bekcisi.dart';
 import 'oyun_yonlendirici.dart';
@@ -68,15 +68,37 @@ class _AramaEkraniState extends State<AramaEkrani> {
       final s = await servis.eslesmeKontrol(seriAltSiniri: kuyrukAni);
       if (!mounted) return;
       if (s != null) {
+        _macaGec(s);
+        return;
+      }
+      // KUYRUKTAN ATILMA TESPİTİ: rakip yoksa kaydımın hâlâ durduğunu
+      // doğrula. Yoksa (yönetici çıkardı ya da bayat kayıt temizlendi)
+      // sonsuza dek "aranıyor" gösterme — aramayı bitir. Yarış emniyeti:
+      // kayıt eşleşme ANINDA da silinir; bu yüzden önce seri bir kez
+      // daha sorgulanır, ancak o da yoksa atılmış sayılır.
+      if (kuyrukta && !await servis.kuyruktaMiyim()) {
+        final s2 = await servis.eslesmeKontrol(seriAltSiniri: kuyrukAni);
+        if (!mounted) return;
+        if (s2 != null) {
+          _macaGec(s2);
+          return;
+        }
         nabiz?.cancel();
         kuyrukta = false;
-        siraRakibeTitresim(); // RAKIP BULUNDU — hafif dokunus
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (_) => onlineOyunEkrani(widget.repos, s)));
-      } else {
-        setState(() {});
+        setState(() => hata =
+            'Arama sonlandırıldı — kuyruktan çıkarıldın. İstersen tekrar dene.');
+        return;
       }
+      setState(() {});
     } catch (_) {}
+  }
+
+  void _macaGec(OnlineMacBilgi s) {
+    nabiz?.cancel();
+    kuyrukta = false;
+    siraRakibeTitresim(); // RAKIP BULUNDU — hafif dokunus
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+        builder: (_) => onlineOyunEkrani(widget.repos, s)));
   }
 
   @override

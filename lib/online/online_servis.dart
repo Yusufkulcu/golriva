@@ -289,6 +289,17 @@ class OnlineServis {
 
   Future<void> kuyruktanCik() => _c.rpc('kuyruktan_cik');
 
+  /// Kuyruk kaydim hala duruyor mu? (RLS: yalniz kendi satirini gorur.)
+  /// Yonetici panelden cikarirsa ya da bayat kayit temizlenirse false doner.
+  Future<bool> kuyruktaMiyim() async {
+    final r = await _c
+        .from('eslestirme_kuyrugu')
+        .select('user_id')
+        .eq('user_id', uid!)
+        .maybeSingle();
+    return r != null;
+  }
+
   /// Sunucu "simdi"si — kuyruk alt siniri ve senkron islerinde kullanilir.
   Future<DateTime?> sunucuSaati() async {
     try {

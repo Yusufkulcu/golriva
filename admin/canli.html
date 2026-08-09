@@ -128,8 +128,10 @@
                   'Düello iptal edildi, ücretler iade edildi')) Tazele.calistir();
   };
   window.kuyruktanCikar = async function(uid){
-    if(await dene(async function(){ hataAt(await sb.from('eslestirme_kuyrugu').delete().eq('user_id', uid)); },
-                  'Kuyruktan çıkarıldı')) Tazele.calistir();
+    if(await dene(async function(){
+      var r = hataAt(await sb.from('eslestirme_kuyrugu').delete().eq('user_id', uid).select('user_id'));
+      if(!(r.data||[]).length) throw new Error('kayıt bulunamadı — zaten çıkmış ya da eşleşmiş olabilir');
+    }, 'Kuyruktan çıkarıldı — oyuncunun ekranındaki arama birkaç saniye içinde sonlanır')) Tazele.calistir();
   };
   window.davetSil = async function(kod){
     if(await dene(async function(){ hataAt(await sb.from('davetler').delete().eq('kod', kod)); },

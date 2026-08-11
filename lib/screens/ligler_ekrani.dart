@@ -83,7 +83,7 @@ class _LiglerEkraniState extends State<LiglerEkrani> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: child: YuklemeOrtusu(
+        child: YuklemeOrtusu(
           yukleniyor: yukleniyor,
           child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),

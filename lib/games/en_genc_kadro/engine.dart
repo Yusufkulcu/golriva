@@ -3,8 +3,9 @@ import '../../data/genc_repository.dart';
 import '../core/tr_norm.dart';
 
 /// EN GENC KADRO motoru — kaynak_kod/en_genc_kadro.html'in birebir Dart cevirisi.
-/// Kurallar (guncel — kullanici istegi): 6 tur, her tur rastgele ULKE veya LIG
-/// (kulup kaldirildi: kulup bazinda oyuncu bulmak cok zordu); 1K-2D-2O-1F;
+/// Kurallar (guncel — kullanici istegi): 6 tur = 6 LIG (5 buyuk lig + Super
+/// Lig, rastgele sirayla; kulup ve ulke YOK — genc oyuncu bulmak cok zordu);
+/// 1K-2D-2O-1F;
 /// sadece AKTIF ve dogum tarihli oyuncular; yas OYNANIS ANINDA hesaplanir;
 /// yaslar her secimden sonra ANINDA aciklanir ve ustte TOPLANARAK gider;
 /// bos slot +60 yas ceza; oncelik her turda el degistirir; DUSUK toplam kazanir.
@@ -33,10 +34,10 @@ class GencKadroEngine {
   /// Yas hesabi bu "an"a gore — testte sabitlenebilir, uygulamada DateTime.now().
   final DateTime simdi;
 
-  /// Tur kaynaklari: LIG (kulup ligleri birlesimi) ya da ULKE (kulup
-  /// kaldirildi — kullanici istegi). Alfabetik kurulum = seed determinizmi.
+  /// Tur kaynaklari: yalniz LIG (kulup liglerinin birlesimi; kulup ve ulke
+  /// kaldirildi — kullanici istegi: genc oyuncu bulmak cok zordu).
+  /// Alfabetik kurulum = seed determinizmi.
   late final List<(String, List<int>)> ligler;
-  late final List<(String, List<int>)> ulkeler;
   late final List<(bool ligMi, int index)> turlar;
   int tur = 0;
   int faz = 0; // 0 = oncelikli oyuncu, 1 = digeri
@@ -49,7 +50,6 @@ class GencKadroEngine {
       : rng = rng ?? Random(),
         simdi = simdi ?? DateTime.now() {
     ligler = _ligleriKur();
-    ulkeler = _ulkeleriKur();
     turlar = _turlariKur();
   }
 
@@ -81,44 +81,21 @@ class GencKadroEngine {
     return r;
   }
 
-  List<(String, List<int>)> _ulkeleriKur() {
-    final grup = <String, List<int>>{};
-    for (var i = 0; i < repo.oyuncular.length; i++) {
-      final o = repo.oyuncular[i];
-      if (o.ulke.isEmpty) continue;
-      (grup[o.ulke] ??= []).add(i);
-    }
-    final r = <(String, List<int>)>[];
-    for (final ad in grup.keys.toList()..sort()) {
-      final h = grup[ad]!;
-      if (_kurulabilir(h)) r.add((ad, h));
-    }
-    return r;
-  }
-
+  /// 6 tur = 6 LIG (5 buyuk lig + Super Lig), rastgele sirayla.
+  /// Lig sayisi 6'dan azsa dongusel tekrar.
   List<(bool, int)> _turlariKur() {
-    final ui = List<int>.generate(ulkeler.length, (i) => i)..shuffle(rng);
     final li = List<int>.generate(ligler.length, (i) => i)..shuffle(rng);
-    final r = <(bool, int)>[];
-    for (var t = 0; t < gencTurSayisi; t++) {
-      final ligOlsun = li.isNotEmpty && (ui.isEmpty || rng.nextBool());
-      if (ligOlsun) {
-        r.add((true, li.removeLast()));
-      } else {
-        r.add((false, ui.removeLast()));
-      }
-    }
-    return r;
+    return [
+      for (var t = 0; t < gencTurSayisi; t++) (true, li[t % li.length])
+    ];
   }
 
   int firstPicker(int t) => t % 2; // tur 1: O1 once, tur 2: O2 once...
   int get simdiSecen => faz == 0 ? firstPicker(tur) : 1 - firstPicker(tur);
 
-  bool get ligMi => turlar[tur].$1;
-  List<int> get havuz =>
-      ligMi ? ligler[turlar[tur].$2].$2 : ulkeler[turlar[tur].$2].$2;
-  String get kaynakAdi =>
-      ligMi ? ligler[turlar[tur].$2].$1 : ulkeler[turlar[tur].$2].$1;
+  bool get ligMi => turlar[tur].$1; // hep true (ekran metni icin korunuyor)
+  List<int> get havuz => ligler[turlar[tur].$2].$2;
+  String get kaynakAdi => ligler[turlar[tur].$2].$1;
 
   double yas(int i) => repo.oyuncular[i].yas(simdi) ?? gencBosCeza;
 

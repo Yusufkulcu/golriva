@@ -106,16 +106,15 @@ void main() {
     }
   });
 
-  test('6 tur 6 FARKLI kaynak (ulke/lig karisimi)', () {
+  test('6 tur = 6 lig (rastgele sira), havuzlar kurulabilir', () {
     final e = GencKadroEngine(repo, rng: Random(11), simdi: sabitAn);
-    expect(e.turlar.toSet().length, gencTurSayisi);
-    // her turun havuzuyla kadro kurulabilir olmali (motor filtresi)
+    expect(e.turlar.length, gencTurSayisi);
+    if (e.ligler.length >= gencTurSayisi) {
+      expect(e.turlar.toSet().length, gencTurSayisi); // lig tekrari yok
+    }
     for (var t = 0; t < gencTurSayisi; t++) {
-      expect(
-          (e.turlar[t].$1 ? e.ligler : e.ulkeler)[e.turlar[t].$2]
-              .$2
-              .length,
-          greaterThanOrEqualTo(14));
+      expect(e.turlar[t].$1, isTrue); // yalniz lig
+      expect(e.ligler[e.turlar[t].$2].$2.length, greaterThanOrEqualTo(14));
     }
   });
 }

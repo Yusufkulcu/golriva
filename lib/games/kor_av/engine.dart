@@ -29,13 +29,13 @@ class KorAvEngine {
   KorAvEngine(this.repo, {Random? rng, int? sabitN}) : rng = rng ?? Random() {
     kadroN = sabitN ?? 4 + this.rng.nextInt(3);
     final maxN = repo.topDegerler[kadroN - 1];
-    // HEDEF BANTLARI (kullanıcı isteği): maçların ~%60'ı klasik yüksek bant
-    // (%40-65), ~%40'ı DÜŞÜK AV (%3-20 — ör. "30 M€" gibi hedefler).
-    // Düşük hedefte en pahalıları ezberlemek işe yaramaz; oyuncular düşük
-    // bonservisli/az kartlı isimleri de öğrenmek zorunda kalır.
-    final dusukAv = this.rng.nextInt(100) < 40;
-    var lo = ((dusukAv ? 0.03 : 0.40) * maxN / 10).ceil() * 10;
-    var hi = ((dusukAv ? 0.20 : 0.65) * maxN / 10).floor() * 10;
+    // HEDEF: TEK GENİŞ ARALIK (kullanıcı isteği: "ortaya karışık olsun").
+    // Bant yok — hedef, top değerlerin %3'ü ile %65'i arasında HERHANGİ bir
+    // onluk olabilir: bir maçta 30M, ertesinde 400M. Tahmin edilemez olduğu
+    // için ezber işlemez; düşük ve yüksek bonservisli oyuncuları bilmek
+    // aynı derecede değerlidir.
+    var lo = (0.03 * maxN / 10).ceil() * 10;
+    var hi = (0.65 * maxN / 10).floor() * 10;
     if (lo < 10) lo = 10;
     if (hi < lo) hi = lo;
     hedef = lo + 10 * this.rng.nextInt(((hi - lo) ~/ 10) + 1);

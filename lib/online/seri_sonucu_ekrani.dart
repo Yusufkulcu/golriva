@@ -292,10 +292,6 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                                 fontSize: 15)),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text('Tamamen isteğe bağlı — sonuna kadar izleyince yazılır.',
-                        style: GoogleFonts.figtree(
-                            fontSize: 9.5, color: GolrivaColors.dim2)),
                   ]),
                 ),
               ],

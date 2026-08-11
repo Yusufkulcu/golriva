@@ -645,7 +645,9 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
           ),
           const SizedBox(width: 8),
           Flexible(
-            child: Text(a.neden ?? '${o.ulke} · ${o.dogumStr.substring(6)}',
+            // GÜVENLİK: yalnız ülke — doğum yılı/tarihi ASLA gösterilmez;
+            // "DOĞUM TARİHİ" sorusunda cevabı ele veriyordu (kullanıcı raporu).
+            child: Text(a.neden ?? o.ulke,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5,

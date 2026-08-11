@@ -387,7 +387,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                   Text(
                       k.ligMi
                           ? 'BU LİGDE OYNAMIŞ BİRİNİ SEÇ'
-                          : 'BU KULÜPTE OYNAMIŞ BİRİNİ SEÇ',
+                          : 'BU ÜLKEDEN BİRİNİ SEÇ',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(
                           fontSize: 9,

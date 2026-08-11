@@ -454,6 +454,26 @@ class _KorAvScreenState extends State<KorAvScreen> {
                             fontWeight: FontWeight.w700,
                             color: GolrivaColors.goldHi)),
                   ),
+                  // KAPSAM (ezber kalkanı): havuz sınırlıysa açıkça söylenir
+                  if (engine.kapsamEtiket.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: GolrivaColors.gold.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: GolrivaColors.gold.withValues(alpha: .4)),
+                      ),
+                      child: Text('KAPSAM: ${engine.kapsamEtiket}',
+                          style: GoogleFonts.figtree(
+                              fontSize: 10,
+                              letterSpacing: 1.5,
+                              fontWeight: FontWeight.w800,
+                              color: GolrivaColors.goldHi)),
+                    ),
+                  ],
                 ]),
               ),
               const SizedBox(height: 10),
@@ -545,6 +565,16 @@ class _KorAvScreenState extends State<KorAvScreen> {
                     ),
                   ),
               ],
+              // CANLI TOPLAM (kullanıcı isteği: skorlar açılırken insanlar
+              // elle topluyordu) — o ana kadar AÇILAN değerler üstte birikir.
+              if (acilisModu || engine.bitti) ...[
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(child: _acikToplamKutu(0, GolrivaColors.p1)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _acikToplamKutu(1, GolrivaColors.p2)),
+                ]),
+              ],
               if (acilisModu)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
@@ -576,6 +606,45 @@ class _KorAvScreenState extends State<KorAvScreen> {
     ),
     );
   }
+
+  /// Açılışta o ana kadar açılan değerlerin toplamı (canlı biriken sayı).
+  double _acikToplam(int s) {
+    var t = 0.0;
+    for (final h in acikSet) {
+      if (h.$1 == s && h.$2 < engine.secimler[s].length) {
+        t += engine.deger(engine.secimler[s][h.$2]);
+      }
+    }
+    return t;
+  }
+
+  Widget _acikToplamKutu(int s, Color renk) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
+        decoration: BoxDecoration(
+          color: GolrivaColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: renk.withValues(alpha: .45)),
+        ),
+        child: Column(children: [
+          Text(adlar[s].toUpperCase(),
+              style: GoogleFonts.figtree(
+                  color: renk,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10,
+                  letterSpacing: 1)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(korAvFmt(_acikToplam(s)),
+                style: GoogleFonts.spaceGrotesk(
+                    color: GolrivaColors.goldHi,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 22)),
+          ),
+          Text('açılan toplam · hedef ${engine.hedef}',
+              style:
+                  GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 9)),
+        ]),
+      );
 
   Widget _adayRow(KorAvAday a) {
     final o = widget.repo.oyuncular[a.idx];

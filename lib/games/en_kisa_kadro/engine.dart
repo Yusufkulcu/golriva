@@ -42,20 +42,50 @@ class EnKisaKadroEngine {
   final List<int> bosSlot = [0, 0];
   bool bitti = false;
 
+  /// ULKE havuzlari (kulup yerine — kullanici istegi: kulup bazinda oyuncu
+  /// bulmak cok zordu): boy verili >=14 oyuncusu olan ve kadro kurulabilen
+  /// (1K-2D-2O-1F karsilanabilir) ulkeler. Alfabetik kurulur — iki cihazda
+  /// AYNI liste (seed determinizmi bozulmaz).
+  late final List<(String, List<int>)> ulkeler;
+
   EnKisaKadroEngine(this.repo, {Random? rng}) : rng = rng ?? Random() {
+    ulkeler = _ulkeleriKur();
     turlar = _turlariKur();
   }
 
+  List<(String, List<int>)> _ulkeleriKur() {
+    final grup = <String, List<int>>{};
+    for (var i = 0; i < repo.oyuncular.length; i++) {
+      final o = repo.oyuncular[i];
+      if (o.ulke.isEmpty) continue;
+      (grup[o.ulke] ??= []).add(i);
+    }
+    final uygun = <(String, List<int>)>[];
+    for (final ad in grup.keys.toList()..sort()) {
+      final h = grup[ad]!;
+      final boylu = h.where((i) => repo.oyuncular[i].boyCm > 0).toList();
+      if (boylu.length < 14) continue;
+      final poz = <String, int>{};
+      for (final i in boylu) {
+        poz[repo.oyuncular[i].poz] = (poz[repo.oyuncular[i].poz] ?? 0) + 1;
+      }
+      final kurulabilir =
+          formation.keys.every((z) => (poz[z] ?? 0) >= formation[z]!);
+      if (kurulabilir) uygun.add((ad, h));
+    }
+    return uygun;
+  }
+
   List<TurKaynak> _turlariKur() {
-    final ci = List<int>.generate(repo.kulupler.length, (i) => i)..shuffle(rng);
+    final ui = List<int>.generate(ulkeler.length, (i) => i)..shuffle(rng);
     final li = List<int>.generate(repo.ligler.length, (i) => i)..shuffle(rng);
     final r = <TurKaynak>[];
     for (var t = 0; t < turSayisi; t++) {
-      final ligOlsun = li.isNotEmpty && (ci.isEmpty || rng.nextBool());
+      final ligOlsun = li.isNotEmpty && (ui.isEmpty || rng.nextBool());
       if (ligOlsun) {
         r.add(TurKaynak(true, li.removeLast()));
       } else {
-        r.add(TurKaynak(false, ci.removeLast()));
+        r.add(TurKaynak(false, ui.removeLast()));
       }
     }
     return r;
@@ -66,12 +96,12 @@ class EnKisaKadroEngine {
 
   List<int> get havuz {
     final k = turlar[tur];
-    return k.ligMi ? repo.ligler[k.index].havuz : repo.kulupler[k.index].havuz;
+    return k.ligMi ? repo.ligler[k.index].havuz : ulkeler[k.index].$2;
   }
 
   String get kaynakAdi {
     final k = turlar[tur];
-    return k.ligMi ? repo.ligler[k.index].ad : repo.kulupler[k.index].ad;
+    return k.ligMi ? repo.ligler[k.index].ad : ulkeler[k.index].$1;
   }
 
   List<String> acikMevkiler(int s) {

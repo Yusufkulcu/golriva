@@ -29,7 +29,7 @@ void main() {
   test('sebepli engeller: pasif / dogum tarihsiz / mevki dolu / alinan', () {
     final e = GencKadroEngine(repo, rng: Random(3), simdi: sabitAn);
     // kulubun pasif bir oyuncusunu bul, adaylar'da nedeni gorunmeli
-    final havuz = e.kulup.havuz;
+    final havuz = e.havuz;
     final pasif = havuz
         .where((i) => !repo.oyuncular[i].aktif && repo.oyuncular[i].ad.length >= 4)
         .toList();
@@ -70,8 +70,8 @@ void main() {
         adim++;
         final s = e.simdiSecen;
         final acik = e.acikMevkiler(s);
-        // gecerli aday: bu kulup + acik mevki + aktif + tarihli + alinmamis
-        final gecerli = e.kulup.havuz.where((i) {
+        // gecerli aday: bu kaynak (ulke/lig) + acik mevki + aktif + tarihli
+        final gecerli = e.havuz.where((i) {
           final o = repo.oyuncular[i];
           return !e.alinan.contains(i) &&
               acik.contains(o.poz) &&
@@ -106,8 +106,16 @@ void main() {
     }
   });
 
-  test('6 tur 6 FARKLI kulup', () {
+  test('6 tur 6 FARKLI kaynak (ulke/lig karisimi)', () {
     final e = GencKadroEngine(repo, rng: Random(11), simdi: sabitAn);
-    expect(e.kulupSirasi.toSet().length, gencTurSayisi);
+    expect(e.turlar.toSet().length, gencTurSayisi);
+    // her turun havuzuyla kadro kurulabilir olmali (motor filtresi)
+    for (var t = 0; t < gencTurSayisi; t++) {
+      expect(
+          (e.turlar[t].$1 ? e.ligler : e.ulkeler)[e.turlar[t].$2]
+              .$2
+              .length,
+          greaterThanOrEqualTo(14));
+    }
   });
 }

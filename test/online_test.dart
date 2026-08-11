@@ -47,7 +47,9 @@ void main() {
         }
         final g1 = GencKadroEngine(repos.genc, rng: Random(seed), simdi: an);
         final g2 = GencKadroEngine(repos.genc, rng: Random(seed), simdi: an);
-        expect(g1.kulupSirasi, g2.kulupSirasi);
+        for (var t = 0; t < gencTurSayisi; t++) {
+          expect(g1.turlar[t], g2.turlar[t]);
+        }
         final kd1 = KupaDraftEngine(repos.kupa, rng: Random(seed));
         final kd2 = KupaDraftEngine(repos.kupa, rng: Random(seed));
         expect(kd1.kulupSirasi, kd2.kulupSirasi);
@@ -57,7 +59,8 @@ void main() {
             [h2.katIdx, h2.kadroN, h2.hedef, h2.sira]);
         final f1 = KorAvEngine(repos.fee, rng: Random(seed));
         final f2 = KorAvEngine(repos.fee, rng: Random(seed));
-        expect([f1.kadroN, f1.hedef, f1.sira], [f2.kadroN, f2.hedef, f2.sira]);
+        expect([f1.kadroN, f1.hedef, f1.sira, f1.kapsamEtiket],
+            [f2.kadroN, f2.hedef, f2.sira, f2.kapsamEtiket]);
       }
     });
 

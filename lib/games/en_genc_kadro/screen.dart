@@ -402,7 +402,10 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
                   border: Border.all(color: GolrivaColors.edge),
                 ),
                 child: Column(children: [
-                  Text('BU KULÜBÜN AKTİF EN GENÇ OYUNCUSUNU YAZ',
+                  Text(
+                      engine.ligMi
+                          ? 'BU LİGİN AKTİF EN GENÇ OYUNCUSUNU YAZ'
+                          : 'BU ÜLKENİN AKTİF EN GENÇ OYUNCUSUNU YAZ',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(
                           fontSize: 9,
@@ -412,13 +415,13 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
                   const SizedBox(height: 4),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(engine.kulup.ad.toUpperCase(),
+                    child: Text(engine.kaynakAdi.toUpperCase(),
                         style: GoogleFonts.bigShouldersDisplay(
                             fontSize: 30,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1)),
                   ),
-                  Text(engine.kulup.lig,
+                  Text(engine.ligMi ? 'Lig' : 'Ülke',
                       style: GoogleFonts.figtree(
                           fontSize: 10, color: GolrivaColors.dim)),
                 ]),

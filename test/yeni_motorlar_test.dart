@@ -32,16 +32,22 @@ void main() {
           120.0);
     });
 
-    test('hedef v2: N=4-6 tum tohumlarda erisilebilir + tam onluk', () {
+    test('hedef v3: tek genis aralik %3-65, tam onluk, erisilebilir', () {
+      // "ortaya karisik" kurali: hedef top degerlerin %3'u ile %65'i
+      // arasinda HERHANGI bir onluk — dusuk de yuksek de gelebilir.
       for (final repo in [repos.fee, repos.card]) {
         for (var n = 4; n <= 6; n++) {
           for (var seed = 0; seed < 25; seed++) {
             final e = KorAvEngine(repo, rng: Random(seed), sabitN: n);
             final maxN = repo.topDegerler[n - 1];
+            var lo = (0.03 * maxN / 10).ceil() * 10;
+            var hi = (0.65 * maxN / 10).floor() * 10;
+            if (lo < 10) lo = 10;
+            if (hi < lo) hi = lo;
             expect(e.hedef % 10, 0);
+            expect(e.hedef, greaterThanOrEqualTo(lo));
+            expect(e.hedef, lessThanOrEqualTo(hi));
             expect(e.hedef, lessThanOrEqualTo(maxN));
-            expect(e.hedef,
-                greaterThanOrEqualTo((0.40 * maxN / 10).ceil() * 10));
           }
         }
       }

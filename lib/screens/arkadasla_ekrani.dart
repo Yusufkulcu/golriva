@@ -13,6 +13,8 @@ import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
 import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
+import '../games/veto_drafti/screen.dart';
+import '../games/yirmibir/screen.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'arkadaslar_ekrani.dart';
@@ -46,6 +48,10 @@ class ArkadaslaEkrani extends StatelessWidget {
                 repo: repos.milligol, config: milligolConfig)),
         ('kariyer_ikizi', 'KARİYER İKİZİ', 'Soru',
             () => KariyerIkiziScreen(repo: repos.ikiz)),
+        ('bonservis_21', 'BONSERVİS 21\'İ', 'Kör av · blackjack',
+            () => YirmibirScreen(repo: repos.fee)),
+        ('veto_drafti', 'VETO DRAFTI', 'Draft · veto',
+            () => VetoDraftiScreen(repo: repos.kupa)),
       ];
 
   void _ac(BuildContext context, Widget Function() ekran) =>

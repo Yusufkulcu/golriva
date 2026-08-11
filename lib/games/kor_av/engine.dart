@@ -5,7 +5,7 @@ import '../core/tr_norm.dart';
 /// KOR AV motoru — Bonservis Avi & Sari Kart Avi'nin ortak motoru
 /// (kaynak_kod/bonservis_avi.html + sari_kart_avi.html birebir cevirisi).
 /// Tek kategori kor hedef avi: N=4-6 futbolcu, hedef = top-N toplaminin
-/// %40-65'i (formul v2, tam onluk). Degerler secimde GIZLI, sonda kademeli
+/// %3-65'i (formul v3 "ortaya karisik", tam onluk). Degerler secimde GIZLI, sonda kademeli
 /// acilir. Sure dolarsa hak yanar (0 sayilir). Hedefe MUTLAK yakin kazanir.
 
 class KorAvAday {

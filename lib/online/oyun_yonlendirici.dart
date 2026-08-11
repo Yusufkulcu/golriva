@@ -12,6 +12,8 @@ import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
 import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
+import '../games/veto_drafti/screen.dart';
+import '../games/yirmibir/screen.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
@@ -32,6 +34,8 @@ const onlineOyunAdlari = {
   'mac_rekortmenleri': 'MAÇ REKORTMENLERİ',
   'milli_gol_krallari': 'MİLLİ TAKIM GOL KRALLARI',
   'kariyer_ikizi': 'KARİYER İKİZİ',
+  'bonservis_21': 'BONSERVİS 21\'İ',
+  'veto_drafti': 'VETO DRAFTI',
 };
 
 /// _oyunEkrani'nin su an destekledigi cevrimici oyunlar — davet kurarken
@@ -47,6 +51,8 @@ const onlineOynanabilir = [
   'milli_gol_krallari',
   'bayrak_yarisi', // Faz 2.14: sunucu hakemli KAP yarışıyla çevrimiçi
   'kariyer_ikizi', // Faz 2.14: seed-senkron sıra tabanlı çevrimiçi
+  'bonservis_21', // Faz 2.17: blackjack gerilimli kör av
+  'veto_drafti', // Faz 2.17: kupa draftı + veto katmanı
 ];
 
 /// oyun_kodu → cevrimici oyun akisi. Once SENKRON BAGLANTI ekrani gelir:
@@ -92,6 +98,10 @@ Widget _oyunEkrani(GolrivaRepos repos, OnlineMacKanali kanal) {
       return BayrakYarisiScreen(repo: repos.boy, online: kanal);
     case 'kariyer_ikizi':
       return KariyerIkiziScreen(repo: repos.ikiz, online: kanal);
+    case 'bonservis_21':
+      return YirmibirScreen(repo: repos.fee, online: kanal);
+    case 'veto_drafti':
+      return VetoDraftiScreen(repo: repos.kupa, online: kanal);
     default:
       return Scaffold(
           body: Center(

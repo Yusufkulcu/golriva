@@ -716,7 +716,7 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
               builder: (_) =>
                   SeriSonucuEkrani(kanal: widget.kanal, durum: d)));
         },
-        child: Text('ANA SAYFAYA DÖN',
+        child: Text('DEVAM ET',
             style: GoogleFonts.bigShouldersDisplay(
                 fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16)),
       ),

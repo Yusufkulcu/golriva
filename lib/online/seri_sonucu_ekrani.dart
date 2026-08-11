@@ -215,17 +215,15 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                 ),
               ],
               const SizedBox(height: 14),
-              // ── RÖVANŞ + PAYLAŞ ──
+              // ── ANA SAYFA + PAYLAŞ ── (kullanıcı isteği: rövanş yerine
+              // ana sayfa — yeni maç lobiden başlatılır)
               Row(children: [
-                if (widget.kanal.rovansEkranKur != null) ...[
-                  Expanded(
-                    child: goldButon('RÖVANŞ', () {
-                      Navigator.of(context).pushReplacement(MaterialPageRoute(
-                          builder: (_) => widget.kanal.rovansEkranKur!()));
-                    }, yazi: 15),
-                  ),
-                  const SizedBox(width: 9),
-                ],
+                Expanded(
+                  child: goldButon('ANA SAYFA', () {
+                    Navigator.of(context).popUntil((r) => r.isFirst);
+                  }, yazi: 15),
+                ),
+                const SizedBox(width: 9),
                 Expanded(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(18),

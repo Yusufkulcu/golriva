@@ -667,6 +667,15 @@ class OnlineServis {
     return (r as num).toInt();
   }
 
+  /// FAZ 2.20 — MAÇ SONU ödüllü reklam tahsilatı. Tutar SUNUCUDA
+  /// hesaplanır: kazanan net kazancı kadar EK Riva (2x), kaybeden seri
+  /// girişini geri alır. Seri başına kişi başı TEK ödül; 1 saat pencere.
+  Future<int> macReklamOdul(String seriId, String islemId) async {
+    final r = await _c.rpc('mac_reklam_odul',
+        params: {'sid': seriId, 'islem_id': islemId});
+    return (r as num).toInt();
+  }
+
   // ---------- FAZ 2.4: LİG KONFİGÜRASYONU ----------
 
   /// Lig merdiveni (herkese acik): sira, ad, terfi esigi, puan tablosu.

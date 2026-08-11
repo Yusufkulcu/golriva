@@ -1,33 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'reklam_sabitleri.dart';
 
-/// AdMob ODULLU REKLAM birimleri.
-/// Varsayilanlar Google'in RESMI TEST kimlikleri — gelistirme icin guvenli,
-/// gercek gelir icin AdMob hesabi acilinca --dart-define ile degistirilir:
-///   --dart-define=REKLAM_ODUL_ANDROID=ca-app-pub-XXXX/YYYY
-///   --dart-define=REKLAM_ODUL_IOS=ca-app-pub-XXXX/ZZZZ
-/// (AndroidManifest.xml ve Info.plist'teki UYGULAMA kimlikleri de ayrica
-/// gercek kimliklerle degistirilmeli.)
-const _androidBirim = String.fromEnvironment('REKLAM_ODUL_ANDROID',
-    defaultValue: 'ca-app-pub-3940256099942544/5224354917');
-const _iosBirim = String.fromEnvironment('REKLAM_ODUL_IOS',
-    defaultValue: 'ca-app-pub-3940256099942544/1712485313');
-
-/// Maç sonu GEÇİŞ (interstitial) reklam birimleri — varsayılan Google TEST
-/// kimlikleri. Gerçek gelir için AdMob'da interstitial birimi açıp:
-///   --dart-define=REKLAM_GECIS_ANDROID=ca-app-pub-XXXX/YYYY
-///   --dart-define=REKLAM_GECIS_IOS=ca-app-pub-XXXX/ZZZZ
-const _gecisAndroid = String.fromEnvironment('REKLAM_GECIS_ANDROID',
-    defaultValue: 'ca-app-pub-3940256099942544/1033173712');
-const _gecisIos = String.fromEnvironment('REKLAM_GECIS_IOS',
-    defaultValue: 'ca-app-pub-3940256099942544/4411468910');
-
-/// Odullu reklam akisi (yalniz Android/iOS).
+/// Ödüllü reklam akışı (yalnız Android/iOS).
+/// Faz 2.20: maç sonu OTOMATİK geçiş reklamı KALDIRILDI — tüm reklamlar
+/// artık İSTEĞE BAĞLI ödüllü: mağaza (+50 Riva) ve seri sonucu ekranı
+/// (kazancı 2x / kaybı iade). Birim kimlikleri: reklam_sabitleri.dart.
 class ReklamServis {
   static bool _baslatildi = false;
 
-  /// Son basarisizligin insan-okur nedeni (tani icin) — basarida null.
+  /// Son başarısızlığın insan-okur nedeni (tanı için) — başarıda null.
   static String? sonHata;
 
   static bool get destekleniyor => Platform.isAndroid || Platform.isIOS;
@@ -38,9 +21,9 @@ class ReklamServis {
     _baslatildi = true;
   }
 
-  /// Odullu reklami yukler ve gosterir.
-  /// - Odul KAZANILDIYSA benzersiz islem kimligi doner (sunucuya iletilir).
-  /// - Aksi halde null doner; neden [sonHata]'da yazar.
+  /// Ödüllü reklamı yükler ve gösterir.
+  /// - Ödül KAZANILDIYSA benzersiz işlem kimliği döner (sunucuya iletilir).
+  /// - Aksi halde null döner; neden [sonHata]'da yazar.
   static Future<String?> odulluGoster() async {
     if (!destekleniyor) {
       sonHata = 'platform desteklemiyor';
@@ -52,7 +35,7 @@ class ReklamServis {
       sonHata = 'SDK başlatılamadı: $e';
       return null;
     }
-    // ilk istek "no fill" verebilir — kisa arayla 3 deneme
+    // ilk istek "no fill" verebilir — kısa arayla 3 deneme
     for (var deneme = 1; deneme <= 3; deneme++) {
       final ad = await _yukle();
       if (ad != null) return _goster(ad);
@@ -64,7 +47,9 @@ class ReklamServis {
   static Future<RewardedAd?> _yukle() {
     final tamam = Completer<RewardedAd?>();
     RewardedAd.load(
-      adUnitId: Platform.isAndroid ? _androidBirim : _iosBirim,
+      adUnitId: Platform.isAndroid
+          ? ReklamSabitleri.odulluAndroidBirim
+          : ReklamSabitleri.odulluIosBirim,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
@@ -77,63 +62,6 @@ class ReklamServis {
         },
       ),
     );
-    return tamam.future;
-  }
-
-  // ───────── MAÇ SONU GEÇİŞ (INTERSTITIAL) REKLAMI ─────────
-  static InterstitialAd? _gecis;
-  static bool _gecisYukleniyor = false;
-
-  /// Geçiş reklamını önceden yükler (maç bitmeden çağır ki hazır olsun).
-  static void gecisHazirla() {
-    if (!destekleniyor || _gecis != null || _gecisYukleniyor) return;
-    _gecisYukleniyor = true;
-    _hazirla().then((_) {
-      InterstitialAd.load(
-        adUnitId: Platform.isAndroid ? _gecisAndroid : _gecisIos,
-        request: const AdRequest(),
-        adLoadCallback: InterstitialAdLoadCallback(
-          onAdLoaded: (ad) {
-            _gecis = ad;
-            _gecisYukleniyor = false;
-          },
-          onAdFailedToLoad: (e) {
-            sonHata = 'geçiş yükleme (kod ${e.code}): ${e.message}';
-            _gecis = null;
-            _gecisYukleniyor = false;
-          },
-        ),
-      );
-    }).catchError((Object e) {
-      sonHata = 'SDK başlatılamadı: $e';
-      _gecisYukleniyor = false;
-    });
-  }
-
-  /// Hazırsa geçiş reklamını gösterir. Gösterildiyse true döner.
-  /// Sonraki maç için bir sonrakini de önceden yükler.
-  static Future<bool> gecisGoster() async {
-    final ad = _gecis;
-    if (ad == null) {
-      gecisHazirla(); // bir sonraki sefere hazır olsun
-      return false;
-    }
-    _gecis = null;
-    final tamam = Completer<bool>();
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (a) {
-        a.dispose();
-        gecisHazirla(); // sonraki maç için önden yükle
-        if (!tamam.isCompleted) tamam.complete(true);
-      },
-      onAdFailedToShowFullScreenContent: (a, e) {
-        sonHata = 'geçiş gösterim (kod ${e.code}): ${e.message}';
-        a.dispose();
-        gecisHazirla();
-        if (!tamam.isCompleted) tamam.complete(false);
-      },
-    );
-    ad.show();
     return tamam.future;
   }
 
@@ -153,8 +81,8 @@ class ReklamServis {
       },
     );
     ad.show(onUserEarnedReward: (_, odul) {
-      // odul ani: benzersiz islem kimligi — sunucudaki (ag, islem_id)
-      // benzersiz kisiti cift odulu engeller
+      // ödül anı: benzersiz işlem kimliği — sunucudaki (ag, islem_id)
+      // benzersiz kısıtı çift ödülü engeller
       sonHata = null;
       islem = 'r${DateTime.now().millisecondsSinceEpoch}-'
           '${identityHashCode(ad)}';

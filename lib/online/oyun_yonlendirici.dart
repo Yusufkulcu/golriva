@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
-import '../reklam/reklam_servis.dart';
 import '../games/bayrak_yarisi/screen.dart';
 import '../games/en_genc_kadro/screen.dart';
 import '../games/en_kisa_kadro/screen.dart';
@@ -651,8 +650,8 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
   void initState() {
     super.initState();
     widget.kanal.kapat(); // hamle yoklamasi biter
-    // Maç sonu geçiş reklamını önden yükle (seri bitince hazır olsun).
-    ReklamServis.gecisHazirla();
+    // Faz 2.20: otomatik geçiş reklamı kaldırıldı — reklam artık seri
+    // sonucu ekranındaki İSTEĞE BAĞLI ödüllü teklifle (2x / iade).
     widget.kanal.sonucBildir(widget.kazananSeat).then(
         (d) => mounted ? setState(() => durum = d) : null,
         onError: (e, StackTrace s) {
@@ -740,12 +739,10 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
             backgroundColor: GolrivaColors.gold,
             foregroundColor: const Color(0xFF231A04),
             padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 12)),
-        onPressed: () async {
+        onPressed: () {
           // Tasarim ekran 8: seri sonucu KENDI tam ekraninda gosterilir.
           // Yigin lobiye kadar temizlenir; sonuc ekranindan geri = lobi.
           final nav = Navigator.of(context);
-          // KARŞILAŞMA BİTİŞİ: admin limitine göre maç-sonu reklamı göster.
-          await _macSonuReklami();
           nav.popUntil((r) => r.isFirst);
           nav.push(MaterialPageRoute(
               builder: (_) =>
@@ -770,18 +767,4 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
                 fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16)),
       );
 
-  /// KARŞILAŞMA BİTİŞİ REKLAMI — admin panelden belirlenen günlük limite
-  /// göre (reklam_gosterim_hakki) maç sonunda geçiş reklamı gösterir.
-  /// Hak yoksa/limit dolduysa ya da reklam hazır değilse sessizce atlar.
-  Future<void> _macSonuReklami() async {
-    try {
-      if (!ReklamServis.destekleniyor) return;
-      final hak = await OnlineServis().reklamHakki();
-      if (hak <= 0) return;
-      final gosterildi = await ReklamServis.gecisGoster();
-      if (gosterildi) await OnlineServis().reklamGosterildi();
-    } catch (e, s) {
-      hataBildir('reklam.macSonu', e, s);
-    }
-  }
 }

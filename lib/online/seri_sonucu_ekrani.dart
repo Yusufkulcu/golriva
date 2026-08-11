@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../reklam/reklam_servis.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
@@ -29,6 +30,9 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   OnlineProfil? profil;
   int? galibiyet; // seri galibiyet yuzdesi
   List<({String oyunKodu, String? kazananUid, String durum})> maclar = [];
+  // FAZ 2.20 — istege bagli odullu reklam (2x / kayip iadesi)
+  bool reklamOynuyor = false;
+  int? ekOdul; // alinan ek Riva (null = henuz alinmadi)
 
   OnlineMacBilgi get b => widget.kanal.bilgi;
   String get _benimUid => b.seatUid(b.benimSiram);
@@ -81,11 +85,64 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
     if (b.dostluk) return ('±0', 'dostluk maçı');
     final m = masa;
     if (m == null) return ('—', '');
+    if (ekOdul != null) {
+      // reklam ödülü alındı: kazanan 2x, kaybeden sıfıra döndü
+      return _kazandim == true
+          ? ('+${m.net + ekOdul!}', 'Riva · 2x')
+          : ('±0', 'iade alındı');
+    }
     return switch (_kazandim) {
       true => ('+${m.net}', 'Riva'),
       false => ('-${m.giris}', 'Riva'),
       null => ('±0', 'iade edildi'),
     };
+  }
+
+  // ---------- FAZ 2.20: İSTEĞE BAĞLI ÖDÜLLÜ REKLAM ----------
+  bool get _teklifVar =>
+      !b.dostluk && _kazandim != null && masa != null && ekOdul == null;
+
+  Future<void> _reklamIzle() async {
+    if (reklamOynuyor || !_teklifVar) return;
+    if (!ReklamServis.destekleniyor) {
+      _mesaj('Reklamlar yalnız telefonda (Android/iOS) gösterilir.');
+      return;
+    }
+    setState(() => reklamOynuyor = true);
+    try {
+      final islem = await ReklamServis.odulluGoster();
+      if (islem == null) {
+        final neden = ReklamServis.sonHata;
+        if (neden != null) hataBildir('seriSonucu._reklamIzle', neden);
+        _mesaj(neden == 'reklam ödülden önce kapatıldı'
+            ? 'Reklam tamamlanmadı — ödül için sonuna kadar izlemek gerek.'
+            : 'Reklam şu an gösterilemedi — birazdan tekrar dene.');
+        return;
+      }
+      final odul = await OnlineServis().macReklamOdul(b.seriId, islem);
+      if (mounted) {
+        setState(() => ekOdul = odul);
+        _mesaj(_kazandim == true
+            ? '+$odul Riva daha — kazancın ikiye katlandı!'
+            : '+$odul Riva iade edildi — bu seride kaybın yok!');
+      }
+    } catch (e, s) {
+      final m = '$e';
+      _mesaj(m.contains('zaten')
+          ? 'Bu seri için ödül zaten alınmış.'
+          : m.contains('pencere')
+              ? 'Ödül süresi doldu (maçtan sonra 1 saat geçerli).'
+              : temizMesaj('seriSonucu._reklamOdul', e as Object,
+                  'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
+    } finally {
+      if (mounted) setState(() => reklamOynuyor = false);
+    }
+  }
+
+  void _mesaj(String s) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(s)));
   }
 
   void _paylas() {
@@ -175,6 +232,98 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                       GolrivaColors.goldHi),
                 ]),
               ),
+              // ── FAZ 2.20: İSTEĞE BAĞLI ÖDÜLLÜ REKLAM TEKLİFİ ──
+              if (_teklifVar) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x2830C060), GolrivaColors.card]),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: GolrivaColors.ok.withValues(alpha: .45)),
+                  ),
+                  child: Column(children: [
+                    Text(
+                        _kazandim == true
+                            ? 'KAZANCINI İKİYE KATLA'
+                            : 'KAYBINI GERİ AL',
+                        style: GoogleFonts.bigShouldersDisplay(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            color: GolrivaColors.ok)),
+                    const SizedBox(height: 3),
+                    Text(
+                        _kazandim == true
+                            ? 'Kısa bir reklam izle, +${masa!.net} Riva daha kazan.'
+                            : 'Kısa bir reklam izle, ${masa!.giris} Riva girişin geri gelsin.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.figtree(
+                            fontSize: 11.5, color: GolrivaColors.dim)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                            backgroundColor:
+                                GolrivaColors.ok.withValues(alpha: .9),
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 12)),
+                        onPressed: reklamOynuyor ? null : _reklamIzle,
+                        icon: reklamOynuyor
+                            ? const SizedBox(
+                                width: 15,
+                                height: 15,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.play_circle_outline, size: 19),
+                        label: Text(
+                            reklamOynuyor
+                                ? 'REKLAM YÜKLENİYOR…'
+                                : 'REKLAM İZLE (+${_kazandim == true ? masa!.net : masa!.giris} RIVA)',
+                            style: GoogleFonts.bigShouldersDisplay(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                                fontSize: 15)),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Tamamen isteğe bağlı — sonuna kadar izleyince yazılır.',
+                        style: GoogleFonts.figtree(
+                            fontSize: 9.5, color: GolrivaColors.dim2)),
+                  ]),
+                ),
+              ],
+              if (ekOdul != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 11),
+                  decoration: kartDekor(r: 16).copyWith(
+                      border: Border.all(
+                          color: GolrivaColors.ok.withValues(alpha: .5))),
+                  child: Row(children: [
+                    const Icon(Icons.check_circle,
+                        size: 18, color: GolrivaColors.ok),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                          _kazandim == true
+                              ? '+$ekOdul Riva daha cüzdanında — kazanç ikiye katlandı!'
+                              : '+$ekOdul Riva iade edildi — bu seride kaybın sıfır!',
+                          style: GoogleFonts.figtree(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: GolrivaColors.ok)),
+                    ),
+                  ]),
+                ),
+              ],
               // ── OYUNLAR ✓/✗ ──
               if (maclar.isNotEmpty) ...[
                 const SizedBox(height: 10),

@@ -52,10 +52,14 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
   List<Masa> masalar = [];
   String seciliMasa = 'klasik';
 
+  bool yukleniyor = true; // ilk veri gelene kadar sayfa örtülü
+
   @override
   void initState() {
     super.initState();
-    _yenile();
+    _yenile().whenComplete(() {
+      if (mounted && yukleniyor) setState(() => yukleniyor = false);
+    });
   }
 
   Future<void> _yenile() async {
@@ -176,7 +180,9 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
   @override
   Widget build(BuildContext context) {
     final ad = profil?.kullaniciAdi ?? 'MİSAFİR';
-    return ListView(
+    return YuklemeOrtusu(
+      yukleniyor: yukleniyor,
+      child: ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
         // marka + avatar
@@ -330,6 +336,7 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
           ),
         ),
       ],
+    ),
     );
   }
 

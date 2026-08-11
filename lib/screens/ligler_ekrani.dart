@@ -42,10 +42,14 @@ class _LiglerEkraniState extends State<LiglerEkrani> {
   String? benimLig;
   int? benimPuan;
 
+  bool yukleniyor = true; // ilk veri gelene kadar sayfa örtülü
+
   @override
   void initState() {
     super.initState();
-    _yukle();
+    _yukle().whenComplete(() {
+      if (mounted && yukleniyor) setState(() => yukleniyor = false);
+    });
   }
 
   Future<void> _yukle() async {
@@ -79,7 +83,9 @@ class _LiglerEkraniState extends State<LiglerEkrani> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: ListView(
+        child: child: YuklemeOrtusu(
+          yukleniyor: yukleniyor,
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
           children: [
             Text('ELO EŞLEŞTİRİR · LİG ÖDÜLLENDİRİR',
@@ -101,6 +107,7 @@ class _LiglerEkraniState extends State<LiglerEkrani> {
             const SizedBox(height: 14),
             for (final l in sirali) _ligKarti(l),
           ],
+        ),
         ),
       ),
     );

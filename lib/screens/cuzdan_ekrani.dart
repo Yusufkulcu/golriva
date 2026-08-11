@@ -30,24 +30,34 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
     'seri_odul': 'Seri ödülü',
     'berabere_iade': 'Berabere iadesi',
     'reklam': 'Reklam ödülü',
+    'referans': 'Referans bonusu',
     'paket': 'Paket alımı',
     'duzeltme': 'Düzeltme',
   };
 
+  bool yukleniyor = true; // ilk veri gelene kadar sayfa örtülü
+
   @override
   void initState() {
     super.initState();
+    if (!SupabaseAyar.yapilandirildi) {
+      yukleniyor = false;
+    }
     if (SupabaseAyar.yapilandirildi) {
       final servis = OnlineServis();
-      servis.profilGetir().then((p) {
-        if (mounted) setState(() => bakiye = p?.bakiye);
-      }).catchError((Object e, StackTrace s) {
-        hataBildir('cuzdan.profil', e, s);
-      });
-      servis.defterGecmisi().then((g) {
-        if (mounted) setState(() => gecmis = g);
-      }).catchError((Object e, StackTrace s) {
-        hataBildir('cuzdan.gecmis', e, s);
+      Future.wait<void>([
+        servis.profilGetir().then((p) {
+          if (mounted) setState(() => bakiye = p?.bakiye);
+        }).catchError((Object e, StackTrace s) {
+          hataBildir('cuzdan.profil', e, s);
+        }),
+        servis.defterGecmisi().then((g) {
+          if (mounted) setState(() => gecmis = g);
+        }).catchError((Object e, StackTrace s) {
+          hataBildir('cuzdan.gecmis', e, s);
+        }),
+      ]).whenComplete(() {
+        if (mounted && yukleniyor) setState(() => yukleniyor = false);
       });
     }
   }
@@ -63,7 +73,9 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: ListView(
+        child: YuklemeOrtusu(
+          yukleniyor: yukleniyor,
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 20),
           children: [
             Container(
@@ -121,6 +133,7 @@ class _CuzdanEkraniState extends State<CuzdanEkrani> {
                 style: GoogleFonts.figtree(
                     fontSize: 9.5, color: GolrivaColors.dim2, height: 1.6)),
           ],
+        ),
         ),
       ),
     );

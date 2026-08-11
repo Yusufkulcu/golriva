@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -138,6 +139,55 @@ Widget goldButon(String s, VoidCallback? onTap,
         ),
       ),
     );
+
+/// ───────────── YÜKLEME ÖRTÜSÜ ─────────────
+/// Kullanıcı kuralı: veri gelmeden sayfa "yarım" görünmesin. Yüklenirken
+/// içerik hafifçe bulanır ve ortada küçük bir ilerleme halkası döner; veri
+/// gelince 250 ms'de yumuşakça netleşir. Kısa yüklemelerde bulanıklık daha
+/// tam oluşmadan söner — rahatsız edici bir "flaş" oluşmaz. Yüklenirken
+/// dokunuşlar da engellenir (yarım veriyle işlem yapılamaz).
+class YuklemeOrtusu extends StatelessWidget {
+  final bool yukleniyor;
+  final Widget child;
+  const YuklemeOrtusu(
+      {super.key, required this.yukleniyor, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(fit: StackFit.passthrough, children: [
+      TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: yukleniyor ? 3.0 : 0),
+        duration: const Duration(milliseconds: 250),
+        builder: (_, s, c) => s <= .05
+            ? c!
+            : ImageFiltered(
+                imageFilter: ImageFilter.blur(
+                    sigmaX: s, sigmaY: s, tileMode: TileMode.decal),
+                child: c),
+        child: child,
+      ),
+      Positioned.fill(
+        child: IgnorePointer(
+          ignoring: !yukleniyor,
+          child: AnimatedOpacity(
+            opacity: yukleniyor ? 1 : 0,
+            duration: const Duration(milliseconds: 250),
+            child: ColoredBox(
+              color: GolrivaColors.bg.withValues(alpha: .30),
+              child: const Center(
+                child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                        color: GolrivaColors.gold, strokeWidth: 2.6)),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
 
 /// ───────────── SIRA GÖSTERGESİ (çevrimiçi sıra-tabanlı oyunlar) ─────────────
 /// Kullanıcı kuralı: sıranın kimde olduğu ekrana bakar bakmaz anlaşılmalı.

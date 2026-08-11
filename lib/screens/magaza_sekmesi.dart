@@ -32,10 +32,14 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
   bool reklamOynuyor = false;
   bool satinAliniyor = false;
 
+  bool yukleniyor = true; // ilk veri gelene kadar sayfa örtülü
+
   @override
   void initState() {
     super.initState();
-    _yukle();
+    _yukle().whenComplete(() {
+      if (mounted && yukleniyor) setState(() => yukleniyor = false);
+    });
   }
 
   Future<void> _yukle() async {
@@ -149,7 +153,9 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return YuklemeOrtusu(
+      yukleniyor: yukleniyor,
+      child: ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       children: [
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -248,6 +254,7 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
             style: GoogleFonts.figtree(
                 fontSize: 10, color: GolrivaColors.dim2, height: 1.5)),
       ],
+    ),
     );
   }
 

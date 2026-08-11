@@ -25,10 +25,14 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
   String? benimAdim;
   String? hata;
 
+  bool yukleniyor = true; // ilk veri gelene kadar sayfa örtülü
+
   @override
   void initState() {
     super.initState();
-    _yukle();
+    _yukle().whenComplete(() {
+      if (mounted && yukleniyor) setState(() => yukleniyor = false);
+    });
   }
 
   Future<void> _yukle() async {
@@ -86,7 +90,9 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
+    return YuklemeOrtusu(
+      yukleniyor: yukleniyor,
+      child: RefreshIndicator(
       color: GolrivaColors.gold,
       onRefresh: _yukle,
       child: ListView(
@@ -150,6 +156,7 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
           ],
         ],
       ),
+    ),
     );
   }
 

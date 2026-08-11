@@ -155,8 +155,9 @@ class _ProfilSekmesiState extends State<ProfilSekmesi> {
   @override
   Widget build(BuildContext context) {
     if (!yuklendi) {
-      return const Center(
-          child: CircularProgressIndicator(color: GolrivaColors.gold));
+      // Diğer sekmelerle aynı yükleme dili: örtü + halka (kullanıcı kuralı).
+      return const YuklemeOrtusu(
+          yukleniyor: true, child: SizedBox.expand());
     }
     if (profil == null) return _hesapYok();
     final p = profil!;

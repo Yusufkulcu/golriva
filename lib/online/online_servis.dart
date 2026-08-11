@@ -518,8 +518,30 @@ class OnlineServis {
 
   // ---------- FAZ 2.4: ARKADAŞLAR ----------
 
-  Future<void> arkadasEkle(String ad) =>
-      _c.rpc('arkadas_ekle', params: {'ad': ad.trim()});
+  /// Arkadaşlık İSTEĞİ gönderir (faz2_15 — onaylı model).
+  /// Dönüş: 'istek' (onay bekliyor) | 'arkadas' (zaten arkadaş ya da
+  /// çapraz istek otomatik eşleşti).
+  Future<String> arkadasEkle(String ad) async {
+    final r = await _c.rpc('arkadas_ekle', params: {'ad': ad.trim()});
+    return (r as String?) ?? 'istek';
+  }
+
+  /// Bana gelen bekleyen arkadaşlık istekleri.
+  Future<List<({String ad, DateTime tarih})>> gelenArkadasIstekleri() async {
+    if (!girisYapildi) return [];
+    final r = await _c.rpc('gelen_arkadas_istekleri');
+    return [
+      for (final d in (r as List))
+        (
+          ad: d['kullanici_adi'] as String,
+          tarih: DateTime.parse(d['created_at'] as String),
+        )
+    ];
+  }
+
+  /// İsteğe yanıt: kabul=true → arkadaşlık kurulur; false → istek silinir.
+  Future<void> arkadasIstekYanit(String ad, bool kabul) => _c.rpc(
+      'arkadas_istek_yanit', params: {'ad': ad, 'kabul': kabul});
 
   Future<void> arkadasSil(String ad) =>
       _c.rpc('arkadas_sil', params: {'ad': ad});

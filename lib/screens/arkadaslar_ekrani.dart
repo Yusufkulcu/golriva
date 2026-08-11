@@ -28,6 +28,7 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
   List<({String ad, int elo, String ligKod})>? liste;
   List<({String kod, String kurucuAd, String mod, DateTime tarih})> gelenler =
       [];
+  List<({String ad, DateTime tarih})> istekler = [];
   String? hata;
   bool ekleniyor = false;
   bool katiliniyor = false;
@@ -55,6 +56,31 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
       final g = await servis.gelenDavetler();
       if (mounted) setState(() => gelenler = g);
     } catch (_) {} // sessiz: sonraki yoklama telafi eder
+    try {
+      final i = await servis.gelenArkadasIstekleri();
+      if (mounted) setState(() => istekler = i);
+    } catch (_) {}
+  }
+
+  /// Arkadaşlık isteğine yanıt (kullanıcı kuralı: onaysız arkadaşlık yok).
+  Future<void> _istekYanit(String ad, bool kabul) async {
+    try {
+      await servis.arkadasIstekYanit(ad, kabul);
+      await _gelenleriYukle();
+      if (kabul) await _yukle();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(kabul
+                ? '$ad ile artık arkadaşsınız'
+                : '$ad isteği silindi')));
+      }
+    } catch (e, s) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(temizMesaj('arkadaslar._istekYanit', e,
+                'Şu an yanıtlanamadı — tekrar dene.', s))));
+      }
+    }
   }
 
   /// Gelen daveti kabul et → dostluk serisi kurulur, maça geçilir.
@@ -111,12 +137,15 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
     if (ad.isEmpty) return;
     setState(() => ekleniyor = true);
     try {
-      await servis.arkadasEkle(ad);
+      final sonuc = await servis.arkadasEkle(ad);
       denetleyici.clear();
       await _yukle();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$ad arkadaş listene eklendi')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(sonuc == 'arkadas'
+                ? '$ad ile artık arkadaşsınız'
+                : '$ad kullanıcısına arkadaşlık isteği gönderildi — '
+                    'onaylayınca listende görünecek')));
       }
     } catch (e, s) {
       if (mounted) {
@@ -194,6 +223,48 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
               ]),
             ),
             const SizedBox(height: 14),
+            // ARKADAŞLIK İSTEKLERİ — onay bekleyenler (kullanıcı kuralı)
+            if (istekler.isNotEmpty) ...[
+              etiket('ARKADAŞLIK İSTEKLERİ', renk: GolrivaColors.goldHi),
+              const SizedBox(height: 7),
+              for (final i in istekler)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+                  decoration: gKartDekor(),
+                  child: Row(children: [
+                    avatar(i.ad, 36, kenar: GolrivaColors.gold),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Text('${i.ad} seni arkadaş olarak eklemek istiyor',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          style: GoogleFonts.figtree(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: GolrivaColors.gold,
+                          foregroundColor: const Color(0xFF231A04),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8)),
+                      onPressed: () => _istekYanit(i.ad, true),
+                      child: Text('ONAYLA',
+                          style: GoogleFonts.bigShouldersDisplay(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.5,
+                              fontSize: 13)),
+                    ),
+                    IconButton(
+                      onPressed: () => _istekYanit(i.ad, false),
+                      icon: gIkon('carpi', 14, GolrivaColors.dim2),
+                      tooltip: 'Reddet',
+                    ),
+                  ]),
+                ),
+              const SizedBox(height: 7),
+            ],
             // GELEN DAVETLER — arkadaşların kurduğu hedefli düello istekleri
             if (gelenler.isNotEmpty) ...[
               etiket('GELEN DAVETLER', renk: GolrivaColors.goldHi),

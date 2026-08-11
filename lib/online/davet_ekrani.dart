@@ -59,10 +59,20 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
       nabiz = Timer.periodic(const Duration(seconds: 2), (_) => _yokla());
     } catch (e, s) {
       if (mounted) {
+        final m = '$e';
         setState(() {
           kuruluyor = false;
-          hata = temizMesaj('davet._kur', e,
-              'Davet şu an kurulamadı — tekrar dene.', s);
+          // Gerçek nedeni sakla(ma)ma: en sık nedenler açık mesajla söylenir.
+          hata = (m.contains('davet_olustur2') ||
+                  (m.contains('function') && m.contains('find')))
+              ? 'Sunucu güncellemesi eksik görünüyor: '
+                  'supabase/faz2_14_oyun_ek.sql dosyasını Supabase SQL '
+                  'Editor\'de çalıştırın, sonra tekrar deneyin.'
+              : m.contains('arkadaş')
+                  ? 'Bu oyuncu henüz arkadaş listende değil — önce '
+                      'arkadaşlık isteği onaylanmalı.'
+                  : temizMesaj('davet._kur', e,
+                      'Davet şu an kurulamadı — tekrar dene.', s);
         });
       }
     }

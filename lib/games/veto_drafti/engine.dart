@@ -4,7 +4,7 @@ import '../core/tr_norm.dart';
 
 /// VETO DRAFTI motoru (Faz 2.17 — yeni oyun).
 /// Kupa Draftı kuralları (6 tur, rastgele kulüp, 1K-2D-2O-1F, kupa toplamı
-/// YÜKSEK kazanır) + TAKTİK KATMAN: her oyuncunun maç başına 2 VETO hakkı
+/// YÜKSEK kazanır) + TAKTİK KATMAN: her oyuncunun maç başına 1 VETO hakkı
 /// vardır. Rakip bir futbolcu seçtiğinde kısa bir veto penceresi açılır —
 /// VETO dersen o futbolcu YAKILIR (kimse alamaz, kadroya girmez) ve rakip
 /// aynı etap için YENİDEN seçer; GEÇ dersen seçim kesinleşir.
@@ -12,7 +12,7 @@ import '../core/tr_norm.dart';
 const vetoFormation = {'K': 1, 'D': 2, 'O': 2, 'F': 1};
 const vetoSlotAd = {'K': 'Kaleci', 'D': 'Defans', 'O': 'Orta', 'F': 'Forvet'};
 const vetoTurSayisi = 6;
-const vetoHakSayisi = 2;
+const vetoHakSayisi = 1; // kullanici karari: mac basina TEK veto
 
 enum VetoAsama { secim, veto }
 

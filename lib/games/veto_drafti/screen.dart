@@ -11,7 +11,7 @@ import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
 
 /// VETO DRAFTI ekranı (Faz 2.17) — Kupa Draftı + taktik veto katmanı.
-/// Rakibin seçimini 2 kez VETO edip yakabilirsin; veto edilen yeniden
+/// Rakibin seçimini maçta 1 kez VETO edip yakabilirsin; veto edilen yeniden
 /// seçilemez ve rakip aynı etap için yeni oyuncu arar. Hot-seat + çevrimiçi.
 /// RESPONSIVE KURAL: kök yerleşim ListView.
 class VetoDraftiScreen extends StatefulWidget {

@@ -4,10 +4,11 @@ import '../core/tr_norm.dart';
 
 /// BONSERVİS 21'İ motoru (Faz 2.17 — yeni oyun).
 /// Blackjack gerilimli kör av: hedefe EN ÇOK YAKLAŞAN kazanır ama hedefi
-/// AŞAN YANAR. Sırayla oyuncu seçilir (bonservis seçimde AÇILIR ve toplama
-/// eklenir) ya da DUR denir. Duran bir daha seçemez; diğeri tek başına devam
-/// eder. İkisi de durunca (ya da yanınca) maç biter.
-/// Kazanan: yanmayan > az aşan; ikisi de sağlamsa hedefe mutlak yakın olan.
+/// AŞAN YANAR ve maç ANINDA biter — yanan direkt kaybeder (kullanıcı
+/// kararı: rakip devam etmez). Sırayla oyuncu seçilir (bonservis seçimde
+/// AÇILIR ve toplama eklenir) ya da DUR denir. Duran bir daha seçemez;
+/// diğeri tek başına devam eder. İkisi de durunca maç biter.
+/// Kazanan: yanan varsa diğeri; ikisi de sağlamsa hedefe mutlak yakın olan.
 /// Seed determinizmi: iki istemci aynı hedefi ve ilk sırayı türetir.
 const yirmibirMaxSecim = 8; // emniyet: 8 seçimden sonra otomatik DUR
 
@@ -64,7 +65,8 @@ class YirmibirEngine {
   }
 
   /// Sıradaki oyuncu bir futbolcu çeker. Geçerliyse toplama eklenir;
-  /// hedef aşılırsa ÇEKEN YANAR (otomatik durur) ve sıra akışı ilerler.
+  /// hedef aşılırsa ÇEKEN YANAR ve MAÇ ANINDA BİTER — diğer taraf
+  /// direkt kazanır (kullanıcı kararı: solo devam yok).
   bool sec(int idx) {
     if (bitti || durdu[sira]) return false;
     if (idx < 0 || idx >= repo.oyuncular.length) return false;
@@ -74,7 +76,10 @@ class YirmibirEngine {
     if (toplam(sira) > hedef) {
       yandi[sira] = true;
       durdu[sira] = true;
-    } else if (secimler[sira].length >= yirmibirMaxSecim) {
+      bitti = true; // yanan direkt kaybeder — sıra akışı işlemez
+      return true;
+    }
+    if (secimler[sira].length >= yirmibirMaxSecim) {
       durdu[sira] = true; // emniyet tavanı
     }
     _ilerle();
@@ -94,11 +99,7 @@ class YirmibirEngine {
       return;
     }
     final diger = 1 - sira;
-    if (!durdu[diger]) {
-      sira = diger; // klasik sıra değişimi
-    } else if (durdu[sira]) {
-      // ben de kapandıysam (imkansız değil: yanma anı) — bitti yukarıda yakalanır
-    }
+    if (!durdu[diger]) sira = diger; // klasik sıra değişimi
     // diğeri durduysa ve ben aktifsem sıra bende kalır (solo devam)
   }
 

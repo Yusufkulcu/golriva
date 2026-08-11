@@ -11,7 +11,8 @@ import 'engine.dart';
 
 /// BONSERVİS 21'İ ekranı (Faz 2.17) — blackjack gerilimli kör av.
 /// Sırayla futbolcu çekilir (bonservis seçimde AÇILIR, toplam üstte birikir)
-/// ya da DUR denir. Hedefi AŞAN YANAR. Hot-seat + çevrimiçi.
+/// ya da DUR denir. Hedefi AŞAN YANAR ve maç ANINDA biter — yanan direkt
+/// kaybeder. Hot-seat + çevrimiçi.
 /// RESPONSIVE KURAL: kök yerleşim ListView.
 class YirmibirScreen extends StatefulWidget {
   final KorAvRepository repo;
@@ -39,17 +40,14 @@ class _YirmibirScreenState extends State<YirmibirScreen> {
       widget.online == null || engine.sira == widget.online!.bilgi.benimSiram;
 
   /// Rakip elini kapattıysa art arda seçimler bende — açıkla.
+  /// (Yanma durumu yok: yanan anında kaybeder, maç biter.)
   String? get _siraNotu {
     if (widget.online == null || engine.bitti) return null;
     final diger = 1 - engine.sira;
     if (engine.durdu[diger]) {
-      return engine.yandi[diger]
-          ? (siraBende
-              ? 'Rakip YANDI — istersen çekmeye devam et, istersen DUR.'
-              : 'Yandın — rakip elini tamamlıyor.')
-          : (siraBende
-              ? 'Rakip DUR dedi — art arda seçimler sende.'
-              : 'Elini kapattın — rakip devam ediyor.');
+      return siraBende
+          ? 'Rakip DUR dedi — art arda seçimler sende.'
+          : 'Elini kapattın — rakip devam ediyor.';
     }
     return null;
   }
@@ -411,7 +409,7 @@ class _YirmibirScreenState extends State<YirmibirScreen> {
                             color: GolrivaColors.goldHi)),
                   ),
                   const SizedBox(height: 4),
-                  Text('HEDEFE EN ÇOK YAKLAŞAN KAZANIR — AŞAN YANAR',
+                  Text('HEDEFE EN ÇOK YAKLAŞAN KAZANIR — AŞAN ANINDA KAYBEDER',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(
                           fontSize: 9,

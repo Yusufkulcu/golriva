@@ -38,12 +38,13 @@ void main() {
       }
     });
 
-    test('hedefi asan YANAR ve otomatik durur', () {
+    test('hedefi asan YANAR: mac ANINDA biter, diger taraf direkt kazanir',
+        () {
       final e = YirmibirEngine(repos.fee, rng: Random(1));
       final s = e.sira;
       // s EN DEGERLI oyuncularla hedefi kasten asar (hedef ≤ %45 top-6,
       // yani top oyunculardan en cok 6 secim kesin asar); diger taraf
-      // sirasi gelince DUR der → s solo devam eder.
+      // sirasi gelince DUR der.
       final pahalilar = List.generate(repos.fee.oyuncular.length, (x) => x)
         ..sort((a, b) => repos.fee.oyuncular[b]
             .deger
@@ -59,9 +60,11 @@ void main() {
       expect(e.yandi[s], isTrue, reason: 'hedef ${e.hedef} asilamadi?');
       expect(e.durdu[s], isTrue);
       expect(e.toplam(s), greaterThan(e.hedef.toDouble()));
-      if (!e.bitti) e.dur(); // diger taraf da kapansin
+      // KULLANICI KARARI: yanma ani = mac sonu; solo devam YOK
       expect(e.bitti, isTrue);
-      expect(e.kazanan(), 1 - s); // yanmayan kazanir
+      expect(e.kazanan(), 1 - s); // yanmayan direkt kazanir
+      // bitmis macta hicbir hamle islemez
+      expect(e.sec(pahalilar[i]), isFalse);
     });
 
     test('DUR: duran bir daha oynayamaz, diger solo devam eder', () {
@@ -111,11 +114,10 @@ void main() {
       }
     });
 
-    test('kazanan kurali: yanmayan > az asan; saglamlarda mutlak yakin', () {
+    test('kazanan kurali: yanan direkt kaybeder; saglamlarda mutlak yakin',
+        () {
       final e = YirmibirEngine(repos.fee, rng: Random(4));
-      // durum matrisi motor disi dogrulama: kazanan() saf fonksiyon gibi
-      // — once tam mac simulasyonlariyla test edilir (asagida);
-      // burada yanma asimetrisi: yandi[0]=true, yandi[1]=false → 1 kazanir
+      // yanma asimetrisi (yeni kuralda ikisi birden yanamaz):
       e.yandi[0] = true;
       e.yandi[1] = false;
       expect(e.kazanan(), 1);
@@ -163,19 +165,19 @@ void main() {
         }
         expect(e.bitti, isTrue, reason: 'seed $seed bitmedi');
         for (var s = 0; s < 2; s++) {
-          expect(e.durdu[s], isTrue);
           expect(e.secimler[s].length, lessThanOrEqualTo(yirmibirMaxSecim));
           // yandi ⇔ toplam > hedef
           expect(e.yandi[s], e.toplam(s) > e.hedef);
         }
-        final k = e.kazanan();
-        if (k != null) {
-          if (e.yandi[1 - k]) {
-            expect(e.yandi[k] || e.fark(k) < e.fark(1 - k), isTrue);
-          } else {
-            expect(e.yandi[k], isFalse);
-            expect(e.fark(k), lessThan(e.fark(1 - k)));
-          }
+        if (e.yandi[0] || e.yandi[1]) {
+          // yanma ani = mac sonu: IKISI BIRDEN YANAMAZ, yanmayan kazanir
+          expect(e.yandi[0] && e.yandi[1], isFalse);
+          expect(e.kazanan(), e.yandi[0] ? 1 : 0);
+        } else {
+          // kimse yanmadi → ikisi de DUR demis olmali
+          expect(e.durdu[0] && e.durdu[1], isTrue);
+          final k = e.kazanan();
+          if (k != null) expect(e.fark(k), lessThan(e.fark(1 - k)));
         }
       }
     });

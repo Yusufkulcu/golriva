@@ -139,6 +139,127 @@ Widget goldButon(String s, VoidCallback? onTap,
       ),
     );
 
+/// ───────────── SIRA GÖSTERGESİ (çevrimiçi sıra-tabanlı oyunlar) ─────────────
+/// Kullanıcı kuralı: sıranın kimde olduğu ekrana bakar bakmaz anlaşılmalı.
+/// Sıra sende: altın dolgulu, nabız gibi atan şerit. Sıra rakipte: soluk,
+/// sakin şerit + dönen bekleme simgesi. [notu]: "draft kuralı gereği üst üste
+/// oynanıyor" gibi özel durum açıklamaları için ikinci satır.
+class SiraSeridi extends StatefulWidget {
+  final bool siraBende;
+  final String rakipAdi;
+  final String? notu;
+  const SiraSeridi(
+      {super.key, required this.siraBende, required this.rakipAdi, this.notu});
+
+  @override
+  State<SiraSeridi> createState() => _SiraSeridiState();
+}
+
+class _SiraSeridiState extends State<SiraSeridi>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _nabiz = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 850))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _nabiz.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bende = widget.siraBende;
+    return AnimatedBuilder(
+      animation: _nabiz,
+      builder: (_, __) {
+        final t = bende ? _nabiz.value : 0.0;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+          decoration: BoxDecoration(
+            gradient: bende ? GolrivaColors.goldGradient : null,
+            color: bende ? null : GolrivaColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: bende ? GolrivaColors.goldHi : GolrivaColors.edge2),
+            boxShadow: bende
+                ? [
+                    BoxShadow(
+                        color: const Color(0xFFD4AF37)
+                            .withValues(alpha: .22 + .30 * t),
+                        blurRadius: 14 + 10 * t)
+                  ]
+                : null,
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (!bende) ...[
+                  const SizedBox(
+                      width: 11,
+                      height: 11,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: GolrivaColors.dim)),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                    bende
+                        ? 'SIRA SENDE — OYNA!'
+                        : 'SIRA RAKİPTE · ${trBuyuk(widget.rakipAdi)} OYNUYOR',
+                    style: GoogleFonts.bigShouldersDisplay(
+                        fontSize: bende ? 19 : 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                        color: bende
+                            ? const Color(0xFF231A04)
+                            : GolrivaColors.dim)),
+              ]),
+            ),
+            if (widget.notu != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(widget.notu!,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.figtree(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: bende
+                            ? const Color(0xCC231A04)
+                            : GolrivaColors.dim2)),
+              ),
+          ]),
+        );
+      },
+    );
+  }
+}
+
+/// Taraf vurgusu: sıra hangi taraftaysa o panel tam görünür ve renkli
+/// çerçeveyle hafifçe parlar; diğer taraf soluklaşır (kullanıcı kuralı:
+/// sıra bir bakışta anlaşılsın). Oyun bitince iki taraf da normale döner.
+Widget tarafVurgu(
+        {required bool aktif,
+        required bool oyunBitti,
+        required Color renk,
+        required Widget child}) =>
+    AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: (aktif && !oyunBitti)
+            ? [BoxShadow(color: renk.withValues(alpha: .35), blurRadius: 12)]
+            : null,
+      ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 250),
+        opacity: (oyunBitti || aktif) ? 1 : .45,
+        child: child,
+      ),
+    );
+
 /// seri noktalari (BO3 · oo o)
 Widget seriNoktalari(List<int?> sonuclar, {String? on, String? arka}) =>
     Row(mainAxisSize: MainAxisSize.min, children: [

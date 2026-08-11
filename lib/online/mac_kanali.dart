@@ -124,6 +124,9 @@ class OnlineMacKanali {
 
   Future<void> _yokla() async {
     if (kapandi) return;
+    // once iletilemeyen hamleler: mesaj kaybi iki motoru ayristirir
+    // ("sira iki kere gecti" hatalarinin kok nedeni) — teslim GARANTI edilir.
+    if (_giden.isNotEmpty) await _gidenleriAkit();
     try {
       final r = await _c
           .from('hamleler')
@@ -158,25 +161,52 @@ class OnlineMacKanali {
     }
   }
 
+  final List<Map<String, dynamic>> _giden = []; // iletilemeyen hamleler (sirali)
+  bool _akitiliyor = false;
+  bool _kayipBildirildi = false;
+
   /// Kendi hamlemi gonder (motor zaten yerelde uyguladi).
+  /// TESLIM GARANTISI: basarisiz gonderim KAYBOLMAZ — kuyrukta bekler ve
+  /// her yoklamada sirayla tekrar denenir. Mesaj kaybi iki istemcinin
+  /// motorlarini ayristirir (sira karmasasi); bu kuyruk o kapiyi kapatir.
   Future<void> gonder(Map<String, dynamic> icerik) async {
     // benim OYUN hamlem = sira rakibe gecti → hafif titresim
     if (icerik['tip'] == 'sec' || icerik['tip'] == 'sure') {
       siraRakibeTitresim();
     }
     _hamleNo++;
+    _giden.add({'no': _hamleNo, 'icerik': icerik});
+    await _gidenleriAkit();
+  }
+
+  /// Bekleyenleri SIRAYLA akit; takilirsa kuyruk durur, sonraki yoklamada
+  /// devam eder. "duplicate" (23505) = onceki deneme aslinda ulasmis → basarili.
+  Future<void> _gidenleriAkit() async {
+    if (_akitiliyor || kapandi) return;
+    _akitiliyor = true;
     try {
-      await _c.rpc('hamle_gonder',
-          params: {'mid': bilgi.macId, 'no': _hamleNo, 'icerik_j': icerik});
-    } catch (_) {
-      // tek deneme daha (ayni no — unique kisit cift islemeyi engeller)
-      try {
-        await _c.rpc('hamle_gonder',
-            params: {'mid': bilgi.macId, 'no': _hamleNo, 'icerik_j': icerik});
-      } catch (e, s) {
-        // hamle sunucuya ulasamadi — rakip tarafinda senkron bozulabilir
+      while (_giden.isNotEmpty) {
+        final h = _giden.first;
+        try {
+          await _c.rpc('hamle_gonder', params: {
+            'mid': bilgi.macId,
+            'no': h['no'],
+            'icerik_j': h['icerik'],
+          });
+        } on PostgrestException catch (e) {
+          final m = '${e.code} ${e.message}';
+          if (!m.contains('23505') && !m.contains('duplicate')) rethrow;
+        }
+        _giden.removeAt(0);
+      }
+      _kayipBildirildi = false; // kuyruk bosaldi, olay kapandi
+    } catch (e, s) {
+      if (!_kayipBildirildi) {
+        _kayipBildirildi = true;
         hataBildir('macKanali.gonder', e, s);
       }
+    } finally {
+      _akitiliyor = false;
     }
   }
 

@@ -6,6 +6,7 @@ import '../../data/players_repository.dart';
 import '../../online/mac_kanali.dart';
 import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
+import '../../widgets/golriva_ui.dart';
 import '../../widgets/saha_kadro.dart';
 import 'engine.dart';
 
@@ -36,6 +37,19 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
   bool get siraBende =>
       widget.online == null ||
       engine.simdiSecen == widget.online!.bilgi.benimSiram;
+
+  /// Snake-draft kuralı (her turda ilk seçen değişir) aynı oyuncuya üst üste
+  /// iki seçim getirir — bunu açıkça söylemezsek "sıra iki kere geçti" diye
+  /// hata sanılıyor (kullanıcı geri bildirimi).
+  String? get _siraNotu {
+    if (widget.online == null || engine.bitti) return null;
+    if (engine.faz == 0 && engine.tur > 0) {
+      return siraBende
+          ? 'Draft kuralı: her turda ilk seçen değişir — üst üste iki seçim sende.'
+          : 'Draft kuralı: her turda ilk seçen değişir — rakip üst üste seçiyor.';
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -334,6 +348,13 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
           children: [
+            if (widget.online != null && !engine.bitti) ...[
+              const SizedBox(height: 10),
+              SiraSeridi(
+                  siraBende: siraBende,
+                  rakipAdi: widget.online!.bilgi.rakipAdi,
+                  notu: _siraNotu),
+            ],
             if (k != null)
               Container(
                 width: double.infinity,
@@ -458,9 +479,19 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _kadro(0, GolrivaColors.p1)),
+                Expanded(
+                    child: tarafVurgu(
+                        aktif: secen == 0,
+                        oyunBitti: engine.bitti,
+                        renk: GolrivaColors.p1,
+                        child: _kadro(0, GolrivaColors.p1))),
                 const SizedBox(width: 10),
-                Expanded(child: _kadro(1, GolrivaColors.p2)),
+                Expanded(
+                    child: tarafVurgu(
+                        aktif: secen == 1,
+                        oyunBitti: engine.bitti,
+                        renk: GolrivaColors.p2,
+                        child: _kadro(1, GolrivaColors.p2))),
               ],
             ),
           ],

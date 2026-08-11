@@ -27,15 +27,15 @@ class SerbestConfig {
 const macConfig = SerbestConfig(
     formation: {'K': 1, 'D': 2, 'O': 2, 'F': 1},
     slotOrder: ['K', 'D', 'D', 'O', 'O', 'F'],
-    etiket: 'EN ÇOK MAÇ',
+    etiket: 'En Çok Maç Oynayan Oyuncu',
     birim: 'maç',
     baslik: 'MAÇ REKORTMENLERİ');
 const milligolConfig = SerbestConfig(
     formation: {'K': 0, 'D': 2, 'O': 2, 'F': 2},
     slotOrder: ['D', 'D', 'O', 'O', 'F', 'F'],
-    etiket: 'EN ÇOK MİLLİ GOL',
+    etiket: 'En Çok Milli Takım Golü Atan Oyuncu',
     birim: 'gol',
-    baslik: 'MİLLİ GOL KRALLARI');
+    baslik: 'MİLLİ TAKIM GOL KRALLARI');
 
 const serbestTurSayisi = 6;
 

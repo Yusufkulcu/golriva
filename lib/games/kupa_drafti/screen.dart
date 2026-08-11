@@ -394,7 +394,7 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
                   border: Border.all(color: GolrivaColors.edge),
                 ),
                 child: Column(children: [
-                  Text('BU KULÜPTE OYNAMIŞ EN KUPALI OYUNCUYU YAZ',
+                  Text('BU KULÜPTE AKTİF VEYA OYNAMIŞ KARİYERİNDE EN FAZLA KUPA KAZANAN OYUNCUYU YAZ',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(
                           fontSize: 9,

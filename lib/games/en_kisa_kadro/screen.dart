@@ -335,7 +335,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Column(children: [
-          Text('EN KISA KADRO',
+          Text('EN KISA KADROYU KUR',
               style: GoogleFonts.bigShouldersDisplay(
                   fontWeight: FontWeight.w900, fontSize: 21, letterSpacing: 2)),
           Text(engine.bitti ? 'BİTTİ' : 'TUR ${engine.tur + 1}/$turSayisi',
@@ -386,7 +386,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                 child: Column(children: [
                   Text(
                       k.ligMi
-                          ? 'BU LİGDE OYNAMIŞ BİRİNİ SEÇ'
+                          ? 'Bu Ligde Oynamış Aktif Veya Oynamış En Kısa Oyuncusunu Seç'
                           : 'BU ÜLKEDEN BİRİNİ SEÇ',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(

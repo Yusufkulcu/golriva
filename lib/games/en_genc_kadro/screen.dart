@@ -303,7 +303,7 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
                 color: GolrivaColors.goldHi,
                 fontWeight: FontWeight.w700,
                 fontSize: 26)),
-        Text('toplam yaş',
+        Text('Toplam Yaş',
             style: GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 10)),
       ]);
 
@@ -336,7 +336,7 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Column(children: [
-          Text('EN GENÇ KADRO',
+          Text('EN GENÇ KADROYU KUR',
               style: GoogleFonts.bigShouldersDisplay(
                   fontWeight: FontWeight.w900, fontSize: 21, letterSpacing: 2)),
           Text(engine.bitti ? 'BİTTİ' : 'TUR ${engine.tur + 1}/$gencTurSayisi',
@@ -404,7 +404,7 @@ class _EnGencKadroScreenState extends State<EnGencKadroScreen> {
                 child: Column(children: [
                   Text(
                       engine.ligMi
-                          ? 'BU LİGİN AKTİF EN GENÇ OYUNCUSUNU YAZ'
+                          ? 'Bu Ligde Oynamış Aktif Veya Oynamış En Genç Oyuncusunu Seç'
                           : 'BU ÜLKENİN AKTİF EN GENÇ OYUNCUSUNU YAZ',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.figtree(

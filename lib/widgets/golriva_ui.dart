@@ -257,7 +257,7 @@ class _SiraSeridiState extends State<SiraSeridi>
                 ],
                 Text(
                     bende
-                        ? 'SIRA SENDE — OYNA!'
+                        ? 'Sıra Sende - Süre Bitmeden Cevabını Yaz'
                         : 'SIRA RAKİPTE · ${trBuyuk(widget.rakipAdi)} OYNUYOR',
                     style: GoogleFonts.bigShouldersDisplay(
                         fontSize: bende ? 19 : 14,

@@ -22,15 +22,15 @@ import 'online_servis.dart';
 import 'seri_sonucu_ekrani.dart';
 
 const onlineOyunAdlari = {
-  'en_kisa_kadro': 'EN KISA KADRO',
+  'en_kisa_kadro': 'EN KISA KADROYU KUR',
   'kupa_drafti': 'KUPA DRAFTI',
-  'en_genc_kadro': 'EN GENÇ KADRO',
+  'en_genc_kadro': 'EN GENÇ KADROYU KUR',
   'bayrak_yarisi': 'BAYRAK YARIŞI',
   'hedefi_tuttur': 'HEDEFİ TUTTUR',
   'bonservis_avi': 'BONSERVİS AVI',
   'sari_kart_avi': 'SARI KART AVI',
   'mac_rekortmenleri': 'MAÇ REKORTMENLERİ',
-  'milli_gol_krallari': 'MİLLİ GOL KRALLARI',
+  'milli_gol_krallari': 'MİLLİ TAKIM GOL KRALLARI',
   'kariyer_ikizi': 'KARİYER İKİZİ',
 };
 

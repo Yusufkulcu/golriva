@@ -27,9 +27,9 @@ class ArkadaslaEkrani extends StatelessWidget {
   List<(String, String, String, Widget Function())> _oyunlar() => [
         ('kupa_drafti', 'KUPA DRAFTI', 'Draft · 6 tur',
             () => KupaDraftiScreen(repo: repos.kupa)),
-        ('en_kisa_kadro', 'EN KISA KADRO', 'Draft · boy',
+        ('en_kisa_kadro', 'EN KISA KADROYU KUR', 'Draft · boy',
             () => EnKisaKadroScreen(repo: repos.boy)),
-        ('en_genc_kadro', 'EN GENÇ KADRO', 'Draft · yaş',
+        ('en_genc_kadro', 'EN GENÇ KADROYU KUR', 'Draft · yaş',
             () => EnGencKadroScreen(repo: repos.genc)),
         ('bayrak_yarisi', 'BAYRAK YARIŞI', 'Refleks',
             () => BayrakYarisiScreen(repo: repos.boy)),
@@ -41,7 +41,7 @@ class ArkadaslaEkrani extends StatelessWidget {
             () => KorAvScreen(repo: repos.card, config: sariKartConfig)),
         ('mac_rekortmenleri', 'MAÇ REKORTMENLERİ', 'Serbest kadro',
             () => SerbestKadroScreen(repo: repos.mac, config: macConfig)),
-        ('milli_gol_krallari', 'MİLLİ GOL KRALLARI', 'Serbest kadro',
+        ('milli_gol_krallari', 'MİLLİ TAKIM GOL KRALLARI', 'Serbest kadro',
             () => SerbestKadroScreen(
                 repo: repos.milligol, config: milligolConfig)),
         ('kariyer_ikizi', 'KARİYER İKİZİ', 'Soru',

@@ -33,6 +33,9 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   // FAZ 2.20 — istege bagli odullu reklam (2x / kayip iadesi)
   bool reklamOynuyor = false;
   int? ekOdul; // alinan ek Riva (null = henuz alinmadi)
+  // FAZ 2.21 — admin paneldeki ORTAK gunluk limit (magaza + mac sonu):
+  // hak 0 ise teklif karti hic gosterilmez.
+  int reklamHak = 0;
 
   OnlineMacBilgi get b => widget.kanal.bilgi;
   String get _benimUid => b.seatUid(b.benimSiram);
@@ -52,6 +55,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
       final m = b.dostluk ? null : await servis.masaOdul(b.masaKod, b.mod);
       final p = await servis.profilGetir();
       final maclarL = await servis.seriMaclari(b.seriId);
+      final hak = b.dostluk ? 0 : await servis.reklamHakki();
       int? g;
       if (p != null) {
         final ist = await servis.istatistik();
@@ -63,6 +67,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
           profil = p;
           galibiyet = g;
           maclar = maclarL.where((x) => x.durum == 'bitti').toList();
+          reklamHak = hak;
         });
       }
     } catch (e, s) {
@@ -99,8 +104,12 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   }
 
   // ---------- FAZ 2.20: İSTEĞE BAĞLI ÖDÜLLÜ REKLAM ----------
-  bool get _teklifVar =>
-      !b.dostluk && _kazandim != null && masa != null && ekOdul == null;
+  // FAZ 2.21: admin limitine bağlı — hak yoksa teklif görünmez.
+  bool get _teklifVar => !b.dostluk &&
+      _kazandim != null &&
+      masa != null &&
+      ekOdul == null &&
+      reklamHak > 0;
 
   Future<void> _reklamIzle() async {
     if (reklamOynuyor || !_teklifVar) return;
@@ -128,12 +137,18 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
       }
     } catch (e, s) {
       final m = '$e';
-      _mesaj(m.contains('zaten')
-          ? 'Bu seri için ödül zaten alınmış.'
-          : m.contains('pencere')
-              ? 'Ödül süresi doldu (maçtan sonra 1 saat geçerli).'
-              : temizMesaj('seriSonucu._reklamOdul', e as Object,
-                  'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
+      if (m.contains('tavan')) {
+        // ortak günlük limit doldu — kartı da kapat
+        if (mounted) setState(() => reklamHak = 0);
+        _mesaj('Günlük reklam hakkın doldu — yarın yine gel!');
+      } else {
+        _mesaj(m.contains('zaten')
+            ? 'Bu seri için ödül zaten alınmış.'
+            : m.contains('pencere')
+                ? 'Ödül süresi doldu (maçtan sonra 1 saat geçerli).'
+                : temizMesaj('seriSonucu._reklamOdul', e as Object,
+                    'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
+      }
     } finally {
       if (mounted) setState(() => reklamOynuyor = false);
     }

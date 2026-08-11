@@ -110,8 +110,9 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
       }
     } catch (e, s) {
       final m = '$e';
+      // FAZ 2.21: tavan admin panelden belirlenir (magaza + mac sonu ORTAK)
       _mesaj(m.contains('tavan')
-          ? 'Günlük reklam hakkın doldu (10/10) — yarın yine gel!'
+          ? 'Günlük reklam hakkın doldu — yarın yine gel!'
           : temizMesaj('magaza._reklamOdul', e,
               'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
     } finally {

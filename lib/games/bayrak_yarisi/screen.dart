@@ -526,14 +526,7 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
                   border: Border.all(color: GolrivaColors.edge),
                 ),
                 child: Column(children: [
-                  Text('BU ÜLKEDEN, BU KULÜPTE OYNAMIŞ BİRİNİ YAZ',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.figtree(
-                          fontSize: 9,
-                          letterSpacing: 2.5,
-                          color: GolrivaColors.dim,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
+                  // önce ülke+kulüp, açıklama en altta (kullanıcı isteği)
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(ulkeTr(engine.cift.ulke).toUpperCase(),
@@ -554,6 +547,14 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
                   Text(engine.kulup.lig,
                       style: GoogleFonts.figtree(
                           fontSize: 10, color: GolrivaColors.dim)),
+                  const SizedBox(height: 4),
+                  Text('BU ÜLKEDEN, BU KULÜPTE OYNAMIŞ BİRİNİ YAZ',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.figtree(
+                          fontSize: 9,
+                          letterSpacing: 2.5,
+                          color: GolrivaColors.dim,
+                          fontWeight: FontWeight.w700)),
                 ]),
               ),
               const SizedBox(height: 10),

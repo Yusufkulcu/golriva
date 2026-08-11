@@ -384,17 +384,7 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                   border: Border.all(color: GolrivaColors.edge),
                 ),
                 child: Column(children: [
-                  Text(
-                      k.ligMi
-                          ? 'Bu Ligde Oynamış Aktif Veya Oynamış En Kısa Oyuncusunu Seç'
-                          : 'BU ÜLKEDEN BİRİNİ SEÇ',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.figtree(
-                          fontSize: 9,
-                          letterSpacing: 2.5,
-                          color: GolrivaColors.dim,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
+                  // ÖNCE lig adı, açıklama ALTINDA (kullanıcı isteği)
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(engine.kaynakAdi.toUpperCase(),
@@ -403,6 +393,14 @@ class _EnKisaKadroScreenState extends State<EnKisaKadroScreen> {
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1)),
                   ),
+                  const SizedBox(height: 4),
+                  Text('BU LİGİN AKTİF/OYNAMIŞ EN KISA OYUNCUSUNU YAZ',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.figtree(
+                          fontSize: 9,
+                          letterSpacing: 2.5,
+                          color: GolrivaColors.dim,
+                          fontWeight: FontWeight.w700)),
                 ]),
               ),
             const SizedBox(height: 10),

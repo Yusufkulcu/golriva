@@ -394,14 +394,7 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
                   border: Border.all(color: GolrivaColors.edge),
                 ),
                 child: Column(children: [
-                  Text('BU KULÜPTE AKTİF VEYA OYNAMIŞ KARİYERİNDE EN FAZLA KUPA KAZANAN OYUNCUYU YAZ',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.figtree(
-                          fontSize: 9,
-                          letterSpacing: 2.5,
-                          color: GolrivaColors.dim,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
+                  // ÖNCE kulüp adı, açıklama ALTINDA (kullanıcı isteği)
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(engine.kulup.ad.toUpperCase(),
@@ -413,6 +406,14 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
                   Text(engine.kulup.lig,
                       style: GoogleFonts.figtree(
                           fontSize: 10, color: GolrivaColors.dim)),
+                  const SizedBox(height: 4),
+                  Text('BU KULÜPTE AKTİF VEYA OYNAMIŞ KARİYERİNDE EN FAZLA KUPA KAZANAN OYUNCUYU YAZ',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.figtree(
+                          fontSize: 9,
+                          letterSpacing: 2.5,
+                          color: GolrivaColors.dim,
+                          fontWeight: FontWeight.w700)),
                 ]),
               ),
             const SizedBox(height: 10),

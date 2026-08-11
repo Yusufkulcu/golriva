@@ -11,8 +11,13 @@ import '../games/hedefi_tuttur/screen.dart';
 import '../games/kariyer_ikizi/screen.dart';
 import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
+import '../games/daha_mi_yuksek/screen.dart';
+import '../games/kim_bu/screen.dart';
+import '../games/ortak_kulup/screen.dart';
 import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
+import '../games/sirala_bakalim/screen.dart';
+import '../games/sl_gecesi/screen.dart';
 import '../games/veto_drafti/screen.dart';
 import '../games/yirmibir/screen.dart';
 import '../theme/golriva_theme.dart';
@@ -52,6 +57,16 @@ class ArkadaslaEkrani extends StatelessWidget {
             () => YirmibirScreen(repo: repos.fee)),
         ('veto_drafti', 'VETO DRAFTI', 'Draft · veto',
             () => VetoDraftiScreen(repo: repos.kupa)),
+        ('kim_bu', 'KİM BU?', 'İpucu · tahmin',
+            () => KimBuScreen(repo: repos.fee)),
+        ('daha_mi_yuksek', 'DAHA MI YÜKSEK?', 'Karşılaştırma',
+            () => DahaMiYuksekScreen(repos: repos)),
+        ('sirala_bakalim', 'SIRALA BAKALIM', 'Sıralama',
+            () => SiralaBakalimScreen(repos: repos)),
+        ('ortak_kulup', 'ORTAK KULÜP AVI', 'Kulüp · hafıza',
+            () => OrtakKulupScreen(repo: repos.boy)),
+        ('sl_gecesi', 'ŞL GECESİ', 'Kör seçim · ŞL',
+            () => SlGecesiScreen(repo: repos.ikiz)),
       ];
 
   void _ac(BuildContext context, Widget Function() ekran) =>

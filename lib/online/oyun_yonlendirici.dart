@@ -10,8 +10,13 @@ import '../games/kariyer_ikizi/screen.dart';
 import '../games/hedefi_tuttur/screen.dart';
 import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
+import '../games/daha_mi_yuksek/screen.dart';
+import '../games/kim_bu/screen.dart';
+import '../games/ortak_kulup/screen.dart';
 import '../games/serbest_kadro/engine.dart';
 import '../games/serbest_kadro/screen.dart';
+import '../games/sirala_bakalim/screen.dart';
+import '../games/sl_gecesi/screen.dart';
 import '../games/veto_drafti/screen.dart';
 import '../games/yirmibir/screen.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
@@ -36,6 +41,11 @@ const onlineOyunAdlari = {
   'kariyer_ikizi': 'KARİYER İKİZİ',
   'bonservis_21': 'BONSERVİS 21\'İ',
   'veto_drafti': 'VETO DRAFTI',
+  'kim_bu': 'KİM BU?',
+  'daha_mi_yuksek': 'DAHA MI YÜKSEK?',
+  'sirala_bakalim': 'SIRALA BAKALIM',
+  'ortak_kulup': 'ORTAK KULÜP AVI',
+  'sl_gecesi': 'ŞL GECESİ',
 };
 
 /// _oyunEkrani'nin su an destekledigi cevrimici oyunlar — davet kurarken
@@ -53,6 +63,11 @@ const onlineOynanabilir = [
   'kariyer_ikizi', // Faz 2.14: seed-senkron sıra tabanlı çevrimiçi
   'bonservis_21', // Faz 2.17: blackjack gerilimli kör av
   'veto_drafti', // Faz 2.17: kupa draftı + veto katmanı
+  'kim_bu', // Faz 2.18: ipucu açık artırması
+  'daha_mi_yuksek', // Faz 2.18: karşılaştırma düellosu
+  'sirala_bakalim', // Faz 2.18: gizli değer sıralaması
+  'ortak_kulup', // Faz 2.18: iki kulüpte oynamış futbolcu avı
+  'sl_gecesi', // Faz 2.18: ŞL gol/asist kör seçimi
 ];
 
 /// oyun_kodu → cevrimici oyun akisi. Once SENKRON BAGLANTI ekrani gelir:
@@ -102,6 +117,16 @@ Widget _oyunEkrani(GolrivaRepos repos, OnlineMacKanali kanal) {
       return YirmibirScreen(repo: repos.fee, online: kanal);
     case 'veto_drafti':
       return VetoDraftiScreen(repo: repos.kupa, online: kanal);
+    case 'kim_bu':
+      return KimBuScreen(repo: repos.fee, online: kanal);
+    case 'daha_mi_yuksek':
+      return DahaMiYuksekScreen(repos: repos, online: kanal);
+    case 'sirala_bakalim':
+      return SiralaBakalimScreen(repos: repos, online: kanal);
+    case 'ortak_kulup':
+      return OrtakKulupScreen(repo: repos.boy, online: kanal);
+    case 'sl_gecesi':
+      return SlGecesiScreen(repo: repos.ikiz, online: kanal);
     default:
       return Scaffold(
           body: Center(

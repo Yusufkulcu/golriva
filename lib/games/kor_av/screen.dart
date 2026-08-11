@@ -454,26 +454,6 @@ class _KorAvScreenState extends State<KorAvScreen> {
                             fontWeight: FontWeight.w700,
                             color: GolrivaColors.goldHi)),
                   ),
-                  // KAPSAM (ezber kalkanı): havuz sınırlıysa açıkça söylenir
-                  if (engine.kapsamEtiket.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: GolrivaColors.gold.withValues(alpha: .14),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: GolrivaColors.gold.withValues(alpha: .4)),
-                      ),
-                      child: Text('KAPSAM: ${engine.kapsamEtiket}',
-                          style: GoogleFonts.figtree(
-                              fontSize: 10,
-                              letterSpacing: 1.5,
-                              fontWeight: FontWeight.w800,
-                              color: GolrivaColors.goldHi)),
-                    ),
-                  ],
                 ]),
               ),
               const SizedBox(height: 10),

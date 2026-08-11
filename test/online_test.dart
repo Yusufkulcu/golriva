@@ -59,8 +59,7 @@ void main() {
             [h2.katIdx, h2.kadroN, h2.hedef, h2.sira]);
         final f1 = KorAvEngine(repos.fee, rng: Random(seed));
         final f2 = KorAvEngine(repos.fee, rng: Random(seed));
-        expect([f1.kadroN, f1.hedef, f1.sira, f1.kapsamEtiket],
-            [f2.kadroN, f2.hedef, f2.sira, f2.kapsamEtiket]);
+        expect([f1.kadroN, f1.hedef, f1.sira], [f2.kadroN, f2.hedef, f2.sira]);
       }
     });
 

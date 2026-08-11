@@ -15,7 +15,11 @@ import 'oyun_yonlendirici.dart';
 /// Dostluk maci: Riva ALINMAZ, Elo ISLEMEZ (sunucu kurali).
 class DavetKurEkrani extends StatefulWidget {
   final GolrivaRepos repos;
-  const DavetKurEkrani({super.key, required this.repos});
+
+  /// Dolu gelirse davet DOĞRUDAN bu arkadaşa kurulur: onun "gelen
+  /// davetler" listesine düşer, kod paylaşmak gerekmez (yedek olarak durur).
+  final String? hedefAd;
+  const DavetKurEkrani({super.key, required this.repos, this.hedefAd});
 
   @override
   State<DavetKurEkrani> createState() => _DavetKurEkraniState();
@@ -23,12 +27,21 @@ class DavetKurEkrani extends StatefulWidget {
 
 class _DavetKurEkraniState extends State<DavetKurEkrani> {
   final servis = OnlineServis();
-  String? oyunKodu; // null = rulet
+  String? oyunKodu; // bo1: null = rulet
+  final List<String> secilenler = []; // bo3: SIRALI 3 oyun (boş = rulet)
   String mod = 'bo1';
   String? kod; // olusturulunca dolar → bekleme adimi
   String? hata;
   bool kuruluyor = false;
   Timer? nabiz;
+
+  /// bo3'te kural: ya RULET (hiç seçim) ya TAM 3 oyun (kullanıcı isteği).
+  bool get _kurulabilir =>
+      mod == 'bo1' || secilenler.isEmpty || secilenler.length == 3;
+
+  List<String>? get _oyunListesi => mod == 'bo1'
+      ? (oyunKodu == null ? null : [oyunKodu!])
+      : (secilenler.isEmpty ? null : List.of(secilenler));
 
   Future<void> _kur() async {
     setState(() {
@@ -36,7 +49,8 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
       hata = null;
     });
     try {
-      final k = await servis.davetOlustur(mod, oyunKodu);
+      final k = await servis.davetOlustur2(mod,
+          oyunlar: _oyunListesi, hedefAd: widget.hedefAd);
       if (!mounted) return;
       setState(() {
         kod = k;
@@ -103,9 +117,38 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
                 fontWeight: FontWeight.w700,
                 color: GolrivaColors.gold)),
         const SizedBox(height: 14),
-        Text('OYUN',
+        if (widget.hedefAd != null) ...[
+          Center(
+            child: Text('RAKİP: ${widget.hedefAd}',
+                style: GoogleFonts.bigShouldersDisplay(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: GolrivaColors.goldHi)),
+          ),
+          const SizedBox(height: 10),
+        ],
+        Text('SERİ',
             style: GoogleFonts.bigShouldersDisplay(
                 fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 2)),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _modKart('bo1', 'TEK MAÇ')),
+          const SizedBox(width: 8),
+          Expanded(child: _modKart('bo3', '3 MAÇLIK SERİ')),
+        ]),
+        const SizedBox(height: 14),
+        Text(mod == 'bo3' ? 'OYUNLAR — SIRAYLA 3 SEÇ (ya da RULET)' : 'OYUN',
+            style: GoogleFonts.bigShouldersDisplay(
+                fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 2)),
+        if (mod == 'bo3')
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+                'Seçtiğin sıra maç sırasıdır · beraberlikte ek maçlar tekrarsız ruletten gelir',
+                style: GoogleFonts.figtree(
+                    fontSize: 10, color: GolrivaColors.dim2)),
+          ),
         const SizedBox(height: 8),
         GridView.count(
           crossAxisCount: 2,
@@ -120,16 +163,6 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
               _oyunKart(k, onlineOyunAdlari[k] ?? k, ''),
           ],
         ),
-        const SizedBox(height: 14),
-        Text('SERİ',
-            style: GoogleFonts.bigShouldersDisplay(
-                fontSize: 14, fontWeight: FontWeight.w900, letterSpacing: 2)),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(child: _modKart('bo1', 'TEK MAÇ')),
-          const SizedBox(width: 8),
-          Expanded(child: _modKart('bo3', '3 MAÇLIK SERİ')),
-        ]),
         if (hata != null) ...[
           const SizedBox(height: 10),
           Text(hata!,
@@ -138,18 +171,42 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
                   GoogleFonts.figtree(fontSize: 12, color: GolrivaColors.bad)),
         ],
         const SizedBox(height: 16),
-        goldButon(kuruluyor ? 'KURULUYOR…' : 'DAVET KODU OLUŞTUR',
-            kuruluyor ? null : _kur,
+        goldButon(
+            kuruluyor
+                ? 'KURULUYOR…'
+                : !_kurulabilir
+                    ? '3 OYUN SEÇ (${secilenler.length}/3)'
+                    : widget.hedefAd != null
+                        ? 'DAVETİ GÖNDER'
+                        : 'DAVET KODU OLUŞTUR',
+            (kuruluyor || !_kurulabilir) ? null : _kur,
             yazi: 16),
       ],
     );
   }
 
   Widget _oyunKart(String? k, String ad, String alt) {
-    final secili = oyunKodu == k;
+    final coklu = mod == 'bo3';
+    final sira = (coklu && k != null) ? secilenler.indexOf(k) : -1;
+    final secili = coklu
+        ? (k == null ? secilenler.isEmpty : sira >= 0)
+        : oyunKodu == k;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () => setState(() => oyunKodu = k),
+      onTap: () => setState(() {
+        if (!coklu) {
+          oyunKodu = k;
+          return;
+        }
+        // bo3: RULET = seçimleri temizle; oyun = sıralı seç/çıkar (en çok 3)
+        if (k == null) {
+          secilenler.clear();
+        } else if (sira >= 0) {
+          secilenler.remove(k);
+        } else if (secilenler.length < 3) {
+          secilenler.add(k);
+        }
+      }),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: secili ? gKartDekor(r: 14) : kartDekor(r: 14),
@@ -162,6 +219,22 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
                   gIkon('rulet', 12,
                       secili ? GolrivaColors.goldHi : GolrivaColors.dim),
                   const SizedBox(width: 4),
+                ],
+                if (sira >= 0) ...[
+                  Container(
+                    width: 16,
+                    height: 16,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: GolrivaColors.goldGradient),
+                    child: Text('${sira + 1}',
+                        style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF231A04))),
+                  ),
+                  const SizedBox(width: 5),
                 ],
                 Flexible(
                   child: Text(ad,
@@ -239,13 +312,21 @@ class _DavetKurEkraniState extends State<DavetKurEkrani> {
                   child: CircularProgressIndicator(
                       color: GolrivaColors.gold, strokeWidth: 2.5)),
               const SizedBox(height: 8),
-              Text('Arkadaşın bekleniyor…',
+              Text(
+                  widget.hedefAd == null
+                      ? 'Arkadaşın bekleniyor…'
+                      : '${widget.hedefAd} bekleniyor…',
                   style: GoogleFonts.figtree(
                       fontSize: 12, color: GolrivaColors.dim)),
               const SizedBox(height: 4),
               Text(
-                  'Kodu gönder — o katılınca ikiniz de otomatik maça alınırsınız. '
-                  'Kod 30 dakika geçerli.',
+                  widget.hedefAd == null
+                      ? 'Kodu gönder — o katılınca ikiniz de otomatik maça '
+                          'alınırsınız. Kod 30 dakika geçerli.'
+                      : 'Davet ${widget.hedefAd} adlı arkadaşının GELEN '
+                          'DAVETLER listesine düştü — kabul edince ikiniz de '
+                          'otomatik maça alınırsınız. Kod yedek olarak '
+                          'paylaşılabilir, 30 dakika geçerli.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.figtree(
                       fontSize: 10.5, color: GolrivaColors.dim2)),

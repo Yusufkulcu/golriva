@@ -575,6 +575,44 @@ class OnlineServis {
 
   Future<void> davetIptal() => _c.rpc('davet_iptal');
 
+  /// Davet v2: oyun listesi (bo3'te 3 seçim, null = rulet) + isteğe bağlı
+  /// hedef arkadaş (verilirse davet onun "gelen davetler" listesine düşer).
+  Future<String> davetOlustur2(String mod,
+      {List<String>? oyunlar, String? hedefAd}) async {
+    final r = await _c.rpc('davet_olustur2', params: {
+      'md': mod,
+      'oyunlar_j': oyunlar,
+      'hedef_ad': hedefAd,
+    });
+    return r as String;
+  }
+
+  /// Bana gelen bekleyen hedefli davetler.
+  Future<List<({String kod, String kurucuAd, String mod, DateTime tarih})>>
+      gelenDavetler() async {
+    if (!girisYapildi) return [];
+    final r = await _c.rpc('gelen_davetler');
+    return [
+      for (final d in (r as List))
+        (
+          kod: d['kod'] as String,
+          kurucuAd: d['kurucu_ad'] as String,
+          mod: d['mod'] as String,
+          tarih: DateTime.parse(d['created_at'] as String),
+        )
+    ];
+  }
+
+  /// BAYRAK "KAP" hakemi: tur başına sunucuda TEK karar — dönen kayıt
+  /// (sahip uid ya da bos) iki istemci için de bağlayıcıdır.
+  Future<({String? sahip, bool bos})> bayrakKap(
+      String macId, int tur, {required bool bosMu}) async {
+    final r = await _c.rpc('bayrak_kap',
+        params: {'mid': macId, 'tur_no': tur, 'bos_mu': bosMu});
+    final m = Map<String, dynamic>.from(r as Map);
+    return (sahip: m['sahip'] as String?, bos: (m['bos'] as bool?) ?? false);
+  }
+
   // ---------- FAZ 2.4: CÜZDAN GEÇMİŞİ ----------
 
   /// Kendi defter kayitlarim (RLS: yalniz kendi satirlarim) — son 50.

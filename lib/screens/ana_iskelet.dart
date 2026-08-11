@@ -79,7 +79,8 @@ class _AnaIskeletState extends State<AnaIskelet> with RouteAware {
       return const Scaffold(body: SizedBox());
     }
     final sayfa = switch (sekme) {
-      1 => SiralamaSekmesi(key: ValueKey('siralama-$tazelik')),
+      1 => SiralamaSekmesi(
+          key: ValueKey('siralama-$tazelik'), repos: widget.repos),
       2 => MagazaSekmesi(key: ValueKey('magaza-$tazelik')),
       3 => ProfilSekmesi(key: ValueKey('profil-$tazelik'), repos: widget.repos),
       _ => OynaSekmesi(

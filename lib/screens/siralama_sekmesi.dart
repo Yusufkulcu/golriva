@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../data/repos.dart';
 import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
@@ -12,7 +13,8 @@ import 'arkadaslar_ekrani.dart';
 /// HAFTALIK (son 7 günün seri galibiyetleri, sunucu RPC),
 /// ARKADAŞLAR (arkadaş listesinin Elo sıralaması).
 class SiralamaSekmesi extends StatefulWidget {
-  const SiralamaSekmesi({super.key});
+  final GolrivaRepos repos;
+  const SiralamaSekmesi({super.key, required this.repos});
 
   @override
   State<SiralamaSekmesi> createState() => _SiralamaSekmesiState();
@@ -162,7 +164,8 @@ class _SiralamaSekmesiState extends State<SiralamaSekmesi> {
 
   Future<void> _arkadaslaraGit() async {
     await Navigator.push(context,
-        MaterialPageRoute(builder: (_) => const ArkadaslarEkrani()));
+        MaterialPageRoute(
+            builder: (_) => ArkadaslarEkrani(repos: widget.repos)));
     _yukle();
   }
 

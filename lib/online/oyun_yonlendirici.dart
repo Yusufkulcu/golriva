@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../reklam/reklam_servis.dart';
+import '../games/bayrak_yarisi/screen.dart';
 import '../games/en_genc_kadro/screen.dart';
 import '../games/en_kisa_kadro/screen.dart';
+import '../games/kariyer_ikizi/screen.dart';
 import '../games/hedefi_tuttur/screen.dart';
 import '../games/kor_av/screen.dart';
 import '../games/kupa_drafti/screen.dart';
@@ -43,6 +45,8 @@ const onlineOynanabilir = [
   'sari_kart_avi',
   'mac_rekortmenleri',
   'milli_gol_krallari',
+  'bayrak_yarisi', // Faz 2.14: sunucu hakemli KAP yarışıyla çevrimiçi
+  'kariyer_ikizi', // Faz 2.14: seed-senkron sıra tabanlı çevrimiçi
 ];
 
 /// oyun_kodu → cevrimici oyun akisi. Once SENKRON BAGLANTI ekrani gelir:
@@ -84,6 +88,10 @@ Widget _oyunEkrani(GolrivaRepos repos, OnlineMacKanali kanal) {
     case 'milli_gol_krallari':
       return SerbestKadroScreen(
           repo: repos.milligol, config: milligolConfig, online: kanal);
+    case 'bayrak_yarisi':
+      return BayrakYarisiScreen(repo: repos.boy, online: kanal);
+    case 'kariyer_ikizi':
+      return KariyerIkiziScreen(repo: repos.ikiz, online: kanal);
     default:
       return Scaffold(
           body: Center(

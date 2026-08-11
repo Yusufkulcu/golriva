@@ -156,7 +156,7 @@ class ArkadaslaEkrani extends StatelessWidget {
               onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const ArkadaslarEkrani())),
+                      builder: (_) => ArkadaslarEkrani(repos: repos))),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 13, vertical: 10),

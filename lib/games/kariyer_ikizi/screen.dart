@@ -1,16 +1,22 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/ikiz_repository.dart';
+import '../../online/mac_kanali.dart';
+import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
+import '../../widgets/golriva_ui.dart';
 import 'engine.dart';
 
-/// KARIYER IKIZI ekrani — 5 soruluk kariyer tahmin duellosu (hot-seat).
+/// KARIYER IKIZI ekrani — 5 soruluk kariyer tahmin duellosu.
 /// Referans kariyeri acik; her soruda hedefe EN YAKIN futbolcuyu yazan puani
-/// alir. RESPONSIVE KURAL: kok yerlesim ListView.
+/// alir. Hot-seat + CEVRIMICI (Faz 2.14): ayni seed = ayni referans/sorular,
+/// hamleler kanaldan senkronlanir. RESPONSIVE KURAL: kok yerlesim ListView.
 class KariyerIkiziScreen extends StatefulWidget {
   final IkizRepository repo;
-  const KariyerIkiziScreen({super.key, required this.repo});
+  final OnlineMacKanali? online; // null = hot-seat
+  const KariyerIkiziScreen({super.key, required this.repo, this.online});
 
   @override
   State<KariyerIkiziScreen> createState() => _KariyerIkiziScreenState();
@@ -18,18 +24,134 @@ class KariyerIkiziScreen extends StatefulWidget {
 
 class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
   late KariyerIkiziEngine engine;
-  final adlar = ['Sen', 'Rakip'];
+  late final List<String> adlar;
   final aramaCtrl = TextEditingController();
   List<IkizAday> adaylar = [];
   String? uyari;
   Timer? sayac;
+  Timer? _hukmenTimer; // rakip kayboldu mu?
+  Timer? _gecisTimer; // online: reveal sonrasi otomatik sonraki soru
   int kalanSn = ikizTurSaniye;
+  bool _kapanisIslendi = false;
+  bool _sonucAcik = false; // sonuç diyaloğu ekranda mı
+
+  bool get siraBende =>
+      widget.online == null ||
+      engine.simdiYazan == widget.online!.bilgi.benimSiram;
+
+  /// Soru kuralı üst üste yazmaya yol açtığında açıkla (sıra karmaşası olmasın).
+  String? get _siraNotu {
+    if (widget.online == null || engine.bitti || engine.soruKapandi) {
+      return null;
+    }
+    if (engine.faz == 0 && engine.soru > 0) {
+      return siraBende
+          ? 'Kural: her soruda ilk yazan değişir — bu soruda önce sen.'
+          : 'Kural: her soruda ilk yazan değişir — bu soruda önce rakip.';
+    }
+    return null;
+  }
 
   @override
   void initState() {
     super.initState();
-    engine = KariyerIkiziEngine(widget.repo);
+    final o = widget.online;
+    adlar = o == null
+        ? ['Sen', 'Rakip']
+        : (o.bilgi.benimSiram == 0
+            ? ['Sen', o.bilgi.rakipAdi]
+            : [o.bilgi.rakipAdi, 'Sen']);
+    engine = KariyerIkiziEngine(widget.repo,
+        rng: o == null ? null : Random(o.bilgi.seed));
+    o?.basla(_rakipHamle, onMacKapandi: _macKapandi);
     _sayacBaslat();
+  }
+
+  /// Rakip cekildi ya da mac sunucuda kapandi: hukmen kazanan biziz.
+  void _macKapandi() {
+    if (!mounted || _kapanisIslendi) return;
+    if (engine.bitti) {
+      // KURTARMA AĞI: sonuç diyaloğu her nasılsa açılmadıysa şimdi aç.
+      if (!_sonucAcik) _sonucGoster();
+      return;
+    }
+    _kapanisIslendi = true;
+    sayac?.cancel();
+    _gecisTimer?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Dialog(
+          backgroundColor: GolrivaColors.card,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: const BorderSide(color: GolrivaColors.edge)),
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('RAKİP ÇEKİLDİ',
+                  style: GoogleFonts.bigShouldersDisplay(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      color: GolrivaColors.goldHi,
+                      letterSpacing: 1.5)),
+              const SizedBox(height: 12),
+              OnlineSonucButonlari(
+                  kanal: widget.online!,
+                  kazananSeat: widget.online!.bilgi.benimSiram),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Reveal (soruKapandi) sirasinda gelen rakip hamleleri: rakip 3,5 sn'lik
+  /// gecisi bizden ONCE tamamlayip yeni soruda oynamis olabilir — hamle
+  /// YUTULMAZ, soru gecisinden sonra sirayla uygulanir (senkron garantisi).
+  final List<Map<String, dynamic>> _bekleyenHamleler = [];
+
+  void _rakipHamle(Map<String, dynamic> h) {
+    if (!mounted || engine.bitti) return;
+    _hukmenTimer?.cancel();
+    if (h['tip'] == 'cekildi') {
+      _macKapandi();
+      return;
+    }
+    if (h['tip'] != 'sec' && h['tip'] != 'sure') return;
+    if (engine.soruKapandi) {
+      _bekleyenHamleler.add(h);
+      return;
+    }
+    setState(() {
+      if (h['tip'] == 'sec') {
+        engine.sec((h['idx'] as num).toInt());
+      } else {
+        engine.sureDoldu();
+        uyari = '${adlar[1 - widget.online!.bilgi.benimSiram]} — süre doldu';
+      }
+      aramaCtrl.clear();
+      adaylar = [];
+    });
+    _adimSonrasi();
+  }
+
+  /// Hamle sonrasi ortak akis: soru kapandiysa reveal + (online) otomatik
+  /// gecis; degilse sayac yeniden.
+  void _adimSonrasi() {
+    if (engine.soruKapandi) {
+      sayac?.cancel();
+      if (widget.online != null) {
+        _gecisTimer?.cancel();
+        _gecisTimer = Timer(const Duration(milliseconds: 3500), () {
+          if (mounted && !_kapanisIslendi) _sonraki();
+        });
+      }
+    } else {
+      _sayacBaslat();
+    }
   }
 
   void _sayacBaslat() {
@@ -40,34 +162,42 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
+        if (widget.online != null && !siraBende) {
+          // Rakibin süresi rakibin istemcisinden bildirilir; 15 sn içinde
+          // hiçbir hamle gelmezse rakip ayrılmış sayılır (hükmen).
+          _hukmenTimer?.cancel();
+          _hukmenTimer = Timer(const Duration(seconds: 15), () {
+            if (mounted && !engine.bitti && !siraBende) _macKapandi();
+          });
+          return;
+        }
+        widget.online?.gonder({'tip': 'sure'});
         setState(() {
           uyari = '${adlar[engine.simdiYazan]} — süre doldu, cevapsız';
           engine.sureDoldu();
           aramaCtrl.clear();
           adaylar = [];
         });
-        if (!engine.soruKapandi) _sayacBaslat();
+        _adimSonrasi();
       }
     });
   }
 
   void _sec(IkizAday a) {
-    if (a.neden != null) return;
+    if (a.neden != null || !siraBende) return;
     setState(() {
       if (engine.sec(a.idx)) {
+        widget.online?.gonder({'tip': 'sec', 'idx': a.idx});
         uyari = null;
         aramaCtrl.clear();
         adaylar = [];
       }
     });
-    if (!engine.soruKapandi) {
-      _sayacBaslat();
-    } else {
-      sayac?.cancel();
-    }
+    _adimSonrasi();
   }
 
   void _sonraki() {
+    _gecisTimer?.cancel();
     setState(() {
       engine.sonrakiSoru();
       uyari = null;
@@ -75,13 +205,22 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
     if (engine.bitti) {
       sayac?.cancel();
       _sonucGoster();
-    } else {
-      _sayacBaslat();
+      return;
+    }
+    _sayacBaslat();
+    // reveal sirasinda biriken rakip hamleleri simdi uygula
+    if (_bekleyenHamleler.isNotEmpty) {
+      final b = List.of(_bekleyenHamleler);
+      _bekleyenHamleler.clear();
+      for (final h in b) {
+        _rakipHamle(h);
+      }
     }
   }
 
   void _sonucGoster() {
     if (!mounted) return;
+    _sonucAcik = true;
     final k = engine.kazanan();
     showDialog(
       context: context,
@@ -115,6 +254,9 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
                       fontWeight: FontWeight.w700,
                       color: GolrivaColors.goldHi)),
               const SizedBox(height: 16),
+              if (widget.online != null)
+                OnlineSonucButonlari(kanal: widget.online!, kazananSeat: k)
+              else
               Row(children: [
                 Expanded(
                   child: FilledButton(
@@ -167,6 +309,9 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
   @override
   void dispose() {
     sayac?.cancel();
+    _hukmenTimer?.cancel();
+    _gecisTimer?.cancel();
+    widget.online?.kapat();
     aramaCtrl.dispose();
     super.dispose();
   }
@@ -174,7 +319,19 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
   @override
   Widget build(BuildContext context) {
     final yazan = engine.bitti || engine.soruKapandi ? 0 : engine.simdiYazan;
-    return Scaffold(
+    return PopScope(
+      // ONLINE macta geri tusu sessiz kacis DEGIL: cekilme onayi acilir.
+      canPop: widget.online == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && widget.online != null) {
+          cekilAkisi(context, widget.online!, onCekildi: () {
+            sayac?.cancel();
+            _hukmenTimer?.cancel();
+            _gecisTimer?.cancel();
+          });
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Column(children: [
@@ -192,11 +349,33 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
                   letterSpacing: 2)),
         ]),
         centerTitle: true,
+        actions: [
+          if (widget.online != null)
+            IconButton(
+                tooltip: 'Maçtan çekil',
+                icon: const Icon(Icons.flag_outlined,
+                    color: GolrivaColors.dim, size: 20),
+                onPressed: () => cekilAkisi(context, widget.online!,
+                    onCekildi: () {
+                      sayac?.cancel();
+                      _hukmenTimer?.cancel();
+                      _gecisTimer?.cancel();
+                    })),
+        ],
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
           children: [
+            if (widget.online != null &&
+                !engine.bitti &&
+                !engine.soruKapandi) ...[
+              SiraSeridi(
+                  siraBende: siraBende,
+                  rakipAdi: widget.online!.bilgi.rakipAdi,
+                  notu: _siraNotu),
+              const SizedBox(height: 10),
+            ],
             // referans karti — kariyer ACIK gosterilir
             Container(
               width: double.infinity,
@@ -329,10 +508,13 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
               const SizedBox(height: 8),
               TextField(
                 controller: aramaCtrl,
+                enabled: !engine.bitti && !engine.soruKapandi && siraBende,
                 onChanged: (v) => setState(() => adaylar = engine.adaylar(v)),
-                decoration: const InputDecoration(
-                    hintText: 'Futbolcu adı yaz… (en az 3 harf)',
-                    prefixIcon: Icon(Icons.search,
+                decoration: InputDecoration(
+                    hintText: siraBende
+                        ? 'Futbolcu adı yaz… (en az 3 harf)'
+                        : '${adlar[yazan]} yazıyor…',
+                    prefixIcon: const Icon(Icons.search,
                         color: GolrivaColors.gold, size: 20)),
               ),
               if (adaylar.isNotEmpty)
@@ -356,24 +538,33 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
             ],
             if (engine.soruKapandi && !engine.bitti) ...[
               const SizedBox(height: 4),
-              Center(
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: GolrivaColors.gold,
-                      foregroundColor: const Color(0xFF231A04),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 26, vertical: 12)),
-                  onPressed: _sonraki,
-                  child: Text(
-                      engine.soru + 1 < ikizSoruSayisi
-                          ? 'SONRAKİ SORU'
-                          : 'SONUCU GÖR',
-                      style: GoogleFonts.bigShouldersDisplay(
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                          fontSize: 16)),
+              if (widget.online != null)
+                // ONLINE: iki cihaz da sabit gecikmeyle otomatik ilerler —
+                // elle erken geçiş senkronu bozardı (buton yok).
+                Center(
+                  child: Text('Sonraki soru birazdan…',
+                      style: GoogleFonts.figtree(
+                          fontSize: 11.5, color: GolrivaColors.dim)),
+                )
+              else
+                Center(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: GolrivaColors.gold,
+                        foregroundColor: const Color(0xFF231A04),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 26, vertical: 12)),
+                    onPressed: _sonraki,
+                    child: Text(
+                        engine.soru + 1 < ikizSoruSayisi
+                            ? 'SONRAKİ SORU'
+                            : 'SONUCU GÖR',
+                        style: GoogleFonts.bigShouldersDisplay(
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                            fontSize: 16)),
+                  ),
                 ),
-              ),
             ],
             const SizedBox(height: 12),
             // acilan sorularin karsilastirma satirlari
@@ -381,6 +572,7 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -465,3 +657,4 @@ class _KariyerIkiziScreenState extends State<KariyerIkiziScreen> {
     );
   }
 }
+

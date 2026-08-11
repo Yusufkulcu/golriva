@@ -92,6 +92,16 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
     return null;
   }
 
+  /// Fiyat gösterimi için: sunucu listesi henüz gelmediyse varsayılanlar.
+  /// (Kullanıcı geri bildirimi: "klasik 100 yazıyor ama BO3 250 istiyor" —
+  /// iki modun ücreti de HER YERDE açıkça yazılır, sürpriz kalmaz.)
+  Masa? get _fiyatMasasi {
+    for (final m in (masalar.isEmpty ? _varsayilanMasalar : masalar)) {
+      if (m.kod == seciliMasa) return m;
+    }
+    return null;
+  }
+
   bool _kilitli(Masa m, String mod) {
     if (profil == null) return false;
     final giris = mod == 'bo3' ? m.girisBo3 : m.giris;
@@ -270,12 +280,16 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
                       builder: (_) => const CuzdanEkrani()))),
         ]),
         const SizedBox(height: 13),
-        goldButon('HIZLI DÜELLO', () => _duelloBaslat('bo1'),
+        goldButon(
+            'HIZLI DÜELLO · ${_fiyatMasasi?.giris ?? 100}',
+            () => _duelloBaslat('bo1'),
             ikonAd: 'simsek'),
         const SizedBox(height: 9),
         Row(children: [
           Expanded(
-              child: _ikincilButon('BO3 SERİ', () => _duelloBaslat('bo3'),
+              child: _ikincilButon(
+                  'BO3 SERİ · ${_fiyatMasasi?.girisBo3 ?? 250}',
+                  () => _duelloBaslat('bo3'),
                   altinKenar: true)),
           const SizedBox(width: 9),
           Expanded(
@@ -426,9 +440,10 @@ class _OynaSekmesiState extends State<OynaSekmesi> {
                 ]),
               ),
             ),
-            Text('${m.giris}',
+            // iki modun ücreti de görünür: "tek / bo3"
+            Text('${m.giris} / ${m.girisBo3}',
                 style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: secili ? GolrivaColors.gold : GolrivaColors.dim)),
           ]),
         ),

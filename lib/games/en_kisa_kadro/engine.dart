@@ -3,7 +3,9 @@ import '../../data/players_repository.dart';
 import '../core/tr_norm.dart';
 
 /// EN KISA KADRO motoru — oyunlar/en_kisa_kadro.html'in birebir Dart cevirisi.
-/// Kurallar (PROJE_DURUMU): 6 tur, her tur rastgele KULUP veya LIG; 1K-2D-2O-1F;
+/// Kurallar (guncel — kullanici istegi): 6 tur = 6 LIG (5 buyuk lig + Super
+/// Lig, rastgele sirayla; kulup/ulke YOK — kisa oyuncu bulmak cok zordu);
+/// 1K-2D-2O-1F;
 /// kap-kac ("Alindi"), boysuzlar engelli ("Boy verisi yok"); dusuk toplam kazanir;
 /// bos slot +210 cm ceza; oncelik her turda el degistirir; min 3 harf arama.
 const formation = {'K': 1, 'D': 2, 'O': 2, 'F': 1};
@@ -42,67 +44,26 @@ class EnKisaKadroEngine {
   final List<int> bosSlot = [0, 0];
   bool bitti = false;
 
-  /// ULKE havuzlari (kulup yerine — kullanici istegi: kulup bazinda oyuncu
-  /// bulmak cok zordu): boy verili >=14 oyuncusu olan ve kadro kurulabilen
-  /// (1K-2D-2O-1F karsilanabilir) ulkeler. Alfabetik kurulur — iki cihazda
-  /// AYNI liste (seed determinizmi bozulmaz).
-  late final List<(String, List<int>)> ulkeler;
-
   EnKisaKadroEngine(this.repo, {Random? rng}) : rng = rng ?? Random() {
-    ulkeler = _ulkeleriKur();
     turlar = _turlariKur();
   }
 
-  List<(String, List<int>)> _ulkeleriKur() {
-    final grup = <String, List<int>>{};
-    for (var i = 0; i < repo.oyuncular.length; i++) {
-      final o = repo.oyuncular[i];
-      if (o.ulke.isEmpty) continue;
-      (grup[o.ulke] ??= []).add(i);
-    }
-    final uygun = <(String, List<int>)>[];
-    for (final ad in grup.keys.toList()..sort()) {
-      final h = grup[ad]!;
-      final boylu = h.where((i) => repo.oyuncular[i].boyCm > 0).toList();
-      if (boylu.length < 14) continue;
-      final poz = <String, int>{};
-      for (final i in boylu) {
-        poz[repo.oyuncular[i].poz] = (poz[repo.oyuncular[i].poz] ?? 0) + 1;
-      }
-      final kurulabilir =
-          formation.keys.every((z) => (poz[z] ?? 0) >= formation[z]!);
-      if (kurulabilir) uygun.add((ad, h));
-    }
-    return uygun;
-  }
-
+  /// 6 tur = 6 LIG (5 buyuk lig + Super Lig), rastgele sirayla — kullanici
+  /// istegi: kulup/ulke havuzlarinda KISA oyuncu bulmak cok zordu; genis lig
+  /// havuzlari oyunu oynanabilir kiliyor. Lig sayisi 6'dan azsa dongusel.
   List<TurKaynak> _turlariKur() {
-    final ui = List<int>.generate(ulkeler.length, (i) => i)..shuffle(rng);
     final li = List<int>.generate(repo.ligler.length, (i) => i)..shuffle(rng);
-    final r = <TurKaynak>[];
-    for (var t = 0; t < turSayisi; t++) {
-      final ligOlsun = li.isNotEmpty && (ui.isEmpty || rng.nextBool());
-      if (ligOlsun) {
-        r.add(TurKaynak(true, li.removeLast()));
-      } else {
-        r.add(TurKaynak(false, ui.removeLast()));
-      }
-    }
-    return r;
+    return [
+      for (var t = 0; t < turSayisi; t++) TurKaynak(true, li[t % li.length])
+    ];
   }
 
   int firstPicker(int t) => t % 2; // tur 1: O1 once, tur 2: O2 once...
   int get simdiSecen => faz == 0 ? firstPicker(tur) : 1 - firstPicker(tur);
 
-  List<int> get havuz {
-    final k = turlar[tur];
-    return k.ligMi ? repo.ligler[k.index].havuz : ulkeler[k.index].$2;
-  }
+  List<int> get havuz => repo.ligler[turlar[tur].index].havuz;
 
-  String get kaynakAdi {
-    final k = turlar[tur];
-    return k.ligMi ? repo.ligler[k.index].ad : ulkeler[k.index].$1;
-  }
+  String get kaynakAdi => repo.ligler[turlar[tur].index].ad;
 
   List<String> acikMevkiler(int s) {
     final sayim = {'K': 0, 'D': 0, 'O': 0, 'F': 0};

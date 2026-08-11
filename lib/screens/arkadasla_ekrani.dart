@@ -22,6 +22,7 @@ import '../games/veto_drafti/screen.dart';
 import '../games/yirmibir/screen.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import 'arkadas_ligi_ekrani.dart';
 import 'arkadaslar_ekrani.dart';
 
 /// EKRAN 12 · ARKADAŞLA OYNA — dostluk maci: oyun secimi BURADA serbest
@@ -169,6 +170,47 @@ class ArkadaslaEkrani extends StatelessWidget {
                       ),
                     ]),
                   ]),
+            ),
+            const SizedBox(height: 9),
+            // ── ARKADAŞ LİGİ (Faz 2.19) ──
+            InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () => _cevrimiciGerekli(context)
+                  ? Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => ArkadasLigiEkrani(repos: repos)))
+                  : null,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+                decoration: gKartDekor(r: 16),
+                child: Row(children: [
+                  gIkon('tac', 18, GolrivaColors.goldHi),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ARKADAŞ LİGİ',
+                              style: GoogleFonts.bigShouldersDisplay(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1,
+                                  color: GolrivaColors.goldHi)),
+                          Text(
+                              'Havuzlu şampiyonluk — lig kur, fikstür otomatik',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.figtree(
+                                  fontSize: 10, color: GolrivaColors.dim)),
+                        ]),
+                  ),
+                  Text('›',
+                      style: GoogleFonts.figtree(
+                          fontSize: 18, color: GolrivaColors.dim2)),
+                ]),
+              ),
             ),
             const SizedBox(height: 9),
             // arkadas listesi kisayolu

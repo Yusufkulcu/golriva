@@ -1,13 +1,12 @@
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'data/repos.dart';
 import 'online/auth_ekrani.dart';
 import 'online/bildirim_servis.dart';
 import 'online/hata_raporu.dart';
 import 'online/online_servis.dart';
 import 'online/supabase_ayar.dart';
+import 'screens/acilis_ekrani.dart';
 import 'screens/ana_iskelet.dart';
 import 'theme/golriva_theme.dart';
 
@@ -114,46 +113,7 @@ class _LoaderState extends State<_Loader> {
         OnlineServis().girisYapildi &&
         profilVar == null;
     if (repos == null || oturumBeklemede) {
-      // ACILIS EKRANI — K1 Beyin-Top + marka (veri/oturum kontrolu surerken)
-      return Scaffold(
-        body: Center(
-          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            SvgPicture.asset('assets/brand/beyin_top.svg',
-                width: 96, height: 96),
-            const SizedBox(height: 18),
-            RichText(
-              text: TextSpan(
-                style: GoogleFonts.bigShouldersDisplay(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2),
-                children: const [
-                  TextSpan(
-                      text: 'GOL',
-                      style: TextStyle(color: GolrivaColors.gold)),
-                  TextSpan(
-                      text: 'RIVA',
-                      style: TextStyle(color: GolrivaColors.ink)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text('FUTBOL ZEKÂSI DÜELLOSU',
-                style: GoogleFonts.figtree(
-                    fontSize: 11,
-                    letterSpacing: 3,
-                    fontWeight: FontWeight.w700,
-                    color: GolrivaColors.dim)),
-            const SizedBox(height: 26),
-            const SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(
-                  color: GolrivaColors.gold, strokeWidth: 2.5),
-            ),
-          ]),
-        ),
-      );
+      return const AcilisEkrani(); // marka sahnesi (screens/acilis_ekrani.dart)
     }
     // ILK ACILIS KURALI: cevrimici yapida oturum yoksa YA DA profil
     // tamamlanmamissa once Giris/Kayit/Misafir ekrani (kullanici istegi).

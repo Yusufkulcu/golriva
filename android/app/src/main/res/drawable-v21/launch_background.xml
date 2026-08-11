@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- GolRiva yerel açılış fonu: Flutter yüklenene kadarki beyaz flaşı önler.
+     Renk = GolrivaColors.bg (#08080B); logo sahnesi Flutter tarafında
+     (AcilisEkrani) oynar. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="?android:colorBackground" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#FF08080B" />
+        </shape>
+    </item>
 </layer-list>

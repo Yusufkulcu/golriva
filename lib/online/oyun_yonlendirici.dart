@@ -708,7 +708,7 @@ class _OnlineSonucButonlariState extends State<OnlineSonucButonlari> {
               builder: (_) =>
                   SeriSonucuEkrani(kanal: widget.kanal, durum: d)));
         },
-        child: Text('SERİ SONUCU',
+        child: Text('ANA SAYFAYA DÖN',
             style: GoogleFonts.bigShouldersDisplay(
                 fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16)),
       ),

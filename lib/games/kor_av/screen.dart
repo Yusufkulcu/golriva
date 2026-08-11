@@ -87,18 +87,28 @@ class _KorAvScreenState extends State<KorAvScreen> {
   }
 
   bool _kapanisIslendi = false;
+  bool _sonucAcik = false; // sonuç diyaloğu ekranda mı
 
   /// Rakip cekildi ya da mac sunucuda kapandi: hukmen kazanan biziz —
   /// oyunu durdur, seri akisina gec (kullanici kurali: rakip cihazda
   /// oyun DEVAM ETMEMELI).
   void _macKapandi() {
-    if (!mounted || engine.bitti || _kapanisIslendi) return;
+    if (!mounted || _kapanisIslendi) return;
+    if (engine.bitti) {
+      // KURTARMA AĞI: motor bitti ama sonuç diyaloğu (her nasılsa) ekranda
+      // değilse oyuncuyu maç ekranında asılı bırakma — sonucu şimdi göster.
+      if (!_sonucAcik) _sonucGoster();
+      return;
+    }
     _kapanisIslendi = true;
     sayac?.cancel();
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (_) => PopScope(
+        // geri tuşu bu diyaloğu KAPATAMAZ — sonuç akışı asılı kalmasın
+        canPop: false,
+        child: Dialog(
         backgroundColor: GolrivaColors.card,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
@@ -118,6 +128,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
                 kazananSeat: widget.online!.bilgi.benimSiram),
           ]),
         ),
+      ),
       ),
     );
   }
@@ -224,6 +235,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
 
   void _sonucGoster() {
     if (!mounted) return;
+    _sonucAcik = true;
     acilisTimer?.cancel();
     setState(() {
       for (var s = 0; s < 2; s++) {
@@ -237,7 +249,10 @@ class _KorAvScreenState extends State<KorAvScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (_) => PopScope(
+        // geri tuşu bu diyaloğu KAPATAMAZ — sonuç akışı asılı kalmasın
+        canPop: false,
+        child: Dialog(
         backgroundColor: GolrivaColors.card,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
@@ -319,6 +334,7 @@ class _KorAvScreenState extends State<KorAvScreen> {
             ]),
           ),
         ),
+      ),
       ),
     );
   }

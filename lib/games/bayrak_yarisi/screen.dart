@@ -126,7 +126,10 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => Dialog(
+      builder: (_) => PopScope(
+        // geri tuşu bu diyaloğu KAPATAMAZ — sonuç akışı asılı kalmasın
+        canPop: false,
+        child: Dialog(
         backgroundColor: GolrivaColors.card,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(22),
@@ -196,6 +199,7 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
             ]),
           ),
         ),
+      ),
       ),
     );
   }

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arkadaş Ligleri · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'alig', baslik:'Arkadaş Ligleri',
+    alt:'Havuzlu round-robin ligler — şampiyona %80, kasaya %20 · küfür filtresi yönetimi'})) return;
+  var G = document.getElementById('govde');
+  document.getElementById('ust-sag').innerHTML = tazeleGostergeHtml();
+
+  var suzgec = 'hepsi';           // hepsi | acik | aktif | bitti | iptal
+  var ligler = [], uyeSayilari = {}, puanlar = {};
+
+  var DURUM_RZ = {
+    acik:  '<span class="rz uyari">açık</span>',
+    aktif: '<span class="rz iyi">aktif</span>',
+    bitti: '<span class="rz notr">bitti</span>',
+    iptal: '<span class="rz kotu">iptal</span>'
+  };
+
+  async function yukle(){
+    var uyeler;
+    try{
+      ligler = hataAt(await sb.from('arkadas_ligleri').select('*')
+        .order('created_at',{ascending:false}).limit(300)).data || [];
+      uyeler = hataAt(await sb.from('alig_uyeler')
+        .select('lig_id,user_id,puan,aktif').limit(10000)).data || [];
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_19_arkadas_ligi.sql', e); return; }
+
+    uyeSayilari = {}; puanlar = {};
+    uyeler.forEach(function(u){
+      uyeSayilari[u.lig_id] = (uyeSayilari[u.lig_id]||0) + 1;
+    });
+
+    // ödül + kasa toplamları (defter üzerinden)
+    var odulT = 0, kasaT = 0;
+    try{
+      var od = hataAt(await sb.from('defter').select('miktar')
+        .eq('tip','lig_odul').limit(10000)).data || [];
+      odulT = od.reduce(function(t,x){ return t + (x.miktar||0); }, 0);
+      var ks = hataAt(await sb.from('defter').select('miktar')
+        .eq('tip','rake').ilike('aciklama','lig:%').limit(10000)).data || [];
+      kasaT = ks.reduce(function(t,x){ return t + (x.miktar||0); }, 0);
+    }catch(e){}
+
+    await adlariYukle(ligler.map(function(l){ return l.kurucu; })
+      .concat(ligler.map(function(l){ return l.kazanan; })));
+
+    var sayilar = {hepsi: ligler.length};
+    ['acik','aktif','bitti','iptal'].forEach(function(d){
+      sayilar[d] = ligler.filter(function(l){ return l.durum===d; }).length;
+    });
+    var liste = suzgec==='hepsi' ? ligler
+      : ligler.filter(function(l){ return l.durum===suzgec; });
+    var aktifHavuz = ligler.filter(function(l){ return l.durum==='aktif'||l.durum==='acik'; })
+      .reduce(function(t,l){ return t + (l.havuz||0); }, 0);
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        '<div class="olcut"><div class="etiket">Aktif lig</div><div class="deger">'+S(sayilar.aktif)+
+          '</div><div class="not">açık: '+S(sayilar.acik)+' · toplam: '+S(sayilar.hepsi)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Kilitli havuz</div><div class="deger">'+S(aktifHavuz)+
+          '</div><div class="not">açık + aktif liglerde Riva</div></div>'+
+        '<div class="olcut"><div class="etiket">Dağıtılan ödül</div><div class="deger">'+S(odulT)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Kasa payı (%20)</div><div class="deger">'+S(kasaT)+'</div></div>'+
+      '</div>'+
+
+      '<div class="kart" style="margin-bottom:14px">'+
+        '<div class="kart-bas"><h2>Ligler</h2><div>'+
+          ['hepsi','acik','aktif','bitti','iptal'].map(function(d){
+            return '<button class="kucuk '+(suzgec===d?'ana':'sade')+'" onclick="suz(\''+d+'\')">'+
+              d+' ('+ (sayilar[d]||0) +')</button> ';
+          }).join('')+
+          '<button class="kucuk sade" onclick="zamanKontrol()" title="Süresi dolan ligleri kapatır, 48 saatte dolmayanları iptal eder">Zaman kontrolü çalıştır</button>'+
+        '</div></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Kod</th><th>Ad</th><th>Kurucu</th><th>Durum</th><th>Giriş</th><th>Üye</th>'+
+        '<th>Havuz</th><th>Şampiyon</th><th>Kuruldu</th><th>Bitiş</th><th></th>'+
+        '</tr></thead><tbody>'+
+        (liste.length ? liste.map(function(l){
+          return '<tr>'+
+            '<td data-bas="Kod" class="mono"><b>'+E(l.kod)+'</b></td>'+
+            '<td data-bas="Ad">'+E(l.ad)+'</td>'+
+            '<td data-bas="Kurucu">'+kisiHtml(l.kurucu)+'</td>'+
+            '<td data-bas="Durum">'+(DURUM_RZ[l.durum]||E(l.durum))+'</td>'+
+            '<td data-bas="Giriş" class="sayi">'+(l.giris? S(l.giris) : '<span class="rz notr">ücretsiz</span>')+'</td>'+
+            '<td data-bas="Üye" class="sayi">'+ (uyeSayilari[l.id]||0) +'/'+l.boyut+'</td>'+
+            '<td data-bas="Havuz" class="sayi">'+S(l.havuz)+'</td>'+
+            '<td data-bas="Şampiyon">'+(l.kazanan ? kisiHtml(l.kazanan)
+              : (l.kazananlar && l.kazananlar.length>1 ? '<span class="rz iyi">paylaşım ('+l.kazananlar.length+')</span>' : '—'))+'</td>'+
+            '<td data-bas="Kuruldu" class="mono">'+TGun(l.created_at)+'</td>'+
+            '<td data-bas="Bitiş" class="mono">'+(l.bitis_at?T(l.bitis_at):'—')+'</td>'+
+            '<td class="sag" style="white-space:nowrap">'+
+              '<button class="kucuk" onclick="detay(\''+l.id+'\')">Detay</button>'+
+              (l.durum==='acik'
+                ? ' <button class="kucuk tehlike" onclick="iptalEt(\''+l.id+'\',\''+E(l.kod)+'\')">İptal + iade</button>'
+                : '')+
+            '</td></tr>';
+        }).join('') : '<tr><td colspan="11">'+bosDurum('Bu süzgeçte lig yok')+'</td></tr>')+
+        '</tbody></table></div></div></div>'+
+
+      kufurKartHtml();
+    kufurYukle();
+  }
+
+  window.suz = function(d){ suzgec = d; yukle(); };
+
+  window.zamanKontrol = async function(){
+    if(await dene(async function(){
+      hataAt(await sb.rpc('alig_zaman_kontrol'));
+    }, 'Zaman kontrolü çalıştı — süresi dolanlar kapatıldı, dolmayan açık ligler iptal edildi'))
+      yukle();
+  };
+
+  window.iptalEt = async function(id, kod){
+    if(!confirm(kod+' iptal edilsin mi? Tüm üyelere katılım ücreti iade edilir.')) return;
+    if(await dene(async function(){
+      hataAt(await sb.rpc('alig_iptal', {lid:id}));
+    }, kod+' iptal edildi — katılımlar iade edildi')) yukle();
+  };
+
+  // ───────── LİG DETAYI (modal) ─────────
+  window.detay = async function(id){
+    var l = ligler.filter(function(x){ return x.id===id; })[0];
+    if(!l) return;
+    modalAc(E(l.ad)+' <span class="mono" style="font-weight:400">'+E(l.kod)+'</span>',
+      '<div class="yukleniyor">Yükleniyor…</div>', true);
+    var uyeler=[], maclar=[];
+    try{
+      uyeler = hataAt(await sb.from('alig_uyeler').select('*').eq('lig_id', id)).data || [];
+      maclar = hataAt(await sb.from('alig_maclar').select('*').eq('lig_id', id)
+        .order('tur',{ascending:true})).data || [];
+    }catch(e){ modalYaz('<div class="bos">Detay alınamadı: '+E(e.message||e)+'</div>'); return; }
+    var uidler = uyeler.map(function(u){ return u.user_id; });
+    await adlariYukle(uidler);
+    if(!modalAcikMi()) return;
+
+    uyeler.sort(function(a,b){
+      if(b.puan!==a.puan) return b.puan-a.puan;
+      if(a.hukmen!==b.hukmen) return a.hukmen-b.hukmen;
+      return ad(a.user_id).localeCompare(ad(b.user_id),'tr');
+    });
+
+    var bilgi =
+      '<div class="izgara k4" style="margin-bottom:12px">'+
+        '<div class="olcut"><div class="etiket">Durum</div><div class="deger" style="font-size:16px">'+
+          (DURUM_RZ[l.durum]||E(l.durum))+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Giriş / Havuz</div><div class="deger" style="font-size:16px">'+
+          (l.giris?S(l.giris):'ücretsiz')+' / '+S(l.havuz)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Süre</div><div class="deger" style="font-size:16px">'+
+          l.sure_gun+' gün</div><div class="not">bitiş: '+(l.bitis_at?T(l.bitis_at):'—')+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Şampiyon</div><div class="deger" style="font-size:16px">'+
+          (l.kazanan ? E(ad(l.kazanan))
+            : (l.kazananlar&&l.kazananlar.length>1?'paylaşım':'—'))+'</div></div>'+
+      '</div>';
+
+    var puanT =
+      '<h4 style="margin:6px 0">Puan tablosu <span class="ipucu">G3 · B1 · M0 · eşitlikte ikili maç → az hükmen</span></h4>'+
+      '<div class="tablo-sar"><table><thead><tr>'+
+      '<th>#</th><th>Oyuncu</th><th>O</th><th>G</th><th>B</th><th>M</th><th>Hük.</th><th>Puan</th>'+
+      '</tr></thead><tbody>'+
+      uyeler.map(function(u,i){
+        return '<tr><td class="mono">'+(i+1)+'</td>'+
+          '<td>'+kisiHtml(u.user_id, u.aktif?null:'ligi terk etti')+'</td>'+
+          '<td class="sayi">'+u.oynanan+'</td><td class="sayi">'+u.g+'</td>'+
+          '<td class="sayi">'+u.b+'</td><td class="sayi">'+u.m+'</td>'+
+          '<td class="sayi">'+u.hukmen+'</td>'+
+          '<td class="sayi"><b>'+u.puan+'</b></td></tr>';
+      }).join('')+'</tbody></table></div>';
+
+    var haftalar = {};
+    maclar.forEach(function(m){ (haftalar[m.tur] = haftalar[m.tur]||[]).push(m); });
+    var fikstur = '<h4 style="margin:14px 0 6px">Fikstür ('+maclar.length+' maç)</h4>';
+    Object.keys(haftalar).sort(function(a,b){return a-b;}).forEach(function(h){
+      fikstur += '<div class="ipucu" style="margin:8px 0 4px">'+h+'. HAFTA</div>'+
+        '<div class="tablo-sar"><table><tbody>'+
+        haftalar[h].map(function(m){
+          var sonucH;
+          if(m.durum==='bekliyor') sonucH = '<span class="rz notr">bekliyor</span>';
+          else if(m.durum==='oyunda') sonucH = '<span class="rz uyari">oynanıyor</span>';
+          else if(m.katilimsiz) sonucH = '<span class="rz notr">iptal (kimse gelmedi)</span>';
+          else if(!m.kazanan) sonucH = '<span class="rz notr">berabere</span>';
+          else sonucH = '<span class="rz iyi">'+E(ad(m.kazanan))+(m.hukmen?' (hükmen)':'')+'</span>';
+          return '<tr>'+
+            '<td>'+E(ad(m.p1))+' — '+E(ad(m.p2))+'</td>'+
+            '<td class="sag">'+sonucH+'</td>'+
+            '<td class="sag mono" style="width:90px">'+
+              (m.seri_id?'<span title="'+E(m.seri_id)+'">seri '+E(m.seri_id.slice(0,8))+'…</span>':'—')+'</td>'+
+            '</tr>';
+        }).join('')+'</tbody></table></div>';
+    });
+
+    modalYaz(bilgi + puanT + fikstur);
+  };
+
+  // ───────── KÜFÜR FİLTRESİ ─────────
+  function kufurKartHtml(){
+    return '<div class="kart"><div class="kart-bas"><h2>Küfür filtresi (lig adları)</h2>'+
+      '<span class="ipucu">token: normalize kelime birebir · içinde: boşluksuz metinde geçerse · leet (s1kt1r) otomatik yakalanır</span></div>'+
+      '<div class="kart-govde">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">'+
+          '<input id="kf-dene" placeholder="lig adı dene…" style="min-width:180px">'+
+          '<button class="kucuk" onclick="kfDene()">Dene</button>'+
+          '<span id="kf-sonuc"></span>'+
+          '<span style="flex:1"></span>'+
+          '<input id="kf-kelime" placeholder="yeni kelime" style="width:140px">'+
+          '<select id="kf-tur" style="width:auto"><option value="token">token</option>'+
+            '<option value="icinde">içinde</option></select>'+
+          '<button class="kucuk ana" onclick="kfEkle()">Ekle</button>'+
+        '</div>'+
+        '<div id="kf-liste" class="yukleniyor">Yükleniyor…</div>'+
+      '</div></div>';
+  }
+
+  async function kufurYukle(){
+    var k = document.getElementById('kf-liste');
+    if(!k) return;
+    try{
+      var r = hataAt(await sb.from('kufur_listesi').select('*')
+        .order('tur').order('kelime')).data || [];
+      if(!r.length){ k.innerHTML = bosDurum('Liste boş'); return; }
+      k.innerHTML = ['token','icinde'].map(function(t){
+        var grup = r.filter(function(x){ return x.tur===t; });
+        if(!grup.length) return '';
+        return '<div class="ipucu" style="margin:6px 0 4px">'+t.toUpperCase()+' ('+grup.length+')</div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+          grup.map(function(x){
+            return '<span class="rz notr" style="display:inline-flex;gap:6px;align-items:center">'+E(x.kelime)+
+              '<a href="#" onclick="kfSil(\''+E(x.kelime)+'\',\''+E(x.tur)+'\');return false" '+
+              'style="color:var(--kotu);text-decoration:none;font-weight:700">×</a></span>';
+          }).join('')+'</div>';
+      }).join('');
+    }catch(e){ k.innerHTML = '<div class="bos">Liste alınamadı: '+E(e.message||e)+'</div>'; }
+  }
+
+  window.kfDene = async function(){
+    var t = document.getElementById('kf-dene').value.trim();
+    var s = document.getElementById('kf-sonuc');
+    if(t.length < 3){ s.innerHTML = '<span class="rz notr">en az 3 harf</span>'; return; }
+    try{
+      var r = hataAt(await sb.rpc('alig_ad_uygun', {t:t}));
+      s.innerHTML = r.data === true
+        ? '<span class="rz iyi">temiz — kabul edilir</span>'
+        : '<span class="rz kotu">ENGELLENİR</span>';
+    }catch(e){ s.innerHTML = '<span class="rz kotu">'+E(e.message||e)+'</span>'; }
+  };
+
+  window.kfEkle = async function(){
+    var kelime = document.getElementById('kf-kelime').value.trim().toLowerCase();
+    var tur = document.getElementById('kf-tur').value;
+    if(!/^[a-z]{2,24}$/.test(kelime)){
+      toast('Kelime 2-24 küçük harf olmalı (normalize biçim: ş→s, ı→i…)', true); return; }
+    if(tur==='icinde' && kelime.length < 5){
+      toast('"içinde" türü en az 5 harf olmalı — kısa kökler masum adları yakalar', true); return; }
+    if(await dene(async function(){
+      hataAt(await sb.from('kufur_listesi').insert({kelime:kelime, tur:tur}));
+    }, kelime+' eklendi — yeni lig adlarında anında geçerli')){
+      document.getElementById('kf-kelime').value=''; kufurYukle();
+    }
+  };
+
+  window.kfSil = async function(kelime, tur){
+    if(await dene(async function(){
+      hataAt(await sb.from('kufur_listesi').delete().eq('kelime',kelime).eq('tur',tur));
+    }, kelime+' silindi')) kufurYukle();
+  };
+
+  Tazele.baslat(yukle, 10000);
+})();
+</script>
+</body>
+</html>

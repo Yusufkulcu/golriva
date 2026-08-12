@@ -171,42 +171,46 @@ void main() {
       }
     });
 
-    test('cevap puanlamasi + aktor donusumu', () {
+    test('v2 es zamanli: iki taraf AYNI soruyu cevaplar, ikisi bitince ilerler',
+        () {
       final e = DahaMiYuksekEngine(repos, rng: Random(1));
-      expect(e.aktor, 0);
       final dogruCevap = e.soru.sagYuksek;
-      expect(e.cevap(yuksek: dogruCevap), isTrue);
-      expect(e.skor[0], 1);
-      expect(e.aktor, 1);
-      final yanlisCevap = !e.soru.sagYuksek;
-      expect(e.cevap(yuksek: yanlisCevap), isFalse);
-      expect(e.skor[1], 0);
-      e.sureDoldu();
-      expect(e.dogruMu, [true, false, null]);
+      // taraf 0 dogru cevapladi — tur ILERLEMEZ (taraf 1 bekleniyor)
+      expect(e.cevap(0, yuksek: dogruCevap), isTrue);
+      expect(e.tur, 0);
+      expect(e.cevapladi(0), isTrue);
+      expect(e.cevap(0, yuksek: dogruCevap), isNull); // mukerrer red
+      // taraf 1 yanlis cevapladi: tur ILERLER
+      expect(e.cevap(1, yuksek: !dogruCevap), isFalse);
+      expect(e.tur, 1);
+      expect(e.skor, [1, 0]);
+      expect(e.sonuclar[0], [1, 0]);
+      // sure dolumu: taraf 0 cevapsiz kapanir
+      e.sureDoldu(0);
+      expect(e.sonuclar[1][0], -1);
+      expect(e.tur, 1); // taraf 1 hala cevaplamadi
     });
 
-    test('tam mac simulasyonu x10 seed', () {
+    test('tam mac simulasyonu x10 seed (es zamanli)', () {
       for (var seed = 0; seed < 10; seed++) {
         final rng = Random(seed);
         final e = DahaMiYuksekEngine(repos, rng: Random(seed + 900));
         while (!e.bitti) {
-          if (rng.nextInt(8) == 0) {
-            e.sureDoldu();
-          } else {
-            e.cevap(yuksek: rng.nextBool());
-          }
-        }
-        expect(e.dogruMu.length, dahaTurSayisi);
-        // skor = parite bazinda dogru sayisi
-        var s0 = 0, s1 = 0;
-        for (var i = 0; i < dahaTurSayisi; i++) {
-          if (e.dogruMu[i] == true) {
-            if (i % 2 == 0) {
-              s0++;
+          for (final s in [0, 1]) {
+            if (e.bitti) break;
+            if (rng.nextInt(8) == 0) {
+              e.sureDoldu(s);
             } else {
-              s1++;
+              e.cevap(s, yuksek: rng.nextBool());
             }
           }
+        }
+        var s0 = 0, s1 = 0;
+        for (var i = 0; i < dahaTurSayisi; i++) {
+          expect(e.sonuclar[i][0], isNotNull);
+          expect(e.sonuclar[i][1], isNotNull);
+          if (e.sonuclar[i][0] == 1) s0++;
+          if (e.sonuclar[i][1] == 1) s1++;
         }
         expect(e.skor, [s0, s1]);
         final k = e.kazanan();

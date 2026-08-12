@@ -14,7 +14,9 @@ import '../core/tr_norm.dart';
 /// eşleme (ad+ülke); bulunamazsa o gizem kulüpsüz 7 ipucuyla oynanır.
 /// Seed determinizmi: iki istemci aynı gizemli oyuncuları türetir.
 const kimBuTurSayisi = 2;
-const kimBuHavuzN = 400; // gizem adayları: en değerli 400 (tanınırlık)
+// Gizem adayları: en değerli 150 (kullanıcı kararı: 400 fazla niş kaçıyordu,
+// daha tanınmış/popüler isimler gelsin).
+const kimBuHavuzN = 150;
 
 class KimBuAday {
   final int idx;

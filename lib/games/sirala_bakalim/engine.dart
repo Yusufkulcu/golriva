@@ -11,7 +11,9 @@ import '../../data/repos.dart';
 /// Seed determinizmi: iki istemci aynı turları türetir.
 const siralaTurSayisi = 4;
 const siralaOyuncuSayisi = 4;
-const siralaHavuzN = 250; // metriğin en iyi 250'si (tanınırlık)
+// Metriğin en iyi 100'ü (kullanıcı kararı: 250 fazla niş kaçıyordu,
+// daha tanınmış/popüler isimler gelsin).
+const siralaHavuzN = 100;
 const siralaBonus = 1; // kusursuz sıralama bonusu
 
 class SiralaTur {

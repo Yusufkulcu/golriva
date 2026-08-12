@@ -19,7 +19,8 @@ enum VetoAsama { secim, veto }
 class VetoAday {
   final int idx;
   final String? neden;
-  VetoAday(this.idx, this.neden);
+  final bool aliastan; // eşleşme görünen addan değil TAM ADDAN geldi
+  VetoAday(this.idx, this.neden, {this.aliastan = false});
 }
 
 class VetoSecim {
@@ -82,15 +83,19 @@ class VetoDraftEngine {
     for (final i in kulup.havuz) {
       final o = repo.oyuncular[i];
       final pos = o.normAd.indexOf(nq);
-      final apos = o.normAlias.isEmpty ? -1 : o.normAlias.indexOf(nq);
-      if (pos < 0 && apos < 0) continue;
+      // v4.2: alias yalnız KELİME BAŞINDA eşleşir ("juni" → "Junior");
+      // ortadan eşleşme alakasız isim getiriyordu.
+      final aliasVar = o.normAlias.isNotEmpty &&
+          (o.normAlias.startsWith(nq) || o.normAlias.contains(' $nq'));
+      if (pos < 0 && !aliasVar) continue;
       String? neden;
       if (alinan.contains(i)) {
         neden = 'Alındı';
       } else if (!acik.contains(o.poz)) {
         neden = '${vetoSlotAd[o.poz]} dolu';
       }
-      ((pos == 0 || apos == 0) ? basla : iceren).add(VetoAday(i, neden));
+      final aday = VetoAday(i, neden, aliastan: pos < 0);
+      ((pos == 0 || aliasVar) ? basla : iceren).add(aday);
     }
     return [...basla, ...iceren].take(8).toList();
   }

@@ -576,7 +576,11 @@ class _KupaDraftiScreenState extends State<KupaDraftiScreen> {
           Flexible(
             child: Text(
                 // kupa sayisi META'DA YOK — tahmin konusu!
-                a.neden ?? '${kupaSlotAd[o.poz]} · ${o.ulke}',
+                // aliastan eslesmede TAM AD gosterilir (baglanti gorunsun)
+                a.neden ??
+                    (a.aliastan
+                        ? o.alias
+                        : '${kupaSlotAd[o.poz]} · ${o.ulke}'),
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5,

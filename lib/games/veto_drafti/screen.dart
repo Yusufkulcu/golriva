@@ -694,7 +694,11 @@ class _VetoDraftiScreenState extends State<VetoDraftiScreen> {
           Flexible(
             child: Text(
                 // kupa sayısı META'DA YOK — tahmin konusu!
-                a.neden ?? '${vetoSlotAd[o.poz]} · ${o.ulke}',
+                // aliastan eşleşmede TAM AD gösterilir (bağlantı görünsün)
+                a.neden ??
+                    (a.aliastan
+                        ? o.alias
+                        : '${vetoSlotAd[o.poz]} · ${o.ulke}'),
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.figtree(
                     fontSize: 10.5,

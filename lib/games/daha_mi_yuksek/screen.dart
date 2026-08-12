@@ -9,9 +9,10 @@ import '../../theme/golriva_theme.dart';
 import '../../widgets/golriva_ui.dart';
 import 'engine.dart';
 
-/// DAHA MI YÜKSEK? ekranı (Faz 2.18) — karşılaştırma düellosu.
+/// DAHA MI YÜKSEK? ekranı (Faz 2.18 · v2) — İKİ OYUNCU AYNI SORULARI CEVAPLAR.
+/// Çevrimiçi: EŞ ZAMANLI — herkes kendi cihazında karar verir, tur iki taraf
+/// da cevaplayınca açılır. Hot-seat: aynı soruyu önce O1 sonra O2 cevaplar.
 /// Soldakinin değeri açık, sağdakininki gizli: DAHA YÜKSEK mi DÜŞÜK mü?
-/// 10 tur, 5'er karar. Hot-seat + çevrimiçi.
 /// RESPONSIVE KURAL: kök yerleşim ListView.
 class DahaMiYuksekScreen extends StatefulWidget {
   final GolrivaRepos repos;
@@ -25,24 +26,32 @@ class DahaMiYuksekScreen extends StatefulWidget {
 class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
   late DahaMiYuksekEngine engine;
   late final List<String> adlar;
-  String? uyari;
-  bool? sonDogru; // uyarı rengi için
   Timer? sayac;
   Timer? _hukmenTimer;
   int kalanSn = turSn;
+  int _sayacTuru = 0;
   static const turSn = 15;
   bool _kapanisIslendi = false;
   bool _sonucAcik = false;
 
-  bool get siraBende =>
-      widget.online == null || engine.aktor == widget.online!.bilgi.benimSiram;
+  /// Çevrimiçi: benim koltuk sabit. Hot-seat: sıradaki cevaplayan koltuk.
+  int get benimSeat {
+    final o = widget.online;
+    if (o != null) return o.bilgi.benimSiram;
+    return !engine.bitti && engine.cevapladi(0) ? 1 : 0;
+  }
+
+  bool get cevapladim => engine.bitti || engine.cevapladi(benimSeat);
+
+  /// Son TAMAMLANMIŞ turun indeksi (açılış paneli) — yoksa -1.
+  int get acilanTur => engine.bitti ? dahaTurSayisi - 1 : engine.tur - 1;
 
   @override
   void initState() {
     super.initState();
     final o = widget.online;
     adlar = o == null
-        ? ['Sen', 'Rakip']
+        ? ['Oyuncu 1', 'Oyuncu 2']
         : (o.bilgi.benimSiram == 0
             ? ['Sen', o.bilgi.rakipAdi]
             : [o.bilgi.rakipAdi, 'Sen']);
@@ -101,40 +110,25 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
       return;
     }
     if (tip != 'cevap' && tip != 'sure') return;
+    final rakipSeat = 1 - widget.online!.bilgi.benimSiram;
+    final hTur = (h['tur'] as num?)?.toInt() ?? engine.tur;
+    if (hTur != engine.tur) return; // eski tur — yoksay
     setState(() {
       if (tip == 'cevap') {
-        _cevapIsle(yuksek: h['yuksek'] == true, benim: false);
+        engine.cevap(rakipSeat, yuksek: h['yuksek'] == true);
       } else {
-        _sureIsle(benim: false);
+        engine.sureDoldu(rakipSeat);
       }
     });
     _adimSonrasi();
-  }
-
-  /// Cevabı işler, açılan değeri iki istemcide aynı metinle gösterir.
-  void _cevapIsle({required bool yuksek, required bool benim}) {
-    final s = engine.soru;
-    final karar = engine.aktor;
-    final dogru = engine.cevap(yuksek: yuksek);
-    sonDogru = dogru;
-    uyari =
-        '${s.sagAd}: ${dahaFmt(s.sagDeger)} ${s.birim} — ${adlar[karar]} ${dogru ? "DOĞRU (+1)" : "YANLIŞ"}';
-  }
-
-  void _sureIsle({required bool benim}) {
-    final s = engine.soru;
-    final karar = engine.aktor;
-    engine.sureDoldu();
-    sonDogru = false;
-    uyari =
-        '${s.sagAd}: ${dahaFmt(s.sagDeger)} ${s.birim} — ${adlar[karar]} süreyi doldurdu';
   }
 
   void _adimSonrasi() {
     if (engine.bitti) {
       sayac?.cancel();
       _sonucGoster();
-    } else {
+    } else if (_sayacTuru != engine.tur) {
+      _sayacTuru = engine.tur;
       _sayacBaslat();
     }
   }
@@ -147,25 +141,42 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
-        if (widget.online != null && !siraBende) {
+        if (widget.online != null && cevapladim) {
+          // ben cevapladım, rakip gecikti — hamlesi kendi istemcisinden
+          // gelir; gelmezse hükmen ağı devreye girer
           _hukmenTimer?.cancel();
           _hukmenTimer = Timer(const Duration(seconds: 15), () {
-            if (mounted && !engine.bitti && !siraBende) _macKapandi();
+            if (mounted && !engine.bitti && cevapladim) _macKapandi();
           });
           return;
         }
-        widget.online?.gonder({'tip': 'sure'});
-        setState(() => _sureIsle(benim: true));
+        setState(() {
+          if (widget.online != null) {
+            widget.online!.gonder({'tip': 'sure', 'tur': engine.tur});
+            engine.sureDoldu(benimSeat);
+          } else {
+            // hot-seat: cevaplamayan herkes süreden yanar
+            if (!engine.cevapladi(0)) engine.sureDoldu(0);
+            if (!engine.bitti && !engine.cevapladi(1)) engine.sureDoldu(1);
+          }
+        });
         _adimSonrasi();
       }
     });
   }
 
   void _cevapla(bool yuksek) {
-    if (!siraBende || engine.bitti) return;
-    widget.online?.gonder({'tip': 'cevap', 'yuksek': yuksek});
-    setState(() => _cevapIsle(yuksek: yuksek, benim: true));
+    if (cevapladim || engine.bitti) return;
+    setState(() {
+      if (widget.online != null) {
+        widget.online!
+            .gonder({'tip': 'cevap', 'tur': engine.tur, 'yuksek': yuksek});
+      }
+      engine.cevap(benimSeat, yuksek: yuksek);
+    });
     _adimSonrasi();
+    // hot-seat: sıradaki cevaplayan (ya da yeni tur) taze süre alır
+    if (widget.online == null && !engine.bitti) _sayacBaslat();
   }
 
   void _sonucGoster() {
@@ -229,8 +240,7 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
                           Navigator.pop(context);
                           setState(() {
                             engine = DahaMiYuksekEngine(widget.repos);
-                            uyari = null;
-                            sonDogru = null;
+                            _sayacTuru = 0;
                           });
                           _sayacBaslat();
                         },
@@ -347,24 +357,18 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
               Row(children: [
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 0,
+                        aktif: !engine.bitti && !engine.cevapladi(0),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p1,
                         child: _ustKutu(0, GolrivaColors.p1))),
                 const SizedBox(width: 10),
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 1,
+                        aktif: !engine.bitti && !engine.cevapladi(1),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p2,
                         child: _ustKutu(1, GolrivaColors.p2))),
               ]),
-              if (widget.online != null && !engine.bitti) ...[
-                const SizedBox(height: 10),
-                SiraSeridi(
-                    siraBende: siraBende,
-                    rakipAdi: widget.online!.bilgi.rakipAdi),
-              ],
               const SizedBox(height: 10),
               if (s != null) ...[
                 // ── METRİK KARTI: büyük ad üstte, açıklama altta ──
@@ -391,11 +395,13 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                        'SAĞDAKİ SOLDAKİNDEN DAHA MI YÜKSEK, DAHA MI DÜŞÜK?',
+                        widget.online != null
+                            ? 'İKİNİZE DE AYNI SORU — SAĞDAKİ SOLDAKİNDEN DAHA MI YÜKSEK, DAHA MI DÜŞÜK?'
+                            : 'AYNI SORUYU ÖNCE ${adlar[0].toUpperCase()} SONRA ${adlar[1].toUpperCase()} CEVAPLAR',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.figtree(
                             fontSize: 9,
-                            letterSpacing: 2.5,
+                            letterSpacing: 2,
                             color: GolrivaColors.dim,
                             fontWeight: FontWeight.w700)),
                   ]),
@@ -431,105 +437,176 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
                           acik: true)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Center(child: goldYazi('VS', boyut: 22)),
+                    child: goldYazi('VS', boyut: 22),
                   ),
                   Expanded(
                       child: _oyuncuKart(
                           ad: s.sagAd, deger: '?', acik: false)),
                 ]),
                 const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                          backgroundColor: siraBende
-                              ? GolrivaColors.ok.withValues(alpha: .85)
-                              : GolrivaColors.card2,
-                          foregroundColor: siraBende
-                              ? Colors.white
-                              : GolrivaColors.dim2,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 13)),
-                      onPressed:
-                          siraBende ? () => _cevapla(true) : null,
-                      icon: const Icon(Icons.arrow_upward, size: 18),
-                      label: Text('DAHA YÜKSEK',
-                          style: GoogleFonts.bigShouldersDisplay(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
-                              fontSize: 15)),
+                if (!cevapladim) ...[
+                  if (widget.online == null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Center(
+                        child: Text('CEVAPLAYAN: ${adlar[benimSeat]}',
+                            style: GoogleFonts.figtree(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                                color: benimSeat == 0
+                                    ? GolrivaColors.p1
+                                    : GolrivaColors.p2)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                          backgroundColor: siraBende
-                              ? GolrivaColors.bad.withValues(alpha: .85)
-                              : GolrivaColors.card2,
-                          foregroundColor: siraBende
-                              ? Colors.white
-                              : GolrivaColors.dim2,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 13)),
-                      onPressed:
-                          siraBende ? () => _cevapla(false) : null,
-                      icon: const Icon(Icons.arrow_downward, size: 18),
-                      label: Text('DAHA DÜŞÜK',
-                          style: GoogleFonts.bigShouldersDisplay(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.5,
-                              fontSize: 15)),
+                  Row(children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                            backgroundColor:
+                                GolrivaColors.ok.withValues(alpha: .85),
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 13)),
+                        onPressed: () => _cevapla(true),
+                        icon: const Icon(Icons.arrow_upward, size: 18),
+                        label: Text('DAHA YÜKSEK',
+                            style: GoogleFonts.bigShouldersDisplay(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                                fontSize: 15)),
+                      ),
                     ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                            backgroundColor:
+                                GolrivaColors.bad.withValues(alpha: .85),
+                            foregroundColor: Colors.white,
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 13)),
+                        onPressed: () => _cevapla(false),
+                        icon: const Icon(Icons.arrow_downward, size: 18),
+                        label: Text('DAHA DÜŞÜK',
+                            style: GoogleFonts.bigShouldersDisplay(
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.5,
+                                fontSize: 15)),
+                      ),
+                    ),
+                  ]),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: kartDekor(r: 16),
+                    child: Row(children: [
+                      const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: GolrivaColors.gold, strokeWidth: 2)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                            widget.online != null
+                                ? 'Cevabın alındı — rakip bekleniyor. Değer iki taraf da cevaplayınca açılır.'
+                                : 'Kayıt alındı.',
+                            style: GoogleFonts.figtree(
+                                fontSize: 12, color: GolrivaColors.dim)),
+                      ),
+                    ]),
                   ),
-                ]),
+                ],
               ],
-              if (uyari != null) ...[
+              // ── SON TAMAMLANAN TURUN AÇILIŞI ──
+              if (acilanTur >= 0) ...[
                 const SizedBox(height: 12),
-                Center(
-                  child: Text(uyari!,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.bigShouldersDisplay(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: sonDogru == true
-                              ? GolrivaColors.ok
-                              : GolrivaColors.bad,
-                          letterSpacing: .5)),
-                ),
+                _acilisPaneli(acilanTur),
               ],
               const SizedBox(height: 12),
-              // ── TUR GEÇMİŞİ NOKTALARI ──
-              if (engine.dogruMu.isNotEmpty)
+              // ── TUR GEÇMİŞİ (taraf başına nokta) ──
+              if (acilanTur >= 0)
                 Center(
-                  child: Wrap(
-                    spacing: 5,
-                    children: [
-                      for (var i = 0; i < engine.dogruMu.length; i++)
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: engine.dogruMu[i] == true
-                                ? GolrivaColors.ok
-                                : engine.dogruMu[i] == false
-                                    ? GolrivaColors.bad
-                                    : GolrivaColors.card2,
-                            border: Border.all(
-                                color: i % 2 == 0
-                                    ? GolrivaColors.p1
-                                    : GolrivaColors.p2,
-                                width: 1.5),
-                          ),
+                  child: Column(children: [
+                    for (final tarafS in [0, 1])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Wrap(
+                          spacing: 5,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 60,
+                              child: Text(adlar[tarafS],
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.figtree(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: tarafS == 0
+                                          ? GolrivaColors.p1
+                                          : GolrivaColors.p2)),
+                            ),
+                            for (var i = 0; i <= acilanTur; i++)
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: engine.sonuclar[i][tarafS] == 1
+                                      ? GolrivaColors.ok
+                                      : engine.sonuclar[i][tarafS] == 0
+                                          ? GolrivaColors.bad
+                                          : GolrivaColors.card2,
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
+                      ),
+                  ]),
                 ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _acilisPaneli(int ti) {
+    final s = engine.sorular[ti];
+    String durumYazi(int? d) =>
+        d == 1 ? 'DOĞRU' : (d == 0 ? 'YANLIŞ' : 'süre doldu');
+    Color durumRenk(int? d) =>
+        d == 1 ? GolrivaColors.ok : GolrivaColors.bad;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: kartDekor(r: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        etiket('${s.metrikAd} — AÇILAN DEĞER'),
+        const SizedBox(height: 6),
+        Text(
+            '${s.solAd}: ${dahaFmt(s.solDeger)} ${s.birim} — '
+            '${s.sagAd}: ${dahaFmt(s.sagDeger)} ${s.birim} '
+            '(${s.sagYuksek ? "DAHA YÜKSEK" : "DAHA DÜŞÜK"})',
+            style: GoogleFonts.figtree(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: GolrivaColors.ink)),
+        const SizedBox(height: 4),
+        Row(children: [
+          for (final tarafS in [0, 1]) ...[
+            if (tarafS == 1) const SizedBox(width: 14),
+            Text('${adlar[tarafS]}: ',
+                style: GoogleFonts.figtree(
+                    fontSize: 11, color: GolrivaColors.dim)),
+            Text(durumYazi(engine.sonuclar[ti][tarafS]),
+                style: GoogleFonts.figtree(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: durumRenk(engine.sonuclar[ti][tarafS]))),
+          ],
+        ]),
+      ]),
     );
   }
 
@@ -552,9 +629,17 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
                   color: GolrivaColors.goldHi,
                   fontWeight: FontWeight.w700,
                   fontSize: 22)),
-          Text('doğru',
-              style:
-                  GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 9)),
+          Text(
+              engine.bitti
+                  ? 'doğru'
+                  : engine.cevapladi(s)
+                      ? 'CEVAPLADI'
+                      : 'düşünüyor…',
+              style: GoogleFonts.figtree(
+                  color: engine.cevapladi(s) && !engine.bitti
+                      ? GolrivaColors.ok
+                      : GolrivaColors.dim,
+                  fontSize: 9)),
         ]),
       );
 

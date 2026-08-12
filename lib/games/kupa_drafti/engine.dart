@@ -14,7 +14,8 @@ const kupaTurSayisi = 6;
 class KupaAday {
   final int idx;
   final String? neden;
-  KupaAday(this.idx, this.neden);
+  final bool aliastan; // eşleşme görünen addan değil TAM ADDAN geldi
+  KupaAday(this.idx, this.neden, {this.aliastan = false});
 }
 
 class KupaSecim {
@@ -58,6 +59,9 @@ class KupaDraftEngine {
   /// Bu kulup + acik mevki; min 3 harf; sebepli engeller.
   /// Kupa sayisi META'DA GOSTERILMEZ — tahmin konusu (secince acilir).
   /// v4.1: alias da aranir ("CR7" gibi takma adlar draft'ta calisir).
+  /// v4.2: alias eslesmesi yalniz KELIME BASINDA ("juni" → "Junior" tamam,
+  /// "uni" ortadan eslesip alakasiz isim getirmez) ve ekran aliastan
+  /// eslesenlerde TAM ADI gosterir — baglantisiz isim karmasasi biter.
   List<KupaAday> adaylar(String sorgu) {
     final nq = trNorm(sorgu);
     if (nq.length < 3) return [];
@@ -66,15 +70,17 @@ class KupaDraftEngine {
     for (final i in kulup.havuz) {
       final o = repo.oyuncular[i];
       final pos = o.normAd.indexOf(nq);
-      final apos = o.normAlias.isEmpty ? -1 : o.normAlias.indexOf(nq);
-      if (pos < 0 && apos < 0) continue;
+      final aliasVar = o.normAlias.isNotEmpty &&
+          (o.normAlias.startsWith(nq) || o.normAlias.contains(' $nq'));
+      if (pos < 0 && !aliasVar) continue;
       String? neden;
       if (alinan.contains(i)) {
         neden = 'Alındı';
       } else if (!acik.contains(o.poz)) {
         neden = '${kupaSlotAd[o.poz]} dolu';
       }
-      ((pos == 0 || apos == 0) ? basla : iceren).add(KupaAday(i, neden));
+      final aday = KupaAday(i, neden, aliastan: pos < 0);
+      ((pos == 0 || aliasVar) ? basla : iceren).add(aday);
     }
     return [...basla, ...iceren].take(8).toList();
   }

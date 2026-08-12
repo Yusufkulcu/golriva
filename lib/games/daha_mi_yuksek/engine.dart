@@ -1,11 +1,13 @@
 import 'dart:math';
 import '../../data/repos.dart';
 
-/// DAHA MI YÜKSEK? motoru (Faz 2.18 — yeni oyun).
+/// DAHA MI YÜKSEK? motoru (Faz 2.18 · v2 — kullanıcı kararı).
+/// v2: İKİ OYUNCU DA AYNI SORULARI CEVAPLAR — farklı soru haksızlıktı.
 /// Her turda bir METRİK (bonservis / sarı kart / kupa / maç / milli gol)
 /// ve iki futbolcu gelir: SOLDAKİNİN değeri AÇIK, sağdakininki GİZLİ.
-/// Sıradaki oyuncu karar verir: sağdaki DAHA MI YÜKSEK, DAHA MI DÜŞÜK?
-/// Doğru = +1. 10 tur (5'er karar), toplam yüksek kazanır.
+/// İki taraf da karar verir: sağdaki DAHA MI YÜKSEK, DAHA MI DÜŞÜK?
+/// Doğru = +1. Tur, İKİ taraf da cevaplayınca kapanır ve değer açılır.
+/// 10 tur; toplam yüksek kazanır.
 /// Seed determinizmi: iki istemci aynı soruları türetir.
 const dahaTurSayisi = 10;
 const dahaHavuzN = 250; // sorular metriğin en iyi 250'sinden (tanınırlık)
@@ -16,7 +18,7 @@ class DahaSoru {
   final String solAd;
   final double solDeger;
   final String sagAd;
-  final double sagDeger; // GİZLİ — cevaptan sonra açılır
+  final double sagDeger; // GİZLİ — iki taraf da cevaplayınca açılır
   DahaSoru(this.metrikAd, this.birim, this.solAd, this.solDeger, this.sagAd,
       this.sagDeger);
 
@@ -29,12 +31,14 @@ class DahaMiYuksekEngine {
   late final List<DahaSoru> sorular;
   int tur = 0;
   final List<int> skor = [0, 0];
-  final List<bool?> dogruMu = []; // tur başına sonuç (null = süre doldu)
+
+  /// [tur][taraf] → 1 doğru · 0 yanlış · -1 süre doldu · null bekleniyor.
+  final List<List<int?>> sonuclar = [
+    for (var i = 0; i < dahaTurSayisi; i++) [null, null]
+  ];
   bool bitti = false;
 
-  /// Karar sırası: turlar dönüşümlü (0,1,0,1...) — 5'er karar.
-  int get aktor => tur % 2;
-
+  bool cevapladi(int s) => sonuclar[tur][s] != null;
   DahaSoru get soru => sorular[tur];
 
   DahaMiYuksekEngine(GolrivaRepos repos, {Random? rng})
@@ -97,29 +101,31 @@ class DahaMiYuksekEngine {
     return DahaSoru(metrik.$1, metrik.$2, a.$1, a.$2, b.$1, b.$2);
   }
 
-  /// Aktörün kararı. Doğruysa +1. Dönüş: doğru muydu.
-  bool cevap({required bool yuksek}) {
-    if (bitti) return false;
+  /// [taraf]'ın kararı. Doğruysa +1. Tur, İKİ taraf da cevaplayınca
+  /// ilerler. Dönüş: doğru muydu (mükerrer/bitti ise null).
+  bool? cevap(int taraf, {required bool yuksek}) {
+    if (bitti || cevapladi(taraf)) return null;
     final dogru = yuksek == soru.sagYuksek;
-    if (dogru) skor[aktor]++;
-    dogruMu.add(dogru);
-    _ilerle();
+    if (dogru) skor[taraf]++;
+    sonuclar[tur][taraf] = dogru ? 1 : 0;
+    _kontrol();
     return dogru;
   }
 
-  /// Süre dolumu: karar verilmedi, puan yok.
-  void sureDoldu() {
-    if (bitti) return;
-    dogruMu.add(null);
-    _ilerle();
+  /// [taraf]'ın süresi doldu: cevapsız, puan yok.
+  void sureDoldu(int taraf) {
+    if (bitti || cevapladi(taraf)) return;
+    sonuclar[tur][taraf] = -1;
+    _kontrol();
   }
 
-  void _ilerle() {
+  void _kontrol() {
+    if (sonuclar[tur][0] == null || sonuclar[tur][1] == null) return;
     if (tur + 1 >= dahaTurSayisi) {
       bitti = true;
-      return;
+    } else {
+      tur++;
     }
-    tur++;
   }
 
   /// null = berabere · 0/1 = kazanan.

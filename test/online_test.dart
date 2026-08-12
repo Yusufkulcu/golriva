@@ -25,7 +25,8 @@ void main() {
     expect(tester.takeException(), isNull);
     // profil yok → misafir gorunumu; cevrimici degerler tire kalir
     expect(find.text('MİSAFİR'), findsOneWidget);
-    expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+    // kart metni artik fiyat iceriyor: 'HIZLI DÜELLO · 100'
+    expect(find.textContaining('HIZLI DÜELLO'), findsOneWidget);
     // cevrimici sekme kibarca aciklama gosterir, istek atmaz
     // (artik tek aktif sekme kurulur — SIRALAMA'ya gecip bak)
     await tester.tap(find.text('SIRALAMA'));

@@ -128,7 +128,8 @@ void main() {
         await kur(tester, AnaIskelet(repos: repos));
         expect(tester.takeException(), isNull,
             reason: '${e.key} (${e.value}) boyutunda lobide tasma/exception');
-        expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+        // kart metni fiyat icerir: 'HIZLI DÜELLO · 100'
+        expect(find.textContaining('HIZLI DÜELLO'), findsOneWidget);
       });
     }
   });

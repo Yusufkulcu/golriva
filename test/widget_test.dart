@@ -54,12 +54,13 @@ void main() {
     for (final s in ['OYNA', 'SIRALAMA', 'MAĞAZA', 'PROFİL']) {
       expect(find.text(s), findsWidgets, reason: '$s sekmesi eksik');
     }
-    expect(find.text('HIZLI DÜELLO'), findsOneWidget);
+    // kart metinleri fiyat icerir: 'HIZLI DÜELLO · 100', 'BO3 SERİ · 250'
+    expect(find.textContaining('HIZLI DÜELLO'), findsOneWidget);
     expect(find.text('MASALAR'), findsOneWidget);
-    expect(find.text('BO3 SERİ'), findsOneWidget);
+    expect(find.textContaining('BO3 SERİ'), findsOneWidget);
     expect(find.text('ARKADAŞLA'), findsOneWidget);
     // tasarim kurali: ranked lobide oyun listesi OLMAZ (rulet secer)
-    expect(find.text('EN KISA KADRO'), findsNothing);
+    expect(find.text('EN KISA KADROYU KUR'), findsNothing);
   });
 
   testWidgets('Iskelet: ARKADAŞLA → oyun secim ekrani acilir', (tester) async {
@@ -73,20 +74,28 @@ void main() {
     expect(find.text('RULET'), findsOneWidget);
   });
 
-  testWidgets('Arkadasla: RULET + 10 oyun karti cizilir', (tester) async {
+  testWidgets('Arkadasla: RULET + 17 oyun karti cizilir', (tester) async {
     await tester.pumpWidget(arkadasla());
+    // adlar arkadasla_ekrani._oyunlar() ile birebir ayni sirada
     for (final ad in [
       'RULET',
-      'EN KISA KADRO',
       'KUPA DRAFTI',
-      'EN GENÇ KADRO',
+      'EN KISA KADROYU KUR',
+      'EN GENÇ KADROYU KUR',
       'BAYRAK YARIŞI',
       'HEDEFİ TUTTUR',
       'BONSERVİS AVI',
       'SARI KART AVI',
       'MAÇ REKORTMENLERİ',
-      'MİLLİ GOL KRALLARI',
+      'MİLLİ TAKIM GOL KRALLARI',
       'KARİYER İKİZİ',
+      "BONSERVİS 21'İ",
+      'VETO DRAFTI',
+      'KİM BU?',
+      'DAHA MI YÜKSEK?',
+      'SIRALA BAKALIM',
+      'ORTAK KULÜP AVI',
+      'ŞL GECESİ',
     ]) {
       await kartaGit(tester, ad);
       expect(find.text(ad), findsOneWidget, reason: '$ad karti eksik');
@@ -105,14 +114,16 @@ void main() {
     await tester
         .pumpWidget(MaterialApp(home: DavetKurEkrani(repos: repos)));
     expect(find.text('RULET'), findsOneWidget);
+    // SERİ bolumu artik EN USTTE — asagi kaydirinca tembel ListView onu
+    // bosaltir, o yuzden ONCE kontrol et
+    expect(find.text('TEK MAÇ'), findsOneWidget);
+    expect(find.text('3 MAÇLIK SERİ'), findsOneWidget);
     // sabit oyun secilebilir (ust bolge — once dokun, sonra kaydir)
     await tester.tap(find.text('KUPA DRAFTI'));
     await tester.pump();
-    // SERİ bolumu + buton ekranin altinda — ListView tembel cizer, kaydir
+    // buton 17 oyunluk listenin altinda — kaydirarak eris
     await tester.dragUntilVisible(find.text('DAVET KODU OLUŞTUR'),
         find.byType(ListView).first, const Offset(0, -100));
-    expect(find.text('TEK MAÇ'), findsOneWidget);
-    expect(find.text('3 MAÇLIK SERİ'), findsOneWidget);
     expect(find.text('DAVET KODU OLUŞTUR'), findsOneWidget);
   });
 
@@ -195,13 +206,13 @@ void main() {
   }
 
   testWidgets('Gecis: EN KISA KADRO', (t) async {
-    await gecisTesti(t, 'EN KISA KADRO', EnKisaKadroScreen);
+    await gecisTesti(t, 'EN KISA KADROYU KUR', EnKisaKadroScreen);
   });
   testWidgets('Gecis: KUPA DRAFTI', (t) async {
     await gecisTesti(t, 'KUPA DRAFTI', KupaDraftiScreen);
   });
   testWidgets('Gecis: EN GENÇ KADRO', (t) async {
-    await gecisTesti(t, 'EN GENÇ KADRO', EnGencKadroScreen);
+    await gecisTesti(t, 'EN GENÇ KADROYU KUR', EnGencKadroScreen);
   });
   testWidgets('Gecis: BAYRAK YARIŞI', (t) async {
     await gecisTesti(t, 'BAYRAK YARIŞI', BayrakYarisiScreen);

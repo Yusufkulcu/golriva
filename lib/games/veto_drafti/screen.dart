@@ -598,6 +598,9 @@ class _VetoDraftiScreenState extends State<VetoDraftiScreen> {
                 // ── SEÇİM ARAMASI ──
                 if (!vetoAsamasi) ...[
                   TextField(
+                    // KLAVYE DUZELTMESI: sabit key — liste yapisi
+                    // degisince eleman yeniden yaratilip odak/klavye dusuyordu.
+                    key: const ValueKey('arama'),
                     controller: aramaCtrl,
                     enabled: siraBende,
                     onChanged: (v) =>

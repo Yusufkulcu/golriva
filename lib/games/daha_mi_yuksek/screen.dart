@@ -421,7 +421,9 @@ class _DahaMiYuksekScreenState extends State<DahaMiYuksekScreen> {
                 ),
                 const SizedBox(height: 10),
                 // ── KARŞILAŞTIRMA KARTLARI ──
-                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                // DİKKAT: ListView içinde stretch KULLANILMAZ — sonsuz
+                // yükseklik dayatır, render patlar (siyah ekran hatası).
+                Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                   Expanded(
                       child: _oyuncuKart(
                           ad: s.solAd,

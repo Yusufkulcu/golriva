@@ -1,10 +1,13 @@
 import 'dart:math';
 import '../../data/repos.dart';
 
-/// SIRALA BAKALIM motoru (Faz 2.18 — yeni oyun).
-/// Her turda bir METRİK ve 4 futbolcu gelir (değerler GİZLİ). Sıradaki
-/// oyuncu 4'ünü YÜKSEKTEN DÜŞÜĞE sıralar. Her doğru konum +1 puan
-/// (4'ü de doğruysa +1 bonus = 5). 4 tur, 2'şer sıralama; toplam kazanır.
+/// SIRALA BAKALIM motoru (Faz 2.18 · v2 — kullanıcı kararı).
+/// v2: İKİ OYUNCU DA AYNI TURLARI SIRALAR — farklı soru haksızlıktı.
+/// Her turda bir METRİK ve 4 futbolcu gelir (değerler GİZLİ). İki taraf da
+/// 4'ünü YÜKSEKTEN DÜŞÜĞE sıralar (çevrimiçi EŞ ZAMANLI; hot-seat'te
+/// sırayla — önce O1, sonra O2, açılış ikisi de bitince). Her doğru konum
+/// +1 (4'ü de doğruysa +1 bonus = 5). Tur, İKİ taraf da gönderince kapanır.
+/// 4 tur; toplam puan kazanır.
 /// Seed determinizmi: iki istemci aynı turları türetir.
 const siralaTurSayisi = 4;
 const siralaOyuncuSayisi = 4;
@@ -32,11 +35,20 @@ class SiralaBakalimEngine {
   late final List<SiralaTur> turlar;
   int tur = 0;
   final List<int> skor = [0, 0];
-  final List<int?> turPuanlari = []; // null = süre doldu (0 sayılır)
-  final List<List<int>> verilenSiralar = []; // gösterim için
+
+  /// [tur][taraf] → verilen dizi (null = henüz; boş liste = süre doldu).
+  final List<List<List<int>?>> verilenler = [
+    for (var i = 0; i < siralaTurSayisi; i++) [null, null]
+  ];
+
+  /// [tur][taraf] → puan (null = henüz gönderilmedi).
+  final List<List<int?>> puanlar = [
+    for (var i = 0; i < siralaTurSayisi; i++) [null, null]
+  ];
   bool bitti = false;
 
-  int get aktor => tur % 2;
+  bool gonderdi(int s) => puanlar[tur][s] != null;
+
   SiralaTur get aktifTur => turlar[tur];
 
   SiralaBakalimEngine(GolrivaRepos repos, {Random? rng})
@@ -97,10 +109,10 @@ class SiralaBakalimEngine {
     return SiralaTur(metrik.$1, metrik.$2, adlar, degerler);
   }
 
-  /// Aktörün sıralaması: gösterim indekslerinin dizilişi (yüksekten düşüğe).
-  /// Dönüş: alınan puan (geçersiz girişte null).
-  int? sirala(List<int> dizi) {
-    if (bitti) return null;
+  /// [taraf]'ın bu tur sıralaması. Dönüş: alınan puan (geçersizde null).
+  /// Tur, İKİ taraf da gönderince ilerler.
+  int? sirala(int taraf, List<int> dizi) {
+    if (bitti || gonderdi(taraf)) return null;
     if (dizi.length != siralaOyuncuSayisi) return null;
     if (dizi.toSet().length != siralaOyuncuSayisi) return null;
     if (dizi.any((i) => i < 0 || i >= siralaOyuncuSayisi)) return null;
@@ -110,27 +122,28 @@ class SiralaBakalimEngine {
       if (dizi[i] == dogru[i]) puan++;
     }
     if (puan == siralaOyuncuSayisi) puan += siralaBonus; // kusursuz bonusu
-    skor[aktor] += puan;
-    turPuanlari.add(puan);
-    verilenSiralar.add(List.of(dizi));
-    _ilerle();
+    skor[taraf] += puan;
+    puanlar[tur][taraf] = puan;
+    verilenler[tur][taraf] = List.of(dizi);
+    _kontrol();
     return puan;
   }
 
-  /// Süre dolumu: sıralama yok, 0 puan.
-  void sureDoldu() {
-    if (bitti) return;
-    turPuanlari.add(null);
-    verilenSiralar.add(const []);
-    _ilerle();
+  /// [taraf]'ın süresi doldu: 0 puanla kapanır.
+  void sureDoldu(int taraf) {
+    if (bitti || gonderdi(taraf)) return;
+    puanlar[tur][taraf] = 0;
+    verilenler[tur][taraf] = const [];
+    _kontrol();
   }
 
-  void _ilerle() {
+  void _kontrol() {
+    if (puanlar[tur][0] == null || puanlar[tur][1] == null) return;
     if (tur + 1 >= siralaTurSayisi) {
       bitti = true;
-      return;
+    } else {
+      tur++;
     }
-    tur++;
   }
 
   /// null = berabere · 0/1 = kazanan.

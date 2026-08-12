@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/kor_av_repository.dart';
+import '../../data/players_repository.dart';
 import '../../online/mac_kanali.dart';
 import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
@@ -15,8 +16,10 @@ import 'engine.dart';
 /// RESPONSIVE KURAL: kök yerleşim ListView.
 class KimBuScreen extends StatefulWidget {
   final KorAvRepository repo;
+  final PlayersRepository? kulupRepo; // OYNADIĞI KULÜP ipucu kaynağı
   final OnlineMacKanali? online; // null = hot-seat
-  const KimBuScreen({super.key, required this.repo, this.online});
+  const KimBuScreen(
+      {super.key, required this.repo, this.kulupRepo, this.online});
 
   @override
   State<KimBuScreen> createState() => _KimBuScreenState();
@@ -60,6 +63,7 @@ class _KimBuScreenState extends State<KimBuScreen> {
             ? ['Sen', o.bilgi.rakipAdi]
             : [o.bilgi.rakipAdi, 'Sen']);
     engine = KimBuEngine(widget.repo,
+        kulupRepo: widget.kulupRepo,
         rng: o == null ? null : Random(o.bilgi.seed));
     o?.basla(_rakipHamle, onMacKapandi: _macKapandi);
     _sayacBaslat();
@@ -206,7 +210,13 @@ class _KimBuScreenState extends State<KimBuScreen> {
     setState(() {
       if (engine.ipucuAc()) {
         widget.online?.gonder({'tip': 'ac'});
-        uyari = 'Yeni ipucu açıldı — söz rakipte';
+        // rakip kilitliyse söz bende kalır — metin yanıltmasın
+        final benimSeat = widget.online == null
+            ? engine.aktor
+            : widget.online!.bilgi.benimSiram;
+        uyari = engine.aktor == benimSeat
+            ? 'Yeni ipucu açıldı — rakip kilitli, söz sende'
+            : 'Yeni ipucu açıldı — söz rakipte';
         aramaCtrl.clear();
         adaylar = [];
       }
@@ -285,7 +295,8 @@ class _KimBuScreenState extends State<KimBuScreen> {
                         onPressed: () {
                           Navigator.pop(context);
                           setState(() {
-                            engine = KimBuEngine(widget.repo);
+                            engine = KimBuEngine(widget.repo,
+                                kulupRepo: widget.kulupRepo);
                             uyari = null;
                           });
                           _sayacBaslat();
@@ -460,6 +471,16 @@ class _KimBuScreenState extends State<KimBuScreen> {
                             letterSpacing: 2.5,
                             color: GolrivaColors.dim,
                             fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                        'TEK TAHMİN HAKKIN VAR — YANLIŞ BİLİRSEN BU TUR '
+                        'BİR DAHA CEVAP VEREMEZSİN',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.figtree(
+                            fontSize: 9,
+                            letterSpacing: 2,
+                            color: GolrivaColors.bad,
+                            fontWeight: FontWeight.w700)),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 6,
@@ -494,7 +515,7 @@ class _KimBuScreenState extends State<KimBuScreen> {
                             ),
                           ),
                         for (var i = ipuclari.length;
-                            i < kimBuIpucuSayisi;
+                            i < engine.ipucuSayisi;
                             i++)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -576,6 +597,9 @@ class _KimBuScreenState extends State<KimBuScreen> {
                   ),
                 const SizedBox(height: 8),
                 TextField(
+                  // KLAVYE DUZELTMESI: sabit key — liste yapisi
+                  // degisince eleman yeniden yaratilip odak/klavye dusuyordu.
+                  key: const ValueKey('arama'),
                   controller: aramaCtrl,
                   enabled: oynayabilirim,
                   onChanged: (v) =>

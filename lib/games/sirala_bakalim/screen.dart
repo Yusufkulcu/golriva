@@ -9,10 +9,11 @@ import '../../theme/golriva_theme.dart';
 import '../../widgets/golriva_ui.dart';
 import 'engine.dart';
 
-/// SIRALA BAKALIM ekranı (Faz 2.18) — gizli değer sıralaması.
-/// 4 futbolcuya dokunma sırası = senin sıralaman (yüksekten düşüğe).
-/// Onayla → değerler açılır, her doğru konum +1 (kusursuz +1 bonus).
-/// Hot-seat + çevrimiçi. RESPONSIVE KURAL: kök yerleşim ListView.
+/// SIRALA BAKALIM ekranı (Faz 2.18 · v2) — İKİ OYUNCU AYNI SORULARI SIRALAR.
+/// Çevrimiçi: EŞ ZAMANLI — herkes kendi cihazında aynı 4'lüyü dizer, tur iki
+/// taraf da gönderince açılır. Hot-seat: aynı soruyu önce O1 sonra O2 dizer.
+/// Her doğru konum +1, kusursuz +1 bonus. 4 tur.
+/// RESPONSIVE KURAL: kök yerleşim ListView.
 class SiralaBakalimScreen extends StatefulWidget {
   final GolrivaRepos repos;
   final OnlineMacKanali? online; // null = hot-seat
@@ -26,10 +27,6 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
   late SiralaBakalimEngine engine;
   late final List<String> adlar;
   final List<int> secilen = []; // dokunma sırası (gösterim idx'leri)
-  SiralaTur? sonTur; // açılış paneli için
-  List<int> sonDizi = [];
-  int? sonPuan; // null = süre doldu
-  int? sonAktor;
   Timer? sayac;
   Timer? _hukmenTimer;
   int kalanSn = turSn;
@@ -37,15 +34,27 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
   bool _kapanisIslendi = false;
   bool _sonucAcik = false;
 
-  bool get siraBende =>
-      widget.online == null || engine.aktor == widget.online!.bilgi.benimSiram;
+  /// Çevrimiçi: benim koltuk sabit. Hot-seat: sırada dolduran koltuk
+  /// (önce göndermemiş olan — O1 sonra O2).
+  int get benimSeat {
+    final o = widget.online;
+    if (o != null) return o.bilgi.benimSiram;
+    return !engine.bitti && engine.gonderdi(0) ? 1 : 0;
+  }
+
+  bool get gonderdim => engine.bitti || engine.gonderdi(benimSeat);
+
+  /// Son TAMAMLANMIŞ turun indeksi (açılış paneli) — yoksa -1.
+  int get acilanTur => engine.bitti
+      ? siralaTurSayisi - 1
+      : engine.tur - 1; // tur 0'dayken -1 → panel yok
 
   @override
   void initState() {
     super.initState();
     final o = widget.online;
     adlar = o == null
-        ? ['Sen', 'Rakip']
+        ? ['Oyuncu 1', 'Oyuncu 2']
         : (o.bilgi.benimSiram == 0
             ? ['Sen', o.bilgi.rakipAdi]
             : [o.bilgi.rakipAdi, 'Sen']);
@@ -104,32 +113,19 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
       return;
     }
     if (tip != 'sirala' && tip != 'sure') return;
+    final rakipSeat = 1 - widget.online!.bilgi.benimSiram;
+    final hTur = (h['tur'] as num?)?.toInt() ?? engine.tur;
+    if (hTur != engine.tur) return; // eski/uyumsuz tur — yoksay
     setState(() {
       if (tip == 'sirala') {
         final dizi =
             (h['dizi'] as List).map((x) => (x as num).toInt()).toList();
-        _siralaIsle(dizi);
+        engine.sirala(rakipSeat, dizi);
       } else {
-        _sureIsle();
+        engine.sureDoldu(rakipSeat);
       }
-      secilen.clear();
     });
     _adimSonrasi();
-  }
-
-  void _siralaIsle(List<int> dizi) {
-    sonTur = engine.aktifTur;
-    sonAktor = engine.aktor;
-    sonDizi = List.of(dizi);
-    sonPuan = engine.sirala(dizi);
-  }
-
-  void _sureIsle() {
-    sonTur = engine.aktifTur;
-    sonAktor = engine.aktor;
-    sonDizi = [];
-    sonPuan = null;
-    engine.sureDoldu();
   }
 
   void _adimSonrasi() {
@@ -137,6 +133,16 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
       sayac?.cancel();
       _sonucGoster();
     } else {
+      _sayacTazele();
+    }
+  }
+
+  /// Tur ilerlediyse sayaç baştan; aynı turdaysa dokunma.
+  int _sayacTuru = 0;
+  void _sayacTazele() {
+    if (_sayacTuru != engine.tur) {
+      _sayacTuru = engine.tur;
+      secilen.clear();
       _sayacBaslat();
     }
   }
@@ -149,16 +155,25 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
-        if (widget.online != null && !siraBende) {
+        if (widget.online != null && gonderdim) {
+          // ben gönderdim, rakip gecikti — hamlesi kendi istemcisinden
+          // gelir; gelmezse hükmen ağı devreye girer
           _hukmenTimer?.cancel();
           _hukmenTimer = Timer(const Duration(seconds: 15), () {
-            if (mounted && !engine.bitti && !siraBende) _macKapandi();
+            if (mounted && !engine.bitti && gonderdim) _macKapandi();
           });
           return;
         }
-        widget.online?.gonder({'tip': 'sure'});
+        // süre doldu: göndermeyen taraf(lar) 0 puanla kapanır
         setState(() {
-          _sureIsle();
+          if (widget.online != null) {
+            widget.online!.gonder({'tip': 'sure', 'tur': engine.tur});
+            engine.sureDoldu(benimSeat);
+          } else {
+            // hot-seat: kalan herkese 0
+            if (!engine.gonderdi(0)) engine.sureDoldu(0);
+            if (!engine.bitti && !engine.gonderdi(1)) engine.sureDoldu(1);
+          }
           secilen.clear();
         });
         _adimSonrasi();
@@ -167,7 +182,7 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
   }
 
   void _dokun(int i) {
-    if (!siraBende || engine.bitti) return;
+    if (gonderdim || engine.bitti) return;
     setState(() {
       if (secilen.contains(i)) {
         secilen.remove(i); // geri al
@@ -178,14 +193,21 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
   }
 
   void _onayla() {
-    if (!siraBende || secilen.length != siralaOyuncuSayisi) return;
+    if (gonderdim || secilen.length != siralaOyuncuSayisi) return;
     final dizi = List.of(secilen);
-    widget.online?.gonder({'tip': 'sirala', 'dizi': dizi});
     setState(() {
-      _siralaIsle(dizi);
+      if (widget.online != null) {
+        widget.online!.gonder(
+            {'tip': 'sirala', 'tur': engine.tur, 'dizi': dizi});
+        engine.sirala(benimSeat, dizi);
+      } else {
+        engine.sirala(benimSeat, dizi); // hot-seat: sıradaki koltuk
+      }
       secilen.clear();
     });
     _adimSonrasi();
+    // hot-seat: sıradaki dolduran (ya da yeni tur) taze 30 sn alır
+    if (widget.online == null && !engine.bitti) _sayacBaslat();
   }
 
   void _sonucGoster() {
@@ -249,8 +271,8 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
                           Navigator.pop(context);
                           setState(() {
                             engine = SiralaBakalimEngine(widget.repos);
-                            sonTur = null;
                             secilen.clear();
+                            _sayacTuru = 0;
                           });
                           _sayacBaslat();
                         },
@@ -367,24 +389,18 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
               Row(children: [
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 0,
+                        aktif: !engine.bitti && !engine.gonderdi(0),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p1,
                         child: _ustKutu(0, GolrivaColors.p1))),
                 const SizedBox(width: 10),
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 1,
+                        aktif: !engine.bitti && !engine.gonderdi(1),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p2,
                         child: _ustKutu(1, GolrivaColors.p2))),
               ]),
-              if (widget.online != null && !engine.bitti) ...[
-                const SizedBox(height: 10),
-                SiraSeridi(
-                    siraBende: siraBende,
-                    rakipAdi: widget.online!.bilgi.rakipAdi),
-              ],
               const SizedBox(height: 10),
               if (t != null) ...[
                 // ── METRİK KARTI: büyük ad üstte, açıklama altta ──
@@ -411,7 +427,9 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                        'DOKUNMA SIRANLA YÜKSEKTEN DÜŞÜĞE SIRALA — HER DOĞRU KONUM +1, KUSURSUZ +1 BONUS',
+                        widget.online != null
+                            ? 'İKİNİZ DE AYNI 4\'LÜYÜ SIRALIYORSUNUZ — YÜKSEKTEN DÜŞÜĞE, HER DOĞRU KONUM +1, KUSURSUZ +1 BONUS'
+                            : 'AYNI 4\'LÜYÜ ÖNCE ${adlar[0].toUpperCase()} SONRA ${adlar[1].toUpperCase()} SIRALAR — YÜKSEKTEN DÜŞÜĞE',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.figtree(
                             fontSize: 9,
@@ -440,21 +458,35 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
                           fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(height: 10),
-                // ── OYUNCU KARTLARI (2x2) ──
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 2.4,
-                  children: [
-                    for (var i = 0; i < t.oyuncuAdlari.length; i++)
-                      _oyuncuKart(t, i),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                if (siraBende)
+                if (!gonderdim) ...[
+                  if (widget.online == null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Center(
+                        child: Text('SIRALAYAN: ${adlar[benimSeat]}',
+                            style: GoogleFonts.figtree(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.5,
+                                color: benimSeat == 0
+                                    ? GolrivaColors.p1
+                                    : GolrivaColors.p2)),
+                      ),
+                    ),
+                  // ── OYUNCU KARTLARI (2x2) ──
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                    childAspectRatio: 2.4,
+                    children: [
+                      for (var i = 0; i < t.oyuncuAdlari.length; i++)
+                        _oyuncuKart(t, i),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   FilledButton(
                     style: FilledButton.styleFrom(
                         backgroundColor:
@@ -477,85 +509,99 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,
                             fontSize: 16)),
-                  )
-                else
-                  Center(
-                    child: Text('${adlar[engine.aktor]} sıralıyor…',
-                        style: GoogleFonts.figtree(
-                            fontSize: 12, color: GolrivaColors.dim)),
                   ),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: kartDekor(r: 16),
+                    child: Row(children: [
+                      const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: GolrivaColors.gold, strokeWidth: 2)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                            widget.online != null
+                                ? 'Sıralaman gönderildi — rakibin bitirmesi bekleniyor. Değerler iki taraf da gönderince açılır.'
+                                : 'Kayıt alındı.',
+                            style: GoogleFonts.figtree(
+                                fontSize: 12, color: GolrivaColors.dim)),
+                      ),
+                    ]),
+                  ),
+                ],
               ],
-              // ── SON TURUN AÇILIŞI ──
-              if (sonTur != null) ...[
+              // ── SON TAMAMLANAN TURUN AÇILIŞI ──
+              if (acilanTur >= 0) ...[
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: kartDekor(r: 16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Expanded(
-                              child: etiket(
-                                  '${sonTur!.metrikAd} — DOĞRU SIRALAMA')),
-                          Text(
-                              sonPuan == null
-                                  ? '${adlar[sonAktor!]}: süre doldu'
-                                  : '${adlar[sonAktor!]}: +$sonPuan',
-                              style: GoogleFonts.figtree(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: sonPuan == null
-                                      ? GolrivaColors.bad
-                                      : GolrivaColors.goldHi)),
-                        ]),
-                        const SizedBox(height: 6),
-                        for (final (poz, gIdx)
-                            in sonTur!.dogruSira().indexed)
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 1.5),
-                            child: Row(children: [
-                              SizedBox(
-                                width: 20,
-                                child: Text('${poz + 1}.',
-                                    style: GoogleFonts.spaceGrotesk(
-                                        fontSize: 11.5,
-                                        color: GolrivaColors.dim)),
-                              ),
-                              Expanded(
-                                child: Text(sonTur!.oyuncuAdlari[gIdx],
-                                    overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.figtree(
-                                        fontSize: 12,
-                                        color: GolrivaColors.ink)),
-                              ),
-                              Text(
-                                  '${siralaFmt(sonTur!.degerler[gIdx])} ${sonTur!.birim}',
-                                  style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: GolrivaColors.goldHi)),
-                              const SizedBox(width: 6),
-                              Icon(
-                                  sonDizi.length > poz &&
-                                          sonDizi[poz] == gIdx
-                                      ? Icons.check_circle
-                                      : Icons.cancel,
-                                  size: 14,
-                                  color: sonDizi.length > poz &&
-                                          sonDizi[poz] == gIdx
-                                      ? GolrivaColors.ok
-                                      : GolrivaColors.bad),
-                            ]),
-                          ),
-                      ]),
-                ),
+                _acilisPaneli(acilanTur),
               ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _acilisPaneli(int ti) {
+    final t = engine.turlar[ti];
+    final dogru = t.dogruSira();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: kartDekor(r: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: etiket('${t.metrikAd} — DOĞRU SIRALAMA')),
+          Text(
+              '${adlar[0]} +${engine.puanlar[ti][0] ?? 0} · '
+              '${adlar[1]} +${engine.puanlar[ti][1] ?? 0}',
+              style: GoogleFonts.figtree(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  color: GolrivaColors.goldHi)),
+        ]),
+        const SizedBox(height: 6),
+        for (final (poz, gIdx) in dogru.indexed)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 1.5),
+            child: Row(children: [
+              SizedBox(
+                width: 20,
+                child: Text('${poz + 1}.',
+                    style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11.5, color: GolrivaColors.dim)),
+              ),
+              Expanded(
+                child: Text(t.oyuncuAdlari[gIdx],
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.figtree(
+                        fontSize: 12, color: GolrivaColors.ink)),
+              ),
+              Text('${siralaFmt(t.degerler[gIdx])} ${t.birim}',
+                  style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: GolrivaColors.goldHi)),
+              for (final s in [0, 1]) ...[
+                const SizedBox(width: 6),
+                Icon(
+                    (engine.verilenler[ti][s] ?? const []).length > poz &&
+                            engine.verilenler[ti][s]![poz] == gIdx
+                        ? Icons.check_circle
+                        : Icons.cancel,
+                    size: 13,
+                    color: (engine.verilenler[ti][s] ?? const [])
+                                    .length >
+                                poz &&
+                            engine.verilenler[ti][s]![poz] == gIdx
+                        ? (s == 0 ? GolrivaColors.p1 : GolrivaColors.p2)
+                        : GolrivaColors.dim2),
+              ],
+            ]),
+          ),
+      ]),
     );
   }
 
@@ -578,9 +624,17 @@ class _SiralaBakalimScreenState extends State<SiralaBakalimScreen> {
                   color: GolrivaColors.goldHi,
                   fontWeight: FontWeight.w700,
                   fontSize: 22)),
-          Text('puan',
-              style:
-                  GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 9)),
+          Text(
+              engine.bitti
+                  ? 'puan'
+                  : engine.gonderdi(s)
+                      ? 'GÖNDERDİ'
+                      : 'sıralıyor…',
+              style: GoogleFonts.figtree(
+                  color: engine.gonderdi(s) && !engine.bitti
+                      ? GolrivaColors.ok
+                      : GolrivaColors.dim,
+                  fontSize: 9)),
         ]),
       );
 

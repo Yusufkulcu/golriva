@@ -18,11 +18,14 @@ void main() {
   });
 
   group('KIM BU?', () {
-    test('seed determinizmi + 5 FARKLI temiz gizem', () {
+    test('seed determinizmi + $kimBuTurSayisi FARKLI temiz gizem + kulup', () {
       for (var seed = 0; seed < 15; seed++) {
-        final a = KimBuEngine(repos.fee, rng: Random(seed));
-        final b = KimBuEngine(repos.fee, rng: Random(seed));
+        final a = KimBuEngine(repos.fee,
+            kulupRepo: repos.boy, rng: Random(seed));
+        final b = KimBuEngine(repos.fee,
+            kulupRepo: repos.boy, rng: Random(seed));
         expect(a.gizemler, b.gizemler);
+        expect(a.gizemKulupleri, b.gizemKulupleri); // kulup ipucu da ayni
         expect(a.gizemler.toSet().length, kimBuTurSayisi);
         for (final g in a.gizemler) {
           final o = repos.fee.oyuncular[g];
@@ -33,29 +36,50 @@ void main() {
       }
     });
 
-    test('ipucu ac: soz rakibe gecer, puan azalir; 7 ipucu tavani', () {
-      final e = KimBuEngine(repos.fee, rng: Random(1));
+    test('kulup ipucu: bulunursa 8, yoksa 7 ipucu; liste tutarli', () {
+      for (var seed = 0; seed < 10; seed++) {
+        final e = KimBuEngine(repos.fee,
+            kulupRepo: repos.boy, rng: Random(seed));
+        for (var t = 0; t < kimBuTurSayisi; t++) {
+          final n = e.tumIpuclari().length;
+          expect(n, anyOf(7, 8));
+          final kulupVar = e.tumIpuclari()
+              .any((ip) => ip.$1 == 'OYNADIĞI KULÜP');
+          expect(kulupVar, e.gizemKulupleri[e.tur] != null);
+          // sonraki tura gecmek icin turu kapat (dogru tahmin)
+          e.tahmin(e.gizemler[e.tur]);
+          if (e.bitti) break;
+        }
+      }
+    });
+
+    test('ipucu ac: soz rakibe gecer, puan azalir; ipucu tavani', () {
+      final e = KimBuEngine(repos.fee,
+          kulupRepo: repos.boy, rng: Random(1));
+      final n = e.ipucuSayisi; // 7 ya da 8
       expect(e.acik, 1);
-      expect(e.turPuani, 7);
+      expect(e.turPuani, n);
       final ilkAktor = e.aktor;
       expect(e.ipucuAc(), isTrue);
       expect(e.acik, 2);
-      expect(e.turPuani, 6);
+      expect(e.turPuani, n - 1);
       expect(e.aktor, 1 - ilkAktor);
       while (e.ipucuKaldi) {
         expect(e.ipucuAc(), isTrue);
       }
-      expect(e.acik, kimBuIpucuSayisi);
+      expect(e.acik, n);
       expect(e.turPuani, 1);
       expect(e.ipucuAc(), isFalse); // tavan
-      expect(e.acikIpuclari().length, kimBuIpucuSayisi);
+      expect(e.acikIpuclari().length, n);
     });
 
     test('dogru tahmin turu kapatir ve erken bilene cok puan yazar', () {
-      final e = KimBuEngine(repos.fee, rng: Random(2));
+      final e = KimBuEngine(repos.fee,
+          kulupRepo: repos.boy, rng: Random(2));
       final tahminci = e.aktor;
+      final beklenen = e.turPuani; // 1 ipucuyla: ipucu sayisi kadar
       expect(e.tahmin(e.gizemler[0]), isTrue);
-      expect(e.skor[tahminci], 7); // 1 ipucuyla bildi
+      expect(e.skor[tahminci], beklenen);
       expect(e.tur, 1); // sonraki tura gecti
       expect(e.acik, 1);
       expect(e.turKazanani, [tahminci]);
@@ -209,46 +233,51 @@ void main() {
       }
     });
 
-    test('puanlama: kusursuz=5, kismi dogru konum sayisi, gecersiz=null',
+    test('v2 es zamanli: iki taraf AYNI turu siralar, ikisi bitince ilerler',
         () {
       final e = SiralaBakalimEngine(repos, rng: Random(2));
       final dogru = e.aktifTur.dogruSira();
-      expect(e.sirala([0, 0, 1, 2]), isNull); // tekrarli
-      expect(e.sirala([0, 1]), isNull); // eksik
-      expect(e.sirala(dogru), siralaOyuncuSayisi + siralaBonus);
-      expect(e.skor[0], siralaOyuncuSayisi + siralaBonus);
-      // ikinci tur: tamamen ters — dogru konum garanti degil ama puan
-      // en fazla 4/bonussuz olur (kusursuz olamaz)
-      final dogru2 = e.aktifTur.dogruSira();
-      final ters = dogru2.reversed.toList();
-      final p = e.sirala(ters)!;
-      expect(p, lessThan(siralaOyuncuSayisi + siralaBonus));
-      expect(e.skor[1], p);
+      expect(e.sirala(0, [0, 0, 1, 2]), isNull); // tekrarli
+      expect(e.sirala(0, [0, 1]), isNull); // eksik
+      // taraf 0 kusursuz gonderdi — tur ILERLEMEZ (taraf 1 bekleniyor)
+      expect(e.sirala(0, dogru), siralaOyuncuSayisi + siralaBonus);
+      expect(e.tur, 0);
+      expect(e.gonderdi(0), isTrue);
+      expect(e.sirala(0, dogru), isNull); // ikinci gonderim yok
+      // taraf 1 tamamen ters gonderdi: 0 puan, tur ILERLER
+      final ters = dogru.reversed.toList();
+      expect(e.sirala(1, ters), 0);
+      expect(e.tur, 1);
+      expect(e.skor, [siralaOyuncuSayisi + siralaBonus, 0]);
+      // sure dolumu: taraf 0 icin 0 puanla kapanir
+      e.sureDoldu(0);
+      expect(e.gonderdi(0), isTrue);
+      expect(e.tur, 1); // taraf 1 hala gondermedi
     });
 
-    test('tam mac simulasyonu x10 seed', () {
+    test('tam mac simulasyonu x10 seed (es zamanli)', () {
       for (var seed = 0; seed < 10; seed++) {
         final rng = Random(seed);
         final e = SiralaBakalimEngine(repos, rng: Random(seed + 1000));
         while (!e.bitti) {
-          if (rng.nextInt(6) == 0) {
-            e.sureDoldu();
-          } else {
-            final dizi =
-                List<int>.generate(siralaOyuncuSayisi, (i) => i)
-                  ..shuffle(rng);
-            expect(e.sirala(dizi), isNotNull);
+          for (final s in [0, 1]) {
+            if (e.bitti) break;
+            if (rng.nextInt(6) == 0) {
+              e.sureDoldu(s);
+            } else {
+              final dizi =
+                  List<int>.generate(siralaOyuncuSayisi, (i) => i)
+                    ..shuffle(rng);
+              expect(e.sirala(s, dizi), isNotNull);
+            }
           }
         }
-        expect(e.turPuanlari.length, siralaTurSayisi);
         var s0 = 0, s1 = 0;
         for (var i = 0; i < siralaTurSayisi; i++) {
-          final p = e.turPuanlari[i] ?? 0;
-          if (i % 2 == 0) {
-            s0 += p;
-          } else {
-            s1 += p;
-          }
+          expect(e.puanlar[i][0], isNotNull);
+          expect(e.puanlar[i][1], isNotNull);
+          s0 += e.puanlar[i][0]!;
+          s1 += e.puanlar[i][1]!;
         }
         expect(e.skor, [s0, s1]);
       }
@@ -312,6 +341,40 @@ void main() {
         }
       }
       expect(e.tur >= 1 || e.bitti, isTrue);
+    });
+
+    test('v2 YARIS modu: yanlis kilitler, ikisi de yanilirsa tur puansiz',
+        () {
+      final e = OrtakKulupEngine(repos.boy, rng: Random(7));
+      final sa = e.kulupA.havuz.toSet(), sb = e.kulupB.havuz.toSet();
+      final ortak = e.kulupA.havuz.where(sb.contains).toList();
+      expect(e.dogruMu(ortak.first), isTrue);
+      final yanlis = List.generate(repos.boy.oyuncular.length, (i) => i)
+          .firstWhere((i) => !(sa.contains(i) && sb.contains(i)));
+      expect(e.dogruMu(yanlis), isFalse);
+      // taraf 0 yanildi: kilitlendi ama tur ACIK
+      expect(e.yanlisla(0), isFalse);
+      expect(e.kilitli[0], isTrue);
+      expect(e.tur, 0);
+      // taraf 1 de yanildi: tur PUANSIZ kapandi, kilitler temizlendi
+      expect(e.yanlisla(1), isTrue);
+      expect(e.tur, 1);
+      expect(e.turKazanani, [null]);
+      expect(e.skor, [0, 0]);
+      expect(e.kilitli, [false, false]);
+      // hakem karari: turu 1 aldi (ilk dogru yazan)
+      final o2 = e.kulupA.havuz
+          .where((i) => e.kulupB.havuz.contains(i))
+          .first;
+      e.turKapat(1, o2);
+      expect(e.skor, [0, 1]);
+      expect(e.turBulunan[1], o2);
+      // puansiz turlarla BERABERE mumkun
+      e.turKapat(0, null);
+      e.turKapat(null, null);
+      e.turKapat(null, null);
+      expect(e.bitti, isTrue);
+      expect(e.kazanan(), isNull); // 1-1, iki tur puansiz
     });
 
     test('sure dolumu turu rakibe verir; tam mac x8 seed', () {

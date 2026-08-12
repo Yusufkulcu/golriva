@@ -1,16 +1,19 @@
 import 'dart:math';
 import '../../data/kor_av_repository.dart';
+import '../../data/players_repository.dart';
 import '../core/tr_norm.dart';
 
 /// KİM BU? motoru (Faz 2.18 — yeni oyun). İPUCU AÇIK ARTIRMASI:
 /// Gizemli bir futbolcu seçilir; ipuçları TEK TEK açılır. Sıran geldiğinde
 /// ya yeni ipucu açarsın (söz rakibe geçer) ya da TAHMİN edersin.
-/// ERKEN bilen ÇOK puan alır: puan = 8 - açık ipucu sayısı (7..1).
-/// YANLIŞ tahmin = o tur KİLİTLENİRSİN; rakip tek başına devam eder.
-/// İkisi de kilitlenirse tur puansız kapanır. 5 tur, toplam puan kazanır.
+/// ERKEN bilen ÇOK puan alır: puan = ipucu sayısı + 1 - açık.
+/// TEK TAHMİN HAKKIN VAR: yanlış tahmin = o tur KİLİTLENİRSİN; rakip tek
+/// başına devam eder. İkisi de kilitlenirse tur puansız kapanır.
+/// 2 tur (kullanıcı kararı: 5 çoktu), toplam puan kazanır.
+/// v2: OYNADIĞI KULÜP ipucu — boy verisindeki kulüp havuzlarından çapraz
+/// eşleme (ad+ülke); bulunamazsa o gizem kulüpsüz 7 ipucuyla oynanır.
 /// Seed determinizmi: iki istemci aynı gizemli oyuncuları türetir.
-const kimBuTurSayisi = 5;
-const kimBuIpucuSayisi = 7;
+const kimBuTurSayisi = 2;
 const kimBuHavuzN = 400; // gizem adayları: en değerli 400 (tanınırlık)
 
 class KimBuAday {
@@ -21,9 +24,11 @@ class KimBuAday {
 
 class KimBuEngine {
   final KorAvRepository repo;
+  final PlayersRepository? kulupRepo; // OYNADIĞI KULÜP ipucu kaynağı
   final Random rng;
 
   late final List<int> gizemler; // tur başına gizemli oyuncu idx
+  late final List<String?> gizemKulupleri; // tur başına kulüp (null = yok)
   int tur = 0;
   int acik = 1; // açık ipucu sayısı (ilk ipucu peşin)
   late int aktor; // karar sırası kimde
@@ -32,7 +37,8 @@ class KimBuEngine {
   final List<int?> turKazanani = []; // null = puansız kapandı
   bool bitti = false;
 
-  KimBuEngine(this.repo, {Random? rng}) : rng = rng ?? Random() {
+  KimBuEngine(this.repo, {this.kulupRepo, Random? rng})
+      : rng = rng ?? Random() {
     // Gizem havuzu: en değerli N oyuncu (tanınırlık) + temiz veri.
     final sirali = List<int>.generate(repo.oyuncular.length, (i) => i)
       ..sort((a, b) =>
@@ -46,21 +52,42 @@ class KimBuEngine {
         .toList()
       ..shuffle(this.rng);
     gizemler = havuz.take(kimBuTurSayisi).toList();
+    gizemKulupleri = [
+      for (final g in gizemler) _kulupBul(repo.oyuncular[g])
+    ];
     aktor = firstActor(0);
+  }
+
+  /// Boy verisinde ad+ülke eşleşmesiyle oyuncuyu bul, oynadığı İLK kulübü
+  /// döndür (kulüp listesi sırası — iki istemcide de DETERMİNİSTİK).
+  String? _kulupBul(KorAvOyuncu o) {
+    final kr = kulupRepo;
+    if (kr == null) return null;
+    for (var i = 0; i < kr.oyuncular.length; i++) {
+      final b = kr.oyuncular[i];
+      if (b.normAd == o.normAd && b.ulke == o.ulke) {
+        for (final k in kr.kulupler) {
+          if (k.havuz.contains(i)) return k.ad;
+        }
+      }
+    }
+    return null;
   }
 
   int firstActor(int t) => t % 2;
   KorAvOyuncu get gizem => repo.oyuncular[gizemler[tur]];
 
-  /// İpucu metinleri — sabit sıra: kolaydan zora değil, DENGELİ:
-  /// kimlik daralması her adımda hissedilir.
+  /// İpucu metinleri — sabit sıra: kimlik daralması her adımda hissedilir.
+  /// Kulüp bulunabildiyse 8, yoksa 7 ipucu.
   List<(String, String)> tumIpuclari() {
     final o = gizem;
     final duzAd = o.ad.replaceAll(' ', '').replaceAll('-', '');
+    final kulup = gizemKulupleri[tur];
     return [
       ('MEVKİ', o.mevkiAd),
       ('DOĞUM YILI', '${o.dogumYili}'),
       ('ÜLKE', o.ulke),
+      if (kulup != null) ('OYNADIĞI KULÜP', kulup),
       ('BONSERVİS', '${korAvVal(o.deger)} M€'),
       ('AD UZUNLUĞU', '${duzAd.length} harf'),
       ('İLK HARF', o.ad.substring(0, 1).toUpperCase()),
@@ -71,10 +98,13 @@ class KimBuEngine {
   List<(String, String)> acikIpuclari() =>
       tumIpuclari().take(acik).toList();
 
-  bool get ipucuKaldi => acik < kimBuIpucuSayisi;
+  /// Bu turun toplam ipucu sayısı (7 ya da 8 — kulübe bağlı).
+  int get ipucuSayisi => tumIpuclari().length;
 
-  /// Doğru tahmine yazılacak puan: erken bilen çok alır (7..1).
-  int get turPuani => kimBuIpucuSayisi + 1 - acik;
+  bool get ipucuKaldi => acik < ipucuSayisi;
+
+  /// Doğru tahmine yazılacak puan: erken bilen çok alır.
+  int get turPuani => ipucuSayisi + 1 - acik;
 
   /// Yeni ipucu aç: söz rakibe geçer (rakip kilitliyse bende kalır).
   /// İpucu kalmadıysa false (UI butonu zaten kapatır).

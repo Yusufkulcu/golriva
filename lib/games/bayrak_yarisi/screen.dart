@@ -654,6 +654,9 @@ class _BayrakYarisiScreenState extends State<BayrakYarisiScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextField(
+                  // KLAVYE DUZELTMESI: sabit key — liste yapisi
+                  // degisince eleman yeniden yaratilip odak/klavye dusuyordu.
+                  key: const ValueKey('arama'),
                   controller: aramaCtrl,
                   enabled: _claimerBenim,
                   onChanged: (v) =>

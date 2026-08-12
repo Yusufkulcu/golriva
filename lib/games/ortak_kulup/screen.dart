@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../data/players_repository.dart';
 import '../../online/mac_kanali.dart';
+import '../../online/online_servis.dart';
+import '../../online/hata_raporu.dart';
 import '../../online/oyun_yonlendirici.dart';
 import '../../theme/golriva_theme.dart';
 import '../../widgets/golriva_ui.dart';
 import 'engine.dart';
 
-/// ORTAK KULÜP AVI ekranı (Faz 2.18) — iki kulüpte de oynamış futbolcu
-/// bulma düellosu. Doğru isim sözü rakibe devreder; yanlış isim ya da
-/// süre dolumu TURU RAKİBE verir. Hot-seat + çevrimiçi.
+/// ORTAK KULÜP AVI ekranı (Faz 2.18 · v2) — iki kulüpte de oynamış futbolcu.
+/// ÇEVRİMİÇİ: EŞ ZAMANLI YARIŞ — aynı çift, iki oyuncu da aynı anda arar,
+/// İLK DOĞRU YAZAN turu alır (sunucu hakemi bayrak_kap: ilk kayıt kazanır).
+/// Yanlış yazan o tur kilitlenir. HOT-SEAT: tek cihazda sırayla (eski kural).
 /// RESPONSIVE KURAL: kök yerleşim ListView.
 class OrtakKulupScreen extends StatefulWidget {
   final PlayersRepository repo;
@@ -29,15 +32,24 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
   List<OrtakAday> adaylar = [];
   String? uyari;
   bool uyariKotu = false;
+  bool _hakemde = false; // yarış: sunucu kararı bekleniyor
   Timer? sayac;
   Timer? _hukmenTimer;
-  int kalanSn = turSn;
-  static const turSn = 20;
+  int kalanSn = 20;
+  int _sayacTuru = 0;
   bool _kapanisIslendi = false;
   bool _sonucAcik = false;
 
-  bool get siraBende =>
-      widget.online == null || engine.aktor == widget.online!.bilgi.benimSiram;
+  bool get yaris => widget.online != null;
+  int get turSn => yaris ? 30 : 20;
+  int get benimSeat =>
+      yaris ? widget.online!.bilgi.benimSiram : engine.aktor;
+
+  /// Yazabilir miyim? Yarışta: kilitli değilsem. Hot-seat: her zaman
+  /// (sıradaki oyuncu cihazda).
+  bool get yazabilirim => !engine.bitti &&
+      !_hakemde &&
+      (!yaris || !engine.kilitli[widget.online!.bilgi.benimSiram]);
 
   @override
   void initState() {
@@ -102,12 +114,25 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
       _macKapandi();
       return;
     }
-    if (tip != 'sec' && tip != 'sure') return;
+    if (tip != 'tursonuc' && tip != 'yanlis') return;
+    final hTur = (h['tur'] as num?)?.toInt() ?? -1;
+    if (hTur != engine.tur) return; // tur zaten kapandı — yoksay
     setState(() {
-      if (tip == 'sec') {
-        _secIsle((h['idx'] as num).toInt());
+      if (tip == 'tursonuc') {
+        final kz = h['kazanan'] == null ? null : (h['kazanan'] as num).toInt();
+        final idx = h['idx'] == null ? null : (h['idx'] as num).toInt();
+        _turSonucIsle(kz, idx);
       } else {
-        _sureIsle();
+        // rakip yanlış yazdı
+        final rakipSeat = 1 - widget.online!.bilgi.benimSiram;
+        final kapandi = engine.yanlisla(rakipSeat);
+        if (kapandi) {
+          uyariKotu = true;
+          uyari = 'İkiniz de yanıldınız — tur puansız kapandı';
+        } else {
+          uyariKotu = false;
+          uyari = 'Rakip yanıldı ve kilitlendi — sahne senin!';
+        }
       }
       aramaCtrl.clear();
       adaylar = [];
@@ -115,40 +140,26 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
     _adimSonrasi();
   }
 
-  /// Seçimi işler — iki istemcide de aynı metinler.
-  void _secIsle(int idx) {
-    final secen = engine.aktor;
-    final oncekiKapali = engine.turKazanani.length;
-    final dogru = engine.sec(idx);
-    if (dogru == null) return;
-    final ad = widget.repo.oyuncular[idx].ad;
-    final turKapandi = engine.turKazanani.length > oncekiKapali;
-    if (!dogru) {
+  /// Tur sonucunu işle + metin (iki istemcide de aynı).
+  void _turSonucIsle(int? kazananSeat, int? idx) {
+    if (kazananSeat == null) {
+      engine.turKapat(null, null);
       uyariKotu = true;
-      uyari =
-          '$ad iki kulüpte birden oynamadı! Turu ${adlar[1 - secen]} aldı';
-    } else if (turKapandi) {
-      uyariKotu = false;
-      uyari = '$ad doğru — ortaklar tükendi, turu ${adlar[secen]} aldı!';
+      uyari = 'Süre doldu — kimse bulamadı, tur puansız';
     } else {
+      engine.turKapat(kazananSeat, idx);
+      final ad = idx == null ? '' : ' (${widget.repo.oyuncular[idx].ad})';
       uyariKotu = false;
-      uyari = '$ad doğru! Söz ${adlar[engine.aktor]}\'de';
+      uyari = 'Turu ${adlar[kazananSeat]} aldı$ad — ilk doğru yazan!';
     }
-  }
-
-  void _sureIsle() {
-    final aktor = engine.aktor;
-    engine.sureDoldu();
-    uyariKotu = true;
-    uyari =
-        '${adlar[aktor]} süreyi doldurdu — turu ${adlar[1 - aktor]} aldı';
   }
 
   void _adimSonrasi() {
     if (engine.bitti) {
       sayac?.cancel();
       _sonucGoster();
-    } else {
+    } else if (_sayacTuru != engine.tur) {
+      _sayacTuru = engine.tur;
       _sayacBaslat();
     }
   }
@@ -161,33 +172,148 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
       setState(() => kalanSn--);
       if (kalanSn <= 0) {
         t.cancel();
-        if (widget.online != null && !siraBende) {
-          _hukmenTimer?.cancel();
-          _hukmenTimer = Timer(const Duration(seconds: 15), () {
-            if (mounted && !engine.bitti && !siraBende) _macKapandi();
+        if (yaris) {
+          _yarisZamanDoldu();
+        } else {
+          // hot-seat: süre = turu rakip alır (eski kural)
+          setState(() {
+            final aktor = engine.aktor;
+            engine.sureDoldu();
+            uyariKotu = true;
+            uyari =
+                '${adlar[aktor]} süreyi doldurdu — turu ${adlar[1 - aktor]} aldı';
+            aramaCtrl.clear();
+            adaylar = [];
           });
-          return;
+          _adimSonrasi();
         }
-        widget.online?.gonder({'tip': 'sure'});
-        setState(() {
-          _sureIsle();
-          aramaCtrl.clear();
-          adaylar = [];
-        });
-        _adimSonrasi();
       }
     });
   }
 
-  void _sec(OrtakAday a) {
-    if (a.neden != null || !siraBende || engine.bitti) return;
-    widget.online?.gonder({'tip': 'sec', 'idx': a.idx});
+  /// Yarışta süre dolumu: sunucu hakemine BOŞ kaydı önerilir — biri son
+  /// anda kapmışsa hakem onu döndürür (ilk kayıt kazanır).
+  Future<void> _yarisZamanDoldu() async {
+    if (engine.bitti || _hakemde) return;
+    final turNo = engine.tur;
+    _hakemde = true;
+    try {
+      final r = await OnlineServis()
+          .bayrakKap(widget.online!.bilgi.macId, turNo, bosMu: true);
+      if (!mounted || engine.bitti || engine.tur != turNo) return;
+      setState(() {
+        _hakemde = false;
+        if (r.sahip != null) {
+          final seat = r.sahip == widget.online!.bilgi.p1Uid ? 0 : 1;
+          _turSonucIsle(seat, null);
+        } else {
+          _turSonucIsle(null, null);
+        }
+        aramaCtrl.clear();
+        adaylar = [];
+      });
+      _adimSonrasi();
+    } catch (e, s) {
+      _hakemde = false;
+      hataBildir('ortak.zaman', e, s);
+      // ağ hatası: kısa süre sonra tekrar dene
+      if (mounted && !engine.bitti) {
+        Timer(const Duration(seconds: 2), _yarisZamanDoldu);
+      }
+    }
+  }
+
+  Future<void> _sec(OrtakAday a) async {
+    if (a.neden != null || !yazabilirim) return;
+    final idx = a.idx;
+    final ad = widget.repo.oyuncular[idx].ad;
+    if (!yaris) {
+      _hotSeatSec(idx, ad);
+      return;
+    }
+    final turNo = engine.tur;
+    if (!engine.dogruMu(idx)) {
+      // YANLIŞ: bu tur kilitlendim
+      setState(() {
+        widget.online!.gonder({'tip': 'yanlis', 'tur': turNo});
+        final kapandi = engine.yanlisla(benimSeat);
+        uyariKotu = true;
+        uyari = kapandi
+            ? '$ad iki kulüpte birden oynamadı — ikiniz de yanıldınız, tur puansız'
+            : '$ad iki kulüpte birden oynamadı! Bu tur kilitlendin';
+        aramaCtrl.clear();
+        adaylar = [];
+      });
+      _adimSonrasi();
+      return;
+    }
+    // DOĞRU: sunucu hakemine koş — ilk kayıt turu alır
     setState(() {
-      _secIsle(a.idx);
+      _hakemde = true;
+      uyariKotu = false;
+      uyari = '$ad doğru — hakem onayı bekleniyor…';
+    });
+    try {
+      final r = await OnlineServis()
+          .bayrakKap(widget.online!.bilgi.macId, turNo, bosMu: false);
+      if (!mounted || engine.bitti || engine.tur != turNo) {
+        _hakemde = false;
+        return;
+      }
+      setState(() {
+        _hakemde = false;
+        if (r.sahip == widget.online!.bilgi.seatUid(benimSeat)) {
+          // hakem beni onayladı: turu ben aldım — rakibe bildir
+          widget.online!.gonder(
+              {'tip': 'tursonuc', 'tur': turNo, 'kazanan': benimSeat, 'idx': idx});
+          _turSonucIsle(benimSeat, idx);
+        } else if (r.sahip != null) {
+          // rakip benden önce yazmış
+          final seat = r.sahip == widget.online!.bilgi.p1Uid ? 0 : 1;
+          _turSonucIsle(seat, null);
+          uyari = 'Doğruydu ama rakip SENDEN ÖNCE yazdı — tur onun!';
+          uyariKotu = true;
+        }
+        aramaCtrl.clear();
+        adaylar = [];
+      });
+      _adimSonrasi();
+    } catch (e, s) {
+      hataBildir('ortak.kap', e, s);
+      if (mounted) {
+        setState(() {
+          _hakemde = false;
+          uyariKotu = true;
+          uyari = 'Bağlantı sorunu — tekrar dene';
+        });
+      }
+    }
+  }
+
+  /// HOT-SEAT (eski kural): doğru = söz rakibe; yanlış/süre = tur rakibin.
+  void _hotSeatSec(int idx, String ad) {
+    final secen = engine.aktor;
+    final oncekiKapali = engine.turKazanani.length;
+    final dogru = engine.sec(idx);
+    if (dogru == null) return;
+    setState(() {
+      final turKapandi = engine.turKazanani.length > oncekiKapali;
+      if (!dogru) {
+        uyariKotu = true;
+        uyari =
+            '$ad iki kulüpte birden oynamadı! Turu ${adlar[1 - secen]} aldı';
+      } else if (turKapandi) {
+        uyariKotu = false;
+        uyari = '$ad doğru — ortaklar tükendi, turu ${adlar[secen]} aldı!';
+      } else {
+        uyariKotu = false;
+        uyari = '$ad doğru! Söz ${adlar[engine.aktor]}\'de';
+      }
       aramaCtrl.clear();
       adaylar = [];
     });
     _adimSonrasi();
+    if (!engine.bitti) _sayacBaslat(); // hot-seat: her hamlede taze süre
   }
 
   void _sonucGoster() {
@@ -252,6 +378,7 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
                           setState(() {
                             engine = OrtakKulupEngine(widget.repo);
                             uyari = null;
+                            _sayacTuru = 0;
                           });
                           _sayacBaslat();
                         },
@@ -318,6 +445,8 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final kilitliyim =
+        yaris && !engine.bitti && engine.kilitli[widget.online!.bilgi.benimSiram];
     return PopScope(
       canPop: widget.online == null,
       onPopInvokedWithResult: (didPop, _) {
@@ -368,24 +497,24 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
               Row(children: [
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 0,
+                        aktif: !engine.bitti &&
+                            (yaris
+                                ? !engine.kilitli[0]
+                                : engine.aktor == 0),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p1,
                         child: _ustKutu(0, GolrivaColors.p1))),
                 const SizedBox(width: 10),
                 Expanded(
                     child: tarafVurgu(
-                        aktif: !engine.bitti && engine.aktor == 1,
+                        aktif: !engine.bitti &&
+                            (yaris
+                                ? !engine.kilitli[1]
+                                : engine.aktor == 1),
                         oyunBitti: engine.bitti,
                         renk: GolrivaColors.p2,
                         child: _ustKutu(1, GolrivaColors.p2))),
               ]),
-              if (widget.online != null && !engine.bitti) ...[
-                const SizedBox(height: 10),
-                SiraSeridi(
-                    siraBende: siraBende,
-                    rakipAdi: widget.online!.bilgi.rakipAdi),
-              ],
               const SizedBox(height: 10),
               if (!engine.bitti) ...[
                 // ── KULÜP ÇİFTİ KARTI: büyük adlar üstte, açıklama altta ──
@@ -413,7 +542,9 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
                     ]),
                     const SizedBox(height: 6),
                     Text(
-                        'İKİ KULÜPTE DE OYNAMIŞ BİR FUTBOLCU YAZ — YANLIŞ YAZAN TURU KAYBEDER',
+                        yaris
+                            ? 'İKİSİNDE DE OYNAMIŞ FUTBOLCUYU İLK YAZAN TURU ALIR — YANLIŞ YAZAN TUR BOYU KİLİTLENİR'
+                            : 'İKİ KULÜPTE DE OYNAMIŞ BİR FUTBOLCU YAZ — YANLIŞ YAZAN TURU KAYBEDER',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.figtree(
                             fontSize: 9,
@@ -459,14 +590,22 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
               if (!engine.bitti) ...[
                 const SizedBox(height: 8),
                 TextField(
+                  // KLAVYE DUZELTMESI: sabit key
+                  key: const ValueKey('arama'),
                   controller: aramaCtrl,
-                  enabled: siraBende,
+                  enabled: yazabilirim,
                   onChanged: (v) =>
                       setState(() => adaylar = engine.adaylar(v)),
                   decoration: InputDecoration(
-                      hintText: siraBende
-                          ? 'Futbolcu adı yaz… (en az 3 harf)'
-                          : '${adlar[engine.aktor]} düşünüyor…',
+                      hintText: kilitliyim
+                          ? 'Bu tur kilitlisin — rakip arıyor…'
+                          : _hakemde
+                              ? 'Hakem kararı bekleniyor…'
+                              : yaris
+                                  ? 'İlk sen yaz! (en az 3 harf)'
+                                  : engine.aktor == 0
+                                      ? '${adlar[0]} yazıyor… (en az 3 harf)'
+                                      : '${adlar[1]} yazıyor… (en az 3 harf)',
                       prefixIcon: const Icon(Icons.search,
                           color: GolrivaColors.gold, size: 20)),
                 ),
@@ -491,68 +630,67 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
                   ),
                 const SizedBox(height: 6),
                 Center(
-                  child: Text('Dikkat: yanlış isim turu anında kaybettirir!',
+                  child: Text(
+                      yaris
+                          ? 'Dikkat: yanlış isim seni bu tur kilitler!'
+                          : 'Dikkat: yanlış isim turu anında kaybettirir!',
                       style: GoogleFonts.figtree(
                           fontSize: 10, color: GolrivaColors.dim2)),
                 ),
-                // bu turda söylenenler
-                if (engine.soylenen.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: kartDekor(r: 16),
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          etiket('BU TURDA SÖYLENENLER'),
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              for (final i in engine.soylenen)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 5),
-                                  decoration: BoxDecoration(
-                                    color: GolrivaColors.bg2,
-                                    borderRadius:
-                                        BorderRadius.circular(20),
-                                    border: Border.all(
-                                        color: GolrivaColors.edge2),
-                                  ),
-                                  child: Text(
-                                      widget.repo.oyuncular[i].ad,
-                                      style: GoogleFonts.figtree(
-                                          fontSize: 11,
-                                          color: GolrivaColors.ink)),
-                                ),
-                            ],
-                          ),
-                        ]),
-                  ),
-                ],
               ],
               // tur geçmişi
               if (engine.turKazanani.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Center(
-                  child: Wrap(
-                    spacing: 5,
-                    children: [
-                      for (final kz in engine.turKazanani)
-                        Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: kz == 0
-                                ? GolrivaColors.p1
-                                : GolrivaColors.p2,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: kartDekor(r: 16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        etiket('TUR GEÇMİŞİ'),
+                        const SizedBox(height: 6),
+                        for (var i = 0;
+                            i < engine.turKazanani.length;
+                            i++)
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 1.5),
+                            child: Row(children: [
+                              Text('${i + 1}. ',
+                                  style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 11,
+                                      color: GolrivaColors.dim)),
+                              Expanded(
+                                child: Text(
+                                    engine.turBulunan[i] == null
+                                        ? (engine.turKazanani[i] == null
+                                            ? 'bulunamadı'
+                                            : 'hükmen/yanlış')
+                                        : widget
+                                            .repo
+                                            .oyuncular[
+                                                engine.turBulunan[i]!]
+                                            .ad,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.figtree(
+                                        fontSize: 11.5,
+                                        color: GolrivaColors.ink)),
+                              ),
+                              Text(
+                                  engine.turKazanani[i] == null
+                                      ? 'puansız'
+                                      : adlar[engine.turKazanani[i]!],
+                                  style: GoogleFonts.figtree(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: engine.turKazanani[i] == null
+                                          ? GolrivaColors.dim2
+                                          : (engine.turKazanani[i] == 0
+                                              ? GolrivaColors.p1
+                                              : GolrivaColors.p2))),
+                            ]),
                           ),
-                        ),
-                    ],
-                  ),
+                      ]),
                 ),
               ],
             ],
@@ -596,9 +734,15 @@ class _OrtakKulupScreenState extends State<OrtakKulupScreen> {
                   color: GolrivaColors.goldHi,
                   fontWeight: FontWeight.w700,
                   fontSize: 22)),
-          Text('tur',
-              style:
-                  GoogleFonts.figtree(color: GolrivaColors.dim, fontSize: 9)),
+          Text(
+              !engine.bitti && yaris && engine.kilitli[s]
+                  ? 'KİLİTLİ'
+                  : 'tur',
+              style: GoogleFonts.figtree(
+                  color: !engine.bitti && yaris && engine.kilitli[s]
+                      ? GolrivaColors.bad
+                      : GolrivaColors.dim,
+                  fontSize: 9)),
         ]),
       );
 

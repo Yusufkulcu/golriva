@@ -59,7 +59,7 @@ class ArkadaslaEkrani extends StatelessWidget {
         ('veto_drafti', 'VETO DRAFTI', 'Draft · veto',
             () => VetoDraftiScreen(repo: repos.kupa)),
         ('kim_bu', 'KİM BU?', 'İpucu · tahmin',
-            () => KimBuScreen(repo: repos.fee)),
+            () => KimBuScreen(repo: repos.fee, kulupRepo: repos.boy)),
         ('daha_mi_yuksek', 'DAHA MI YÜKSEK?', 'Karşılaştırma',
             () => DahaMiYuksekScreen(repos: repos)),
         ('sirala_bakalim', 'SIRALA BAKALIM', 'Sıralama',

@@ -117,7 +117,8 @@ Widget _oyunEkrani(GolrivaRepos repos, OnlineMacKanali kanal) {
     case 'veto_drafti':
       return VetoDraftiScreen(repo: repos.kupa, online: kanal);
     case 'kim_bu':
-      return KimBuScreen(repo: repos.fee, online: kanal);
+      return KimBuScreen(
+          repo: repos.fee, kulupRepo: repos.boy, online: kanal);
     case 'daha_mi_yuksek':
       return DahaMiYuksekScreen(repos: repos, online: kanal);
     case 'sirala_bakalim':

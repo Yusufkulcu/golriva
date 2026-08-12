@@ -19,7 +19,8 @@ void main() {
   });
 
   group('KOR AV (Bonservis + Sari Kart)', () {
-    test('CAPA: Mbappe 180 M€, CR7 120 sari kart', () {
+    test('CAPA: Mbappe 180 M€, CR7 127 sari kart', () {
+      // veri guncellemesi 19382b3 ile CR7 sari kart 120 → 127 oldu
       expect(
           repos.fee.oyuncular
               .firstWhere((o) => o.ad == 'Kylian Mbappé')
@@ -29,7 +30,7 @@ void main() {
           repos.card.oyuncular
               .firstWhere((o) => o.ad == 'Cristiano Ronaldo')
               .deger,
-          120.0);
+          127.0);
     });
 
     test('hedef v3: tek genis aralik %3-65, tam onluk, erisilebilir', () {
@@ -94,10 +95,11 @@ void main() {
   });
 
   group('SERBEST KADRO (Mac + Milli Gol)', () {
-    test('CAPA: Messi 876 mac, CR7 146 milli gol', () {
+    test('CAPA: Messi 948 mac, CR7 146 milli gol', () {
+      // veri guncellemesi 19382b3 ile Messi mac 876 → 948 oldu
       expect(
           repos.mac.oyuncular.firstWhere((o) => o.ad == 'Lionel Messi').deger,
-          876);
+          948);
       expect(
           repos.milligol.oyuncular
               .firstWhere((o) => o.ad == 'Cristiano Ronaldo')

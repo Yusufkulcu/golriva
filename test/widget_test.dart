@@ -128,7 +128,7 @@ void main() {
   });
 
   testWidgets('Arkadaslar: cevrimdisi kibarca aciklar', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ArkadaslarEkrani()));
+    await tester.pumpWidget(MaterialApp(home: ArkadaslarEkrani(repos: repos)));
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('çevrimiçi hesap gerekli'), findsOneWidget);
   });

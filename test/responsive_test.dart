@@ -149,7 +149,7 @@ void main() {
   group('YENI SAYFALAR — tum boyutlarda tasma yok', () {
     final sayfalar = <String, Widget Function()>{
       'LİGLER': () => const LiglerEkrani(),
-      'ARKADAŞLAR': () => const ArkadaslarEkrani(),
+      'ARKADAŞLAR': () => ArkadaslarEkrani(repos: repos),
       'DAVET KUR': () => DavetKurEkrani(repos: repos),
       'KILAVUZ': () => const KilavuzEkrani(),
       'AUTH': () => AuthEkrani(repos: repos),

@@ -59,7 +59,7 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
       }
     } catch (e, s) {
       if (mounted && lig == null) {
-        setState(() => hata = temizMesaj('alig.detay', e as Object,
+        setState(() => hata = temizMesaj('alig.detay', e,
             'Lig yüklenemedi — tekrar dene.', s));
       }
     }
@@ -84,7 +84,7 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
             content: Text(m.contains('devam eden')
                 ? 'Önce devam eden lig maçını bitir — fikstürdeki '
                     'MAÇA DÖN butonunu kullan.'
-                : temizMesaj('alig.hazir', e as Object,
+                : temizMesaj('alig.hazir', e,
                     'Hazır sinyali gönderilemedi — tekrar dene.', s))));
       }
       return;
@@ -177,7 +177,7 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
     } catch (e, s) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(temizMesaj('alig.ayril', e as Object,
+            content: Text(temizMesaj('alig.ayril', e,
                 'Ayrılma işlemi yapılamadı.', s))));
       }
     }

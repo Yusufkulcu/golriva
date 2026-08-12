@@ -153,7 +153,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
             ? 'Bu seri için ödül zaten alınmış.'
             : m.contains('pencere')
                 ? 'Ödül süresi doldu (maçtan sonra 1 saat geçerli).'
-                : temizMesaj('seriSonucu._reklamOdul', e as Object,
+                : temizMesaj('seriSonucu._reklamOdul', e,
                     'Ödül şu an işlenemedi — birazdan tekrar dene.', s));
       }
     } finally {

@@ -172,7 +172,8 @@ class _AcilisEkraniState extends State<AcilisEkrani>
           width: 132,
           height: 3,
           child: Stack(children: [
-            Positioned.fill(child: ColoredBox(color: GolrivaColors.card2)),
+            const Positioned.fill(
+                child: ColoredBox(color: GolrivaColors.card2)),
             Positioned(
               left: -44 + 176 * t,
               top: 0,

@@ -36,7 +36,7 @@ class _ArkadasLigiEkraniState extends State<ArkadasLigiEkrani> {
       if (mounted) setState(() => ligler = r);
     } catch (e, s) {
       if (mounted) {
-        setState(() => hata = temizMesaj('alig.liste', e as Object,
+        setState(() => hata = temizMesaj('alig.liste', e,
             'Ligler yüklenemedi — tekrar dene.', s));
       }
     }
@@ -129,7 +129,7 @@ class _ArkadasLigiEkraniState extends State<ArkadasLigiEkrani> {
                           ScaffoldMessenger.of(c).showSnackBar(SnackBar(
                               content: Text(temizMesaj(
                                   'alig.kur',
-                                  e as Object,
+                                  e,
                                   'Lig kurulamadı — bilgileri kontrol et.',
                                   s))));
                         }
@@ -228,7 +228,7 @@ class _ArkadasLigiEkraniState extends State<ArkadasLigiEkrani> {
                           ScaffoldMessenger.of(c).showSnackBar(SnackBar(
                               content: Text(temizMesaj(
                                   'alig.katil',
-                                  e as Object,
+                                  e,
                                   'Katılamadın — kodu ve bakiyeni kontrol et.',
                                   s))));
                         }

@@ -80,7 +80,7 @@ Widget avatar(String ad, double boyut,
 Widget ilerleme(double oran, {double yukseklik = 5}) => ClipRRect(
       borderRadius: BorderRadius.circular(3),
       child: LinearProgressIndicator(
-        value: oran.clamp(0, 1),
+        value: oran.clamp(0, 1).toDouble(),
         minHeight: yukseklik,
         backgroundColor: GolrivaColors.card2,
         valueColor: const AlwaysStoppedAnimation(GolrivaColors.gold),

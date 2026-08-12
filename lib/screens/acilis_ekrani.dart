@@ -69,7 +69,7 @@ class _AcilisEkraniState extends State<AcilisEkrani>
                     final t =
                         (math.sin(_dongu.value * math.pi * 2) + 1) / 2;
                     return Transform.scale(
-                      scale: logoS.value.clamp(0.0, 1.15),
+                      scale: logoS.value.clamp(0.0, 1.15).toDouble(),
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -96,7 +96,7 @@ class _AcilisEkraniState extends State<AcilisEkrani>
                     Transform.translate(
                       offset: Offset(-38 * (1 - golA.value), 0),
                       child: Opacity(
-                        opacity: golA.value.clamp(0.0, 1.0),
+                        opacity: golA.value.clamp(0.0, 1.0).toDouble(),
                         child: ShaderMask(
                           shaderCallback: (b) =>
                               GolrivaColors.goldGradient.createShader(b),
@@ -107,7 +107,7 @@ class _AcilisEkraniState extends State<AcilisEkrani>
                     Transform.translate(
                       offset: Offset(38 * (1 - rivaA.value), 0),
                       child: Opacity(
-                        opacity: rivaA.value.clamp(0.0, 1.0),
+                        opacity: rivaA.value.clamp(0.0, 1.0).toDouble(),
                         child: Text('RIVA', style: _marka(GolrivaColors.ink)),
                       ),
                     ),
@@ -118,7 +118,7 @@ class _AcilisEkraniState extends State<AcilisEkrani>
                 AnimatedBuilder(
                   animation: sloganA,
                   builder: (_, __) => Opacity(
-                    opacity: sloganA.value.clamp(0.0, 1.0),
+                    opacity: sloganA.value.clamp(0.0, 1.0).toDouble(),
                     child: Transform.translate(
                       offset: Offset(0, 10 * (1 - sloganA.value)),
                       child: Text('FUTBOL ZEKÂSI DÜELLOSU',
@@ -135,7 +135,7 @@ class _AcilisEkraniState extends State<AcilisEkrani>
                 AnimatedBuilder(
                   animation: Listenable.merge([cizgiA, _dongu]),
                   builder: (_, __) => Opacity(
-                      opacity: cizgiA.value.clamp(0.0, 1.0),
+                      opacity: cizgiA.value.clamp(0.0, 1.0).toDouble(),
                       child: _akanCizgi(_dongu.value)),
                 ),
               ],

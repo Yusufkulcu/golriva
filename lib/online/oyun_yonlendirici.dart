@@ -250,7 +250,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
         _poz += _makaraHiz * dt; // serbest dönüş
       } else {
         _durusGecen += dt;
-        final u = (_durusGecen / _durusSuresi).clamp(0.0, 1.0);
+        final u = (_durusGecen / _durusSuresi).clamp(0.0, 1.0).toDouble();
         final e = Curves.easeOutCubic.transform(u);
         _poz = _durusBaslangicPoz! +
             (_durusHedefPoz! - _durusBaslangicPoz!) * e;
@@ -322,9 +322,9 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
               bottom: 0,
               child: Center(
                 child: Opacity(
-                  opacity: (1 - uzak * .55).clamp(.12, 1.0),
+                  opacity: (1 - uzak * .55).clamp(.12, 1.0).toDouble(),
                   child: Transform.scale(
-                    scale: (1 - uzak * .22).clamp(.6, 1.0),
+                    scale: (1 - uzak * .22).clamp(.6, 1.0).toDouble(),
                     child: Text(ad,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

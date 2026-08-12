@@ -73,6 +73,7 @@ class VetoDraftEngine {
   /// Bu kulüp + açık mevki; min 3 harf; sebepli engeller.
   /// Kupa sayısı META'DA GÖSTERİLMEZ (seçince açılır) — veto kararı da
   /// rakibin bilgisine dayanır.
+  /// v4.1: alias da aranır ("CR7" gibi takma adlar draft'ta çalışır).
   List<VetoAday> adaylar(String sorgu) {
     final nq = trNorm(sorgu);
     if (nq.length < 3) return [];
@@ -81,14 +82,15 @@ class VetoDraftEngine {
     for (final i in kulup.havuz) {
       final o = repo.oyuncular[i];
       final pos = o.normAd.indexOf(nq);
-      if (pos < 0) continue;
+      final apos = o.normAlias.isEmpty ? -1 : o.normAlias.indexOf(nq);
+      if (pos < 0 && apos < 0) continue;
       String? neden;
       if (alinan.contains(i)) {
         neden = 'Alındı';
       } else if (!acik.contains(o.poz)) {
         neden = '${vetoSlotAd[o.poz]} dolu';
       }
-      (pos == 0 ? basla : iceren).add(VetoAday(i, neden));
+      ((pos == 0 || apos == 0) ? basla : iceren).add(VetoAday(i, neden));
     }
     return [...basla, ...iceren].take(8).toList();
   }

@@ -3,17 +3,21 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../games/core/tr_norm.dart';
 
 /// draft_data.json — Kupa Drafti veri seti.
-/// P: [ad, poz(K/D/O/F), kupa, ulke, yas] — C: [kulupAdi, [idx...], lig]
+/// P: [ad, poz(K/D/O/F), kupa, ulke, yas, alias?] — C: [kulupAdi, [idx...], lig]
+/// alias v4.1'de eklendi (SONA-EKLEME kurali: eski dosyalar 5 alanla da okunur).
 class KupaOyuncu {
   final String ad;
   final String poz;
   final int kupa;
   final String ulke;
   final int yas;
+  final String alias;
   final String normAd;
+  final String normAlias;
 
-  KupaOyuncu(this.ad, this.poz, this.kupa, this.ulke, this.yas)
-      : normAd = trNorm(ad);
+  KupaOyuncu(this.ad, this.poz, this.kupa, this.ulke, this.yas, this.alias)
+      : normAd = trNorm(ad),
+        normAlias = alias.isEmpty ? '' : trNorm(alias);
 }
 
 class KupaKulup {
@@ -37,6 +41,7 @@ class KupaRepository {
               (e[2] as num).toInt(),
               e[3] as String,
               (e[4] as num).toInt(),
+              (e.length > 5 ? e[5] as String : ''),
             ))
         .toList();
     final kulupler = (data['c'] as List)

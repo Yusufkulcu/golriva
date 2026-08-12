@@ -192,6 +192,17 @@ void main() {
       }
     });
 
+    test('v4.1: draft alias alani okunur (CR7 takma adiyla aranabilir)', () {
+      final cr7 = repos.kupa.oyuncular
+          .indexWhere((o) => o.ad == 'Cristiano Ronaldo');
+      expect(cr7, greaterThanOrEqualTo(0));
+      expect(repos.kupa.oyuncular[cr7].normAlias, contains('aveiro'));
+      // alias'i dolu kayit sayisi makul (v4.1: ~1560)
+      final dolu =
+          repos.kupa.oyuncular.where((o) => o.alias.isNotEmpty).length;
+      expect(dolu, greaterThan(1000));
+    });
+
     test('6 tur 6 FARKLI kulup; snake oncelik degisimi', () {
       final e = VetoDraftEngine(repos.kupa, rng: Random(2));
       expect(e.kulupSirasi.toSet().length, vetoTurSayisi);

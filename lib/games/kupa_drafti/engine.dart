@@ -57,6 +57,7 @@ class KupaDraftEngine {
 
   /// Bu kulup + acik mevki; min 3 harf; sebepli engeller.
   /// Kupa sayisi META'DA GOSTERILMEZ — tahmin konusu (secince acilir).
+  /// v4.1: alias da aranir ("CR7" gibi takma adlar draft'ta calisir).
   List<KupaAday> adaylar(String sorgu) {
     final nq = trNorm(sorgu);
     if (nq.length < 3) return [];
@@ -65,14 +66,15 @@ class KupaDraftEngine {
     for (final i in kulup.havuz) {
       final o = repo.oyuncular[i];
       final pos = o.normAd.indexOf(nq);
-      if (pos < 0) continue;
+      final apos = o.normAlias.isEmpty ? -1 : o.normAlias.indexOf(nq);
+      if (pos < 0 && apos < 0) continue;
       String? neden;
       if (alinan.contains(i)) {
         neden = 'Alındı';
       } else if (!acik.contains(o.poz)) {
         neden = '${kupaSlotAd[o.poz]} dolu';
       }
-      (pos == 0 ? basla : iceren).add(KupaAday(i, neden));
+      ((pos == 0 || apos == 0) ? basla : iceren).add(KupaAday(i, neden));
     }
     return [...basla, ...iceren].take(8).toList();
   }

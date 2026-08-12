@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show Ticker;
 import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../games/bayrak_yarisi/screen.dart';
@@ -208,7 +209,8 @@ class OnlineHazirlikEkrani extends StatefulWidget {
   State<OnlineHazirlikEkrani> createState() => _OnlineHazirlikEkraniState();
 }
 
-class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
+class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
+    with SingleTickerProviderStateMixin {
   bool benHazir = false;
   bool rakipHazir = false;
   bool rakipCekildi = false;
@@ -225,6 +227,125 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   int oyunNo = 1;
   ({int giris, int net})? masa;
 
+  // ── CANLI RULET MAKARASI (kullanıcı isteği) ──
+  // İsimler gerçekten döner; geri sayım başlayınca yavaşlayıp SEÇİLEN
+  // oyunun üstünde durur. Sonuç sunucuda zaten belli — animasyon yalnız
+  // görseldir, iki cihazda da aynı oyunda durur.
+  late final Ticker _makaraTiker = createTicker(_makaraTik);
+  static const _makaraHiz = 5.0; // dönüş hızı (isim/sn)
+  static const _durusSuresi = 1.9; // yavaşlama süresi (sn)
+  double _poz = 0; // makara konumu (isim biriminde, sürekli)
+  Duration _oncekiT = Duration.zero;
+  double? _durusBaslangicPoz; // yavaşlama başladıysa başlangıç konumu
+  double? _durusHedefPoz; // seçilen oyunda duracak konum
+  double _durusGecen = 0; // yavaşlamada geçen süre (sn)
+  bool _makaraDurdu = false;
+
+  void _makaraTik(Duration t) {
+    final dt = (t - _oncekiT).inMicroseconds / 1e6;
+    _oncekiT = t;
+    if (_makaraDurdu || !mounted) return;
+    setState(() {
+      if (_durusHedefPoz == null) {
+        _poz += _makaraHiz * dt; // serbest dönüş
+      } else {
+        _durusGecen += dt;
+        final u = (_durusGecen / _durusSuresi).clamp(0.0, 1.0);
+        final e = Curves.easeOutCubic.transform(u);
+        _poz = _durusBaslangicPoz! +
+            (_durusHedefPoz! - _durusBaslangicPoz!) * e;
+        if (u >= 1.0) {
+          _makaraDurdu = true;
+          _makaraTiker.stop();
+          siraBanaTitresim(); // rulet oyunda durdu — elde hissedilsin
+        }
+      }
+    });
+  }
+
+  /// Geri sayım başlarken çağrılır: makara 1,9 sn'de seçilen oyunda durur
+  /// (geri sayım ~4 sn — durma her zaman maç başlamadan biter).
+  void _makaraDurdur() {
+    if (_durusHedefPoz != null || _makaraDurdu) return;
+    final kodlar = onlineOyunAdlari.keys.toList();
+    final hedefIdx = kodlar.indexOf(widget.kanal.bilgi.oyunKodu);
+    if (hedefIdx < 0) {
+      // bilinmeyen kod (eski istemci): animasyonsuz sabitle
+      _makaraDurdu = true;
+      _makaraTiker.stop();
+      return;
+    }
+    final n = kodlar.length;
+    // en az 1,5 tur daha döndükten sonra hedefe denk gelen ilk konum
+    var hedef = _poz + 1.5 * n;
+    final kalan = (hedefIdx - hedef) % n;
+    hedef += (kalan + n) % n;
+    _durusBaslangicPoz = _poz;
+    _durusHedefPoz = hedef;
+    _durusGecen = 0;
+  }
+
+  /// Makara görünümü: merkezdeki isim altın ve büyük, komşular soluk.
+  Widget _makaraGorunum() {
+    final adlarL = onlineOyunAdlari.values.toList();
+    final n = adlarL.length;
+    const satirYuk = 44.0, ogeGen = 210.0;
+    if (_makaraDurdu) {
+      return SizedBox(
+        height: satirYuk,
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: goldYazi(
+                onlineOyunAdlari[widget.kanal.bilgi.oyunKodu] ??
+                    widget.kanal.bilgi.oyunKodu,
+                boyut: 26,
+                bosluk: 1),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: satirYuk,
+      child: ClipRect(
+        child: LayoutBuilder(builder: (c, kisit) {
+          final w = kisit.maxWidth;
+          final merkez = _poz;
+          final cocuklar = <Widget>[];
+          for (var i = merkez.floor() - 2; i <= merkez.floor() + 2; i++) {
+            final uzak = (i - merkez).abs();
+            final ad = adlarL[((i % n) + n) % n];
+            cocuklar.add(Positioned(
+              left: w / 2 + (i - merkez) * ogeGen - ogeGen / 2,
+              width: ogeGen,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: Opacity(
+                  opacity: (1 - uzak * .55).clamp(.12, 1.0),
+                  child: Transform.scale(
+                    scale: (1 - uzak * .22).clamp(.6, 1.0),
+                    child: Text(ad,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.bigShouldersDisplay(
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                            color: uzak < .5
+                                ? GolrivaColors.goldHi
+                                : GolrivaColors.dim2)),
+                  ),
+                ),
+              ),
+            ));
+          }
+          return Stack(children: cocuklar);
+        }),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -235,6 +356,8 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
     benHazir = true;
     widget.kanal.gonder({'tip': 'hazir'});
     _bilgileriYukle();
+    _oncekiT = Duration.zero;
+    _makaraTiker.start(); // rulet dönmeye başlar
   }
 
   Future<void> _bilgileriYukle() async {
@@ -280,7 +403,11 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
 
   void _kapandi() {
     if (!mounted || rakipCekildi || baslangicHedefi != null) return;
-    setState(() => rakipCekildi = true);
+    _makaraTiker.stop();
+    setState(() {
+      rakipCekildi = true;
+      _makaraDurdu = true; // rulet donmayi birakir, secilen ad sabitlenir
+    });
   }
 
   /// Iki taraf da hazirsa SUNUCU-SENKRON hedefi bul: baslangic ani
@@ -311,6 +438,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
 
   void _sayimiBaslat(Duration kalan) {
     if (!mounted || cekildim || baslangicHedefi != null) return;
+    _makaraDurdur(); // rulet seçilen oyuna doğru yavaşlar
     setState(() => baslangicHedefi = DateTime.now().add(kalan));
     _sayimTikla();
     sayimTimer = Timer.periodic(
@@ -337,27 +465,14 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
   @override
   void dispose() {
     sayimTimer?.cancel();
+    _makaraTiker.dispose();
     // DIKKAT: kanal.kapat() YOK — kanal oyun ekranina devrediliyor.
     super.dispose();
-  }
-
-  /// Rulet seridinde ortadaki (secilen) oyunun sag/sol komsulari —
-  /// tasarim ekran 2'deki "soluk isim · ALTIN ISIM · soluk isim" dizisi.
-  (String, String) _komsuOyunlar(String kod) {
-    final adlar = onlineOyunAdlari.values.toList();
-    final kodlar = onlineOyunAdlari.keys.toList();
-    final i = kodlar.indexOf(kod);
-    if (i < 0) return ('', '');
-    return (
-      adlar[(i - 1 + adlar.length) % adlar.length],
-      adlar[(i + 1) % adlar.length],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final b = widget.kanal.bilgi;
-    final (solOyun, sagOyun) = _komsuOyunlar(b.oyunKodu);
     return PopScope(
       canPop: false, // geri tusu ile sessiz kacis yok — VAZGEÇ hukmen sayilir
       child: Scaffold(
@@ -410,58 +525,18 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                       const EdgeInsets.symmetric(vertical: 24, horizontal: 14),
                   decoration: gKartDekor(r: 24),
                   child: Column(children: [
-                    Text('OYUN SEÇİLİYOR',
+                    Text(_makaraDurdu ? 'OYUN SEÇİLDİ' : 'OYUN SEÇİLİYOR',
                         style: GoogleFonts.figtree(
                             fontSize: 9.5,
                             letterSpacing: 3,
-                            color: GolrivaColors.dim,
+                            color: _makaraDurdu
+                                ? GolrivaColors.gold
+                                : GolrivaColors.dim,
                             fontWeight: FontWeight.w700)),
                     const SizedBox(height: 14),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Opacity(
-                              opacity: .5,
-                              child: Text(solOyun,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.right,
-                                  style: GoogleFonts.bigShouldersDisplay(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1,
-                                      color: GolrivaColors.dim2)),
-                            ),
-                          ),
-                          Flexible(
-                            flex: 3,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 10),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: goldYazi(
-                                    onlineOyunAdlari[b.oyunKodu] ?? b.oyunKodu,
-                                    boyut: 26,
-                                    bosluk: 1),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Opacity(
-                              opacity: .5,
-                              child: Text(sagOyun,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.bigShouldersDisplay(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1,
-                                      color: GolrivaColors.dim2)),
-                            ),
-                          ),
-                        ]),
+                    // ── CANLI RULET: isimler döner, geri sayımla seçilen
+                    //    oyunun üstünde durur (kullanıcı isteği) ──
+                    _makaraGorunum(),
                     const SizedBox(height: 16),
                     // altin isik cizgisi
                     Container(
@@ -567,6 +642,8 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani> {
                         // maca girilmez (kullanici hatasi duzeltmesi)
                         cekildim = true;
                         sayimTimer?.cancel();
+                        _makaraTiker.stop();
+                        setState(() => _makaraDurdu = true);
                       }),
                       child: Text('VAZGEÇ (HÜKMEN)',
                           style: GoogleFonts.bigShouldersDisplay(

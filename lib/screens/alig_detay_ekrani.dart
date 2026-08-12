@@ -67,8 +67,28 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
 
   // ---------- HAZIRIM AKIŞI ----------
   Future<void> _hazirim(AligMac mc) async {
-    setState(() => bekleyenMacId = mc.id);
-    await _hazirYokla(mc.id);
+    // İLK çağrı hataları KULLANICIYA gösterir (örn. "önce devam eden
+    // lig maçını bitir" — faz 2.22 tek maç kuralı).
+    try {
+      final d = await servis.ligHazir(mc.id);
+      if (!mounted) return;
+      if (d.durum == 'oyunda' && d.seriId != null) {
+        await _macaGir(d.seriId!);
+        return;
+      }
+      setState(() => bekleyenMacId = mc.id);
+    } catch (e, s) {
+      if (mounted) {
+        final m = '$e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(m.contains('devam eden')
+                ? 'Önce devam eden lig maçını bitir — fikstürdeki '
+                    'MAÇA DÖN butonunu kullan.'
+                : temizMesaj('alig.hazir', e as Object,
+                    'Hazır sinyali gönderilemedi — tekrar dene.', s))));
+      }
+      return;
+    }
     _hazirNabiz?.cancel();
     _hazirNabiz = Timer.periodic(
         const Duration(seconds: 4), (_) => _hazirYokla(mc.id));
@@ -413,6 +433,9 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
     final simdi = DateTime.now();
     final rakipHazir = benimki && m.durum == 'bekliyor' &&
         m.rakipHazir(benimUid, simdi.toUtc());
+    // Faz 2.22: devam eden maçım varken başka maça HAZIRIM denemez.
+    final benimOyunda = l.maclar.any(
+        (x) => x.durum == 'oyunda' && x.oyuncusu(benimUid));
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -438,7 +461,13 @@ class _AligDetayEkraniState extends State<AligDetayEkrani> {
           ),
           _macDurum(l, m),
         ]),
-        if (benimki && m.durum == 'bekliyor' && l.durum == 'aktif') ...[
+        if (benimki && m.durum == 'bekliyor' && l.durum == 'aktif' &&
+            benimOyunda) ...[
+          const SizedBox(height: 6),
+          Text('Önce devam eden maçını bitir — sonra buna hazır olabilirsin.',
+              style: GoogleFonts.figtree(
+                  fontSize: 10.5, color: GolrivaColors.dim2)),
+        ] else if (benimki && m.durum == 'bekliyor' && l.durum == 'aktif') ...[
           const SizedBox(height: 8),
           if (bekliyorum)
             Row(children: [

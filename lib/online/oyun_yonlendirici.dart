@@ -18,6 +18,7 @@ import '../games/sirala_bakalim/screen.dart';
 import '../games/sl_gecesi/screen.dart';
 import '../games/veto_drafti/screen.dart';
 import '../games/yirmibir/screen.dart';
+import '../screens/alig_detay_ekrani.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
@@ -75,6 +76,9 @@ const onlineOynanabilir = [
 Widget onlineOyunEkrani(GolrivaRepos repos, OnlineMacBilgi bilgi) {
   final kanal = OnlineMacKanali(bilgi);
   kanal.sonrakiEkranKur = (b) => onlineOyunEkrani(repos, b);
+  // Faz 2.22: lig maçı sonucundan lig sayfasına dönüş
+  kanal.ligSayfaKur =
+      (lid) => AligDetayEkrani(repos: repos, ligId: lid);
   if (bilgi.masaKod.isNotEmpty && !bilgi.dostluk) {
     // Seri sonucu ekranindaki RÖVANŞ: ayni masa + ayni modla yeni arama
     // (dostlukta rovans yeni davet gerektirir — buton gosterilmez)

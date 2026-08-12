@@ -132,6 +132,21 @@ class AligServis {
     ];
   }
 
+  /// Bu seri bir ARKADAŞ LİGİ maçı mı? Öyleyse lig kimliği döner
+  /// (seri sonucu ekranındaki LİG SAYFASI butonu için).
+  Future<String?> seridenLigId(String seriId) async {
+    try {
+      final r = await _c
+          .from('alig_maclar')
+          .select('lig_id')
+          .eq('seri_id', seriId)
+          .maybeSingle();
+      return r?['lig_id'] as String?;
+    } catch (_) {
+      return null; // süsleme — hata halinde buton görünmez
+    }
+  }
+
   Future<AligDetay> ligDetay(String ligId) async {
     final l = await _c
         .from('arkadas_ligleri')

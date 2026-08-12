@@ -106,6 +106,11 @@ class OnlineMacKanali {
   /// geri cagri (ayni masa + ayni mod; repos kapanisi tasir).
   Widget Function()? rovansEkranKur;
 
+  /// Faz 2.22: ARKADAŞ LİGİ maçlarında seri sonucu ekranındaki
+  /// "LİG SAYFASI" butonu için lig detayını kuran geri çağrı
+  /// (oyun_yonlendirici bağlar — repos kapanışı taşır).
+  Widget Function(String ligId)? ligSayfaKur;
+
   OnlineMacKanali(this.bilgi);
 
   void Function()? _onMacKapandi;

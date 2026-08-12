@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../reklam/reklam_servis.dart';
 import '../screens/oyna_sekmesi.dart' show ligAdlari;
+import 'alig_servis.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'hata_raporu.dart';
@@ -36,6 +37,9 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   // FAZ 2.21 — admin paneldeki ORTAK gunluk limit (magaza + mac sonu):
   // hak 0 ise teklif karti hic gosterilmez.
   int reklamHak = 0;
+  // FAZ 2.22 — bu seri bir ARKADAŞ LİGİ maçıysa lig kimliği
+  // (LİG SAYFASI butonu için).
+  String? ligId;
 
   OnlineMacBilgi get b => widget.kanal.bilgi;
   String get _benimUid => b.seatUid(b.benimSiram);
@@ -56,6 +60,8 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
       final p = await servis.profilGetir();
       final maclarL = await servis.seriMaclari(b.seriId);
       final hak = b.dostluk ? 0 : await servis.reklamHakki();
+      // lig maçı mı? (lig maçları dostluk serisi olarak oynanır)
+      final lid = b.dostluk ? await AligServis().seridenLigId(b.seriId) : null;
       int? g;
       if (p != null) {
         final ist = await servis.istatistik();
@@ -68,6 +74,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
           galibiyet = g;
           maclar = maclarL.where((x) => x.durum == 'bitti').toList();
           reklamHak = hak;
+          ligId = lid;
         });
       }
     } catch (e, s) {
@@ -375,14 +382,27 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                 ),
               ],
               const SizedBox(height: 14),
-              // ── ANA SAYFA + PAYLAŞ ── (kullanıcı isteği: rövanş yerine
-              // ana sayfa — yeni maç lobiden başlatılır)
+              // ── ANA SAYFA (+ LİG SAYFASI) + PAYLAŞ ──
+              // Faz 2.22: lig maçlarında lig sayfasına dönüş butonu.
               Row(children: [
                 Expanded(
                   child: goldButon('ANA SAYFA', () {
                     Navigator.of(context).popUntil((r) => r.isFirst);
-                  }, yazi: 15),
+                  }, yazi: ligId != null ? 13 : 15),
                 ),
+                if (ligId != null &&
+                    widget.kanal.ligSayfaKur != null) ...[
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: goldButon('LİG SAYFASI', () {
+                      final ekran =
+                          widget.kanal.ligSayfaKur!(ligId!);
+                      final nav = Navigator.of(context);
+                      nav.popUntil((r) => r.isFirst);
+                      nav.push(MaterialPageRoute(builder: (_) => ekran));
+                    }, yazi: 13),
+                  ),
+                ],
                 const SizedBox(width: 9),
                 Expanded(
                   child: InkWell(
@@ -394,7 +414,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                       decoration: kartDekor(),
                       child: Text('PAYLAŞ',
                           style: GoogleFonts.bigShouldersDisplay(
-                              fontSize: 15,
+                              fontSize: ligId != null ? 13 : 15,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 2,
                               color: GolrivaColors.ink)),

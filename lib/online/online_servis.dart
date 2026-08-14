@@ -733,6 +733,40 @@ class OnlineServis {
         .toList();
   }
 
+  // ---------- FAZ 2.24: ŞİKAYET + ENGELLEME (Apple 1.2) ----------
+
+  /// Kullanıcıyı engelle: arkadaşlık/istek/bekleyen davetler sunucuda
+  /// temizlenir; artık davet, lig katılımı, ranked eşleşme kurulmaz.
+  Future<void> kisiEngelle(String ad) =>
+      _c.rpc('kisi_engelle', params: {'ad': ad.trim()});
+
+  Future<void> engelKaldir(String ad) =>
+      _c.rpc('engel_kaldir', params: {'ad': ad.trim()});
+
+  /// Engellediğim kullanıcılar (ayarlar/arkadaşlar ekranında listelenir).
+  Future<List<({String ad, DateTime tarih})>> engellilerim() async {
+    if (!girisYapildi) return [];
+    final r = await _c.rpc('engellilerim');
+    return [
+      for (final d in (r as List))
+        (
+          ad: d['kullanici_adi'] as String,
+          tarih: DateTime.parse(d['created_at'] as String),
+        )
+    ];
+  }
+
+  /// Kullanıcıyı şikayet et. Sebep: uygunsuz_ad | hakaret | hile |
+  /// spam | diger. Sunucu kuralı: günde 10, aynı kişiye 24 saatte 1.
+  Future<void> sikayetGonder(String ad, String sebep, String? detay) =>
+      _c.rpc('sikayet_gonder', params: {
+        'ad': ad.trim(),
+        'sebep_p': sebep,
+        'detay_p': (detay == null || detay.trim().isEmpty)
+            ? null
+            : detay.trim(),
+      });
+
   /// Masanin giris ucreti + kazanana NET odul (mod'a gore).
   Future<({int giris, int net})?> masaOdul(String masaKod, String mod) async {
     if (masaKod.isEmpty) return null;

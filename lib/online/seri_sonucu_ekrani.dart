@@ -7,6 +7,7 @@ import '../screens/oyna_sekmesi.dart' show ligAdlari;
 import 'alig_servis.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import '../widgets/kisi_moderasyon.dart';
 import 'hata_raporu.dart';
 import 'itiraz_dialog.dart';
 import 'mac_kanali.dart';
@@ -429,6 +430,15 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                   child: const Text('Futbolcu verisi yanlış mı? VERİ İTİRAZI',
                       style:
                           TextStyle(color: GolrivaColors.dim, fontSize: 11.5)),
+                ),
+              ),
+              // FAZ 2.24: rakibi şikayet et / engelle (Apple 1.2)
+              Center(
+                child: TextButton(
+                  onPressed: () => kisiModerasyonAc(context, b.rakipAdi),
+                  child: Text('${b.rakipAdi} ile bir sorun mu var? BİLDİR',
+                      style: const TextStyle(
+                          color: GolrivaColors.dim2, fontSize: 11.5)),
                 ),
               ),
             ],

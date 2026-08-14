@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Şikayetler · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'sikayet', baslik:'Şikayetler',
+    alt:'Apple 1.2 moderasyonu — kullanıcı bildirimleri ve engelleme istatistiği'})) return;
+  var G = document.getElementById('govde');
+  var suzgec = 'yeni';
+
+  var SEBEP = {uygunsuz_ad:'Uygunsuz ad', hakaret:'Hakaret / taciz',
+               hile:'Hile şüphesi', spam:'Spam', diger:'Diğer'};
+  var DURUM = {yeni:['yeni','kotu'], incelendi:['incelendi','uyari'],
+               kapatildi:['kapatıldı','notr']};
+
+  async function yukle(){
+    var hepsi, engeller=[];
+    try{ hepsi = hataAt(await sb.from('sikayetler').select('*')
+           .order('created_at',{ascending:false}).limit(2000)).data || []; }
+    catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_24_sikayet_engel.sql', e); return; }
+    try{ engeller = hataAt(await sb.from('engellemeler')
+           .select('engelleyen, engellenen, created_at').limit(10000)).data || []; }catch(e){}
+
+    var yeniler   = hepsi.filter(function(s){return s.durum==='yeni';});
+    var hafta     = hepsi.filter(function(s){
+      return Date.now() - new Date(s.created_at).getTime() < 7*86400000; });
+    // en çok şikayet edilenler (kişi başına sayaç)
+    var sayac = {};
+    hepsi.forEach(function(s){ sayac[s.sikayet_edilen] = (sayac[s.sikayet_edilen]||0)+1; });
+    var liste = hepsi.filter(function(s){ return suzgec==='hepsi' || s.durum===suzgec; })
+                     .slice(0, 200);
+
+    var idler = [];
+    liste.forEach(function(s){ idler.push(s.sikayet_eden, s.sikayet_edilen); });
+    engeller.slice(0,50).forEach(function(e){ idler.push(e.engelleyen, e.engellenen); });
+    await adlariYukle(idler);
+
+    function suzmeBtn(k, ad){
+      return '<button class="kucuk '+(suzgec===k?'ana':'')+'" '+
+        'onclick="suz(\''+k+'\')">'+ad+'</button>';
+    }
+
+    G.innerHTML =
+      '<div class="izgara k4" style="margin-bottom:14px">'+
+        '<div class="olcut"><div class="etiket">Bekleyen (yeni)</div><div class="deger'+(yeniler.length?' eksi':'')+'">'+S(yeniler.length)+'</div><div class="not">işlem bekliyor</div></div>'+
+        '<div class="olcut"><div class="etiket">Son 7 gün</div><div class="deger">'+S(hafta.length)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Toplam şikayet</div><div class="deger">'+S(hepsi.length)+'</div></div>'+
+        '<div class="olcut"><div class="etiket">Aktif engel</div><div class="deger">'+S(engeller.length)+'</div><div class="not">kullanıcı engellemesi</div></div>'+
+      '</div>'+
+
+      '<div class="kart" style="margin-bottom:14px">'+
+        '<div class="kart-bas"><h2>Bildirimler</h2><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+          suzmeBtn('yeni','Yeni')+suzmeBtn('incelendi','İncelendi')+
+          suzmeBtn('kapatildi','Kapatıldı')+suzmeBtn('hepsi','Hepsi')+
+        '</div></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Şikayet edilen</th><th>Şikayet eden</th><th>Sebep</th><th>Açıklama</th><th>Toplam</th><th>Tarih</th><th>Durum</th><th></th>'+
+        '</tr></thead><tbody>'+
+        (liste.length ? liste.map(function(s){
+          var d = DURUM[s.durum] || [s.durum,'notr'];
+          return '<tr>'+
+            '<td data-bas="Edilen">'+kisiHtml(s.sikayet_edilen)+'</td>'+
+            '<td data-bas="Eden">'+kisiHtml(s.sikayet_eden)+'</td>'+
+            '<td data-bas="Sebep"><span class="rz uyari">'+E(SEBEP[s.sebep]||s.sebep)+'</span></td>'+
+            '<td data-bas="Açıklama" style="max-width:260px">'+
+              (s.detay ? E(s.detay) : '<span class="mono" style="opacity:.4">—</span>')+'</td>'+
+            '<td data-bas="Toplam" class="sayi">'+S(sayac[s.sikayet_edilen]||1)+'</td>'+
+            '<td data-bas="Tarih" class="mono">'+T(s.created_at)+'</td>'+
+            '<td data-bas="Durum"><span class="rz '+d[1]+'">'+d[0]+'</span></td>'+
+            '<td class="sag" style="white-space:nowrap">'+
+              (s.durum==='yeni'
+                ? '<button class="kucuk ana" onclick="durum('+s.id+',\'incelendi\')">İncelendi</button> '
+                : '')+
+              (s.durum!=='kapatildi'
+                ? '<button class="kucuk" onclick="durum('+s.id+',\'kapatildi\')">Kapat</button>'
+                : '<button class="kucuk" onclick="durum('+s.id+',\'yeni\')">Yeniden aç</button>')+
+            '</td></tr>';
+        }).join('') : '<tr><td colspan="8">'+bosDurum('Bu süzgeçte şikayet yok')+'</td></tr>')+
+        '</tbody></table></div></div>'+
+        '<div class="kart-govde" style="border-top:1px solid var(--cizgi)">'+
+          '<span class="ipucu">Uygunsuz kullanıcı adları için işlem: Kullanıcılar sayfasından adı düzelt ya da hesabı kapat. '+
+          'Şikayet limiti: kişi başı günde 10, aynı kişiye 24 saatte 1.</span></div></div>'+
+
+      '<div class="kart"><div class="kart-bas"><h2>Son engellemeler</h2>'+
+        '<span class="ipucu">kim kimi engelledi — son 50</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Engelleyen</th><th>Engellenen</th><th>Tarih</th>'+
+        '</tr></thead><tbody>'+
+        (engeller.length ? engeller
+          .sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);})
+          .slice(0,50).map(function(e){
+          return '<tr><td data-bas="Engelleyen">'+kisiHtml(e.engelleyen)+'</td>'+
+            '<td data-bas="Engellenen">'+kisiHtml(e.engellenen)+'</td>'+
+            '<td data-bas="Tarih" class="mono">'+T(e.created_at)+'</td></tr>';
+        }).join('') : '<tr><td colspan="3">'+bosDurum('Henüz engelleme yok')+'</td></tr>')+
+        '</tbody></table></div></div></div>';
+  }
+
+  window.suz = function(k){ suzgec = k; yukle(); };
+  window.durum = async function(id, d){
+    if(await dene(async function(){
+      hataAt(await sb.from('sikayetler').update({durum:d}).eq('id', id));
+    }, 'Şikayet #'+id+' → '+d)) yukle();
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

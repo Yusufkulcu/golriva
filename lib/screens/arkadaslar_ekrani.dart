@@ -9,6 +9,7 @@ import '../online/oyun_yonlendirici.dart';
 import '../online/supabase_ayar.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
+import '../widgets/kisi_moderasyon.dart';
 import 'oyna_sekmesi.dart' show ligAdlari;
 
 /// ARKADAŞLAR — kullanıcı adıyla ekleme (karşılıklı, onaysız MVP),
@@ -29,6 +30,8 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
   List<({String kod, String kurucuAd, String mod, DateTime tarih})> gelenler =
       [];
   List<({String ad, DateTime tarih})> istekler = [];
+  // FAZ 2.24: engellediklerim (Apple 1.2 — engel yönetimi bu ekranda)
+  List<({String ad, DateTime tarih})> engelliler = [];
   String? hata;
   bool ekleniyor = false;
   bool katiliniyor = false;
@@ -129,6 +132,13 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
         setState(() => hata = temizMesaj('arkadaslar._yukle', e,
             'Liste şu an yüklenemedi — tekrar dene.', s));
       }
+    }
+    try {
+      final en = await servis.engellilerim();
+      if (mounted) setState(() => engelliler = en);
+    } catch (e, s) {
+      // engel listesi süslemedir — gelmezse ekranı düşürme, sadece raporla
+      hataBildir('arkadaslar._engelliler', e, s);
     }
   }
 
@@ -344,6 +354,13 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
               const SizedBox(height: 7),
               for (final a in liste!) _satir(a),
             ],
+            // FAZ 2.24: ENGELLENENLER (Apple 1.2 — engel yönetimi)
+            if (engelliler.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              etiket('ENGELLENENLER'),
+              const SizedBox(height: 7),
+              for (final e in engelliler) _engelliSatir(e),
+            ],
           ],
         ),
       ),
@@ -390,6 +407,68 @@ class _ArkadaslarEkraniState extends State<ArkadaslarEkrani> {
             icon: gIkon('carpi', 14, GolrivaColors.dim2),
             tooltip: 'Listeden çıkar',
           ),
+          // FAZ 2.24: şikayet + engelleme menüsü (Apple 1.2)
+          IconButton(
+            onPressed: () => kisiModerasyonAc(context, a.ad,
+                engellendiyse: _yukle),
+            icon: Text('⋮',
+                style: GoogleFonts.figtree(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: GolrivaColors.dim2)),
+            tooltip: 'Şikayet et / engelle',
+          ),
         ]),
       );
+
+  /// FAZ 2.24: engellenen kullanıcı satırı — ENGELİ KALDIR.
+  Widget _engelliSatir(({String ad, DateTime tarih}) e) => Container(
+        margin: const EdgeInsets.only(bottom: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+        decoration: kartDekor(),
+        child: Row(children: [
+          avatar(e.ad, 36, kenar: GolrivaColors.dim2),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(e.ad,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.figtree(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: GolrivaColors.dim)),
+          ),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+                foregroundColor: GolrivaColors.dim,
+                side: const BorderSide(color: GolrivaColors.dim2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+            onPressed: () => _engelKaldir(e.ad),
+            child: Text('ENGELİ KALDIR',
+                style: GoogleFonts.bigShouldersDisplay(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    fontSize: 12)),
+          ),
+        ]),
+      );
+
+  Future<void> _engelKaldir(String ad) async {
+    try {
+      await servis.engelKaldir(ad);
+      await _yukle();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$ad için engel kaldırıldı')));
+      }
+    } catch (e, s) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(temizMesaj('arkadaslar._engelKaldir', e,
+                'Şu an kaldırılamadı — tekrar dene.', s))));
+      }
+    }
+  }
 }

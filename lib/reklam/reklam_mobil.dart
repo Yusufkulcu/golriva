@@ -3,12 +3,16 @@ import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'reklam_sabitleri.dart';
 
-/// Ödüllü reklam akışı (yalnız Android/iOS).
-/// Faz 2.20: maç sonu OTOMATİK geçiş reklamı KALDIRILDI — tüm reklamlar
-/// artık İSTEĞE BAĞLI ödüllü: mağaza (+50 Riva) ve seri sonucu ekranı
-/// (kazancı 2x / kaybı iade). Birim kimlikleri: reklam_sabitleri.dart.
+/// Reklam akışı (yalnız Android/iOS). Birim kimlikleri: reklam_sabitleri.dart.
+/// - ÖDÜLLÜ (isteğe bağlı): mağaza (+50 Riva) ve seri sonucu ekranı
+///   (kazancı 2x / kaybı iade). Sunucudaki ORTAK günlük limite bağlı.
+/// - GEÇİŞ (Faz 2.25): maç sonunda ödüllü İZLENMEDİYSE, ekrandan çıkarken
+///   %50 ihtimalle otomatik geçiş reklamı — her maç türünde (ranked,
+///   dostluk, lig); admin limitinden BAĞIMSIZ, sunucuya yazılmaz.
+///   Ekran açılınca ön yüklenir (gecisOnYukle), çıkışta gösterilir.
 class ReklamServis {
   static bool _baslatildi = false;
+  static InterstitialAd? _hazirGecis;
 
   /// Son başarısızlığın insan-okur nedeni (tanı için) — başarıda null.
   static String? sonHata;
@@ -63,6 +67,70 @@ class ReklamServis {
       ),
     );
     return tamam.future;
+  }
+
+  // ---------- FAZ 2.25: GEÇİŞ REKLAMI ----------
+
+  /// Geçiş reklamını arka planda yükler (seri sonucu ekranı açılırken).
+  /// Başarısızlık sessizdir — çıkışta gösterecek reklam olmaz, o kadar.
+  static Future<void> gecisOnYukle() async {
+    if (!destekleniyor || _hazirGecis != null) return;
+    try {
+      await _hazirla();
+    } catch (_) {
+      return;
+    }
+    final tamam = Completer<void>();
+    InterstitialAd.load(
+      adUnitId: Platform.isAndroid
+          ? ReklamSabitleri.gecisAndroidBirim
+          : ReklamSabitleri.gecisIosBirim,
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _hazirGecis = ad;
+          if (!tamam.isCompleted) tamam.complete();
+        },
+        onAdFailedToLoad: (e) {
+          sonHata = 'geçiş yükleme (kod ${e.code}): ${e.message}';
+          if (!tamam.isCompleted) tamam.complete();
+        },
+      ),
+    );
+    return tamam.future;
+  }
+
+  /// Ön yüklenmiş geçiş reklamını gösterir; kapanınca döner.
+  /// Hazır reklam yoksa hemen false döner (kullanıcı bekletilmez).
+  static Future<bool> gecisGoster() async {
+    final ad = _hazirGecis;
+    if (ad == null) return false;
+    _hazirGecis = null;
+    final tamam = Completer<bool>();
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (a) {
+        a.dispose();
+        if (!tamam.isCompleted) tamam.complete(true);
+      },
+      onAdFailedToShowFullScreenContent: (a, e) {
+        sonHata = 'geçiş gösterim (kod ${e.code}): ${e.message}';
+        a.dispose();
+        if (!tamam.isCompleted) tamam.complete(false);
+      },
+    );
+    try {
+      await ad.show();
+    } catch (e) {
+      sonHata = 'geçiş show: $e';
+      if (!tamam.isCompleted) tamam.complete(false);
+    }
+    return tamam.future;
+  }
+
+  /// Gösterilmeden vazgeçilen ön yüklemeyi bırak (ekran kapanınca).
+  static void gecisBirak() {
+    _hazirGecis?.dispose();
+    _hazirGecis = null;
   }
 
   static Future<String?> _goster(RewardedAd ad) {

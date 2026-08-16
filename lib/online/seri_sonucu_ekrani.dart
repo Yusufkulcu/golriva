@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -41,6 +42,11 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   // FAZ 2.22 — bu seri bir ARKADAŞ LİGİ maçıysa lig kimliği
   // (LİG SAYFASI butonu için).
   String? ligId;
+  // FAZ 2.25 — otomatik GEÇİŞ reklamı: ödüllü izlenmediyse çıkışta %50
+  // ihtimalle (her maç türü; admin limitinden bağımsız). Karar ekran
+  // açılırken verilir ve reklam ön yüklenir; çıkışta tek kez gösterilir.
+  final bool _gecisPlanli = Random().nextBool();
+  bool _gecisDenendi = false;
 
   OnlineMacBilgi get b => widget.kanal.bilgi;
   String get _benimUid => b.seatUid(b.benimSiram);
@@ -52,6 +58,29 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   void initState() {
     super.initState();
     _yukle();
+    if (_gecisPlanli && ReklamServis.destekleniyor) {
+      ReklamServis.gecisOnYukle(); // sessiz; yüklenemezse gösterilmez
+    }
+  }
+
+  @override
+  void dispose() {
+    ReklamServis.gecisBirak();
+    super.dispose();
+  }
+
+  /// Ekrandan ayrılırken: ödüllü izlenmediyse ve yazı-tura "evet" dediyse
+  /// geçiş reklamı göster, sonra [devam] ile gerçek çıkışı yap.
+  Future<void> _cikis(VoidCallback devam) async {
+    if (!_gecisDenendi && _gecisPlanli && ekOdul == null && !reklamOynuyor) {
+      _gecisDenendi = true;
+      try {
+        await ReklamServis.gecisGoster();
+      } catch (e, s) {
+        hataBildir('seriSonucu._cikisGecis', e, s);
+      }
+    }
+    if (mounted) devam();
   }
 
   Future<void> _yukle() async {
@@ -188,7 +217,14 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
     final skorRakip =
         b.benimSiram == 0 ? widget.durum.skor2 : widget.durum.skor1;
     final (odulDeger, odulAlt) = _odul;
-    return Scaffold(
+    return PopScope(
+      // geri tuşu da bir "çıkış": geçiş reklamı kuralı burada da geçerli
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _cikis(() => Navigator.of(context).pop());
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Text('SERİ SONUCU',
@@ -388,7 +424,8 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
               Row(children: [
                 Expanded(
                   child: goldButon('ANA SAYFA', () {
-                    Navigator.of(context).popUntil((r) => r.isFirst);
+                    _cikis(() =>
+                        Navigator.of(context).popUntil((r) => r.isFirst));
                   }, yazi: ligId != null ? 13 : 15),
                 ),
                 if (ligId != null &&
@@ -396,11 +433,14 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
                   const SizedBox(width: 9),
                   Expanded(
                     child: goldButon('LİG SAYFASI', () {
-                      final ekran =
-                          widget.kanal.ligSayfaKur!(ligId!);
-                      final nav = Navigator.of(context);
-                      nav.popUntil((r) => r.isFirst);
-                      nav.push(MaterialPageRoute(builder: (_) => ekran));
+                      _cikis(() {
+                        final ekran =
+                            widget.kanal.ligSayfaKur!(ligId!);
+                        final nav = Navigator.of(context);
+                        nav.popUntil((r) => r.isFirst);
+                        nav.push(
+                            MaterialPageRoute(builder: (_) => ekran));
+                      });
                     }, yazi: 13),
                   ),
                 ],
@@ -444,6 +484,7 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

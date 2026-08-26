@@ -174,9 +174,10 @@ void main() {
     expect(find.text('Reklam izle'), findsOneWidget);
     expect(find.text('RIVA PAKETLERİ'), findsOneWidget);
     expect(find.text('500'), findsOneWidget); // paket miktari
-    expect(find.text('5.000'), findsOneWidget); // binlik ayirici
-    // fiyat rozetleri: canli fiyat yoksa 'Mağazada' yazar (3 paket)
-    expect(find.text('Mağazada'), findsNWidgets(3));
+    expect(find.text('2.500'), findsOneWidget); // binlik ayirici
+    expect(find.text('5.000'), findsOneWidget);
+    // fiyat rozetleri: canli fiyat yoksa 'Mağazada' yazar (4 paket)
+    expect(find.text('Mağazada'), findsNWidgets(4));
     // VM'de reklam desteklenmez → kibarca snackbar, cokme yok
     await tester.tap(find.text('Reklam izle'));
     await tester.pump(const Duration(milliseconds: 100));

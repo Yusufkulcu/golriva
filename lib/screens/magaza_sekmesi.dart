@@ -23,10 +23,13 @@ class MagazaSekmesi extends StatefulWidget {
 
 class _MagazaSekmesiState extends State<MagazaSekmesi> {
   int? bakiye;
+  // 4'lü paket yapısı (App Store + Play aynı kimlikler) — sunucudaki
+  // urunler tablosu gelince bu yedek liste ezilir.
   List<({String kod, String ad, int riva, String? fiyatMetni})> paketler =
       const [
     (kod: 'riva_500', ad: 'Başlangıç', riva: 500, fiyatMetni: null),
-    (kod: 'riva_1500', ad: 'Popüler', riva: 1500, fiyatMetni: null),
+    (kod: 'riva_1000', ad: 'Popüler', riva: 1000, fiyatMetni: null),
+    (kod: 'riva_2500', ad: 'Avantaj', riva: 2500, fiyatMetni: null),
     (kod: 'riva_5000', ad: 'Kral', riva: 5000, fiyatMetni: null),
   ];
   Map<String, String> canliFiyatlar = {};

@@ -6,6 +6,7 @@ import 'online/bildirim_servis.dart';
 import 'online/hata_raporu.dart';
 import 'online/online_servis.dart';
 import 'online/supabase_ayar.dart';
+import 'satinalma/satinalma_servis.dart';
 import 'screens/acilis_ekrani.dart';
 import 'screens/ana_iskelet.dart';
 import 'theme/golriva_theme.dart';
@@ -34,6 +35,27 @@ Future<void> main() async {
   };
   // FAZ 2.9: push bildirimi (Firebase config yoksa sessizce kapali kalir).
   await BildirimServis.baslat();
+  // SATIN ALMA (iOS inceleme düzeltmesi): mağaza akışı AÇILIŞTA dinlenir —
+  // yarım kalan StoreKit/Play işlemleri burada teslim edilir ve sunucuya
+  // işlenir (benzersiz işlem kimliği: çift ödül imkânsız).
+  SatinAlmaServis.onArkaPlanSatinAlma = (urunKodu, islemId) async {
+    final servis = OnlineServis();
+    if (!servis.girisYapildi) return;
+    try {
+      final odul = await servis.satinAlmaOdul(
+          SatinAlmaServis.magaza, urunKodu, islemId);
+      mesajKey.currentState?.showSnackBar(
+          SnackBar(content: Text('+$odul RIVA cüzdanına işlendi.')));
+    } catch (e, s) {
+      // aynı işlem ikinci kez teslim edildiyse benzersiz kısıt (23505)
+      // fırlar — bu NORMALDİR, çift ödül engellendi demektir
+      final m = '$e';
+      if (!m.contains('23505') && !m.contains('duplicate')) {
+        hataBildir('satinalma.arkaPlan', e, s);
+      }
+    }
+  };
+  SatinAlmaServis.baslat();
   // OTURUM KURALI: oturum hangi yoldan kapanirsa kapansin (cikis, hesap
   // silme, baska cihazdan atilma) uygulama KOKE doner; kok girise yonlendirir.
   if (SupabaseAyar.yapilandirildi) {

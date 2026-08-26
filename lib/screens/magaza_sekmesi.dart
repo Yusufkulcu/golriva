@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../online/hata_raporu.dart';
@@ -79,6 +80,25 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
 
   String _fiyat(({String kod, String ad, int riva, String? fiyatMetni}) p) =>
       canliFiyatlar[p.kod] ?? p.fiyatMetni ?? 'Mağazada';
+
+  // APPLE İNCELEME KURALI (2.3.10): iOS'ta başka platform/mağaza adı
+  // geçmez. Metinler platforma göre seçilir; web'de nötr kalır.
+  bool get _ios => defaultTargetPlatform == TargetPlatform.iOS;
+  bool get _android => defaultTargetPlatform == TargetPlatform.android;
+  String get _magazaAdi =>
+      _ios ? 'App Store' : (_android ? 'Google Play' : 'mağaza');
+
+  // ── SATIN ALIMLARI GERİ YÜKLE (App Store kuralı) ──
+  Future<void> _geriYukle() async {
+    try {
+      await SatinAlmaServis.geriYukle();
+      _mesaj('Geri yükleme istendi — bekleyen bir satın alma varsa '
+          'birkaç saniye içinde cüzdanına işlenir.');
+    } catch (e, s) {
+      _mesaj(temizMesaj('magaza._geriYukle', e,
+          'Geri yükleme şu an yapılamadı — tekrar dene.', s));
+    }
+  }
 
   // ── ODULLU REKLAM (cuzdandan buraya tasindi) ──
   Future<void> _reklamIzle() async {
@@ -238,7 +258,7 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
           etiket('RIVA PAKETLERİ'),
           const SizedBox(width: 6),
           Expanded(
-            child: Text('· güvenli mağaza ödemesi (Google/Apple)',
+            child: Text('· güvenli $_magazaAdi ödemesi',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.figtree(
@@ -249,11 +269,19 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
         for (var i = 0; i < paketler.length; i++) _paketKarti(paketler[i], i),
         const SizedBox(height: 6),
         Text(
-            'Satın alma Google Play / App Store üzerinden yapılır; '
+            'Satın alma $_magazaAdi üzerinden yapılır; '
             'Riva anında cüzdanına işlenir.',
             textAlign: TextAlign.center,
             style: GoogleFonts.figtree(
                 fontSize: 10, color: GolrivaColors.dim2, height: 1.5)),
+        if (_ios || _android)
+          Center(
+            child: TextButton(
+              onPressed: _geriYukle,
+              child: const Text('Satın alımları geri yükle',
+                  style: TextStyle(color: GolrivaColors.dim, fontSize: 11.5)),
+            ),
+          ),
       ],
     ),
     );

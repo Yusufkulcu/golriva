@@ -19,8 +19,8 @@ class ReklamSabitleri {
   // FAZ 2.25 — GEÇİŞ (interstitial) reklamı: maç sonunda ödüllü
   // izlenmediyse %50 ihtimalle. AdMob'da "Geçiş reklamı" türünde birim aç,
   // kimlikleri buraya yaz (boş kalırsa Google TEST kimliği kullanılır).
-  static const gecisAndroid = ''; // Geçiş reklamı · Android
-  static const gecisIos = ''; //     Geçiş reklamı · iOS
+  static const gecisAndroid = 'ca-app-pub-2345769438522527/1671544974'; // Geçiş reklamı · Android
+  static const gecisIos = 'ca-app-pub-2345769438522527/2517722783'; //     Geçiş reklamı · iOS
   // ─────────────────────────────────────────────────────────────────
 
   // Google resmi TEST kimlikleri (ödüllü):

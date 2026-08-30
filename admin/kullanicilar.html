@@ -165,7 +165,9 @@
   window.kullaniciSil = async function(uid, isim){
     if(!confirm(isim+' kalıcı olarak silinecek (profil, cüzdan, geçmiş). Emin misin?')) return;
     if(prompt('Onaylamak için kullanıcı adını yaz: '+isim) !== isim){ toast('Onay eşleşmedi, iptal', true); return; }
-    if(await dene(async function(){ hataAt(await sb.from('profiller').delete().eq('id', uid)); },
+    // faz2_28: doğrudan tablo silme YOK — lig iadeleri/kuruculuk devri
+    // dahil tüm temizliği hesap_sil_ic yapar (auth kullanıcısı dahil)
+    if(await dene(async function(){ hataAt(await sb.rpc('hesap_sil_ic',{u: uid})); },
         'Kullanıcı silindi')){ cekmeceKapat(); yenile(); }
   };
 

@@ -14,6 +14,7 @@ import 'itiraz_dialog.dart';
 import 'mac_kanali.dart';
 import 'online_servis.dart';
 import 'oyun_yonlendirici.dart' show onlineOyunAdlari;
+import 'uzak_ayar.dart';
 
 /// EKRAN 8 · SERİ SONUCU — golriva_ekranlar_v1.html'e birebir:
 /// marka 64, KAZANDIN!/KAYBETTİN/BERABERE, seri noktalari + skor,
@@ -45,7 +46,9 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
   // FAZ 2.25 — otomatik GEÇİŞ reklamı: ödüllü izlenmediyse çıkışta %50
   // ihtimalle (her maç türü; admin limitinden bağımsız). Karar ekran
   // açılırken verilir ve reklam ön yüklenir; çıkışta tek kez gösterilir.
-  final bool _gecisPlanli = Random().nextBool();
+  // FAZ 2.30: ihtimal ve reklam anahtarı uzak ayardan (panelden anında)
+  final bool _gecisPlanli = UzakAyar.reklamAcik &&
+      Random().nextInt(100) < UzakAyar.gecisReklamYuzde;
   bool _gecisDenendi = false;
 
   OnlineMacBilgi get b => widget.kanal.bilgi;
@@ -142,7 +145,8 @@ class _SeriSonucuEkraniState extends State<SeriSonucuEkrani> {
 
   // ---------- FAZ 2.20: İSTEĞE BAĞLI ÖDÜLLÜ REKLAM ----------
   // FAZ 2.21: admin limitine bağlı — hak yoksa teklif görünmez.
-  bool get _teklifVar => !b.dostluk &&
+  bool get _teklifVar => UzakAyar.reklamAcik &&
+      !b.dostluk &&
       _kazandim != null &&
       masa != null &&
       ekOdul == null &&

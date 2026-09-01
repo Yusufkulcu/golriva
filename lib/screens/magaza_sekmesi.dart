@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../online/hata_raporu.dart';
 import '../online/online_servis.dart';
 import '../online/supabase_ayar.dart';
+import '../online/uzak_ayar.dart';
 import '../reklam/reklam_servis.dart';
 import '../satinalma/satinalma_servis.dart';
 import '../theme/golriva_theme.dart';
@@ -217,7 +218,8 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
             style:
                 GoogleFonts.figtree(fontSize: 10, color: GolrivaColors.dim2)),
         const SizedBox(height: 14),
-        // ── BEDAVA RIVA: odullu reklam ──
+        // ── BEDAVA RIVA: odullu reklam (FAZ 2.30: uzak anahtarla kapanabilir) ──
+        if (UzakAyar.reklamAcik) ...[
         etiket('BEDAVA RIVA'),
         const SizedBox(height: 7),
         InkWell(
@@ -256,6 +258,7 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
           ),
         ),
         const SizedBox(height: 16),
+        ],
         // ── RIVA PAKETLERI (fiyatli, buyuk kartlar) ──
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           etiket('RIVA PAKETLERİ'),
@@ -269,7 +272,21 @@ class _MagazaSekmesiState extends State<MagazaSekmesi> {
           ),
         ]),
         const SizedBox(height: 7),
-        for (var i = 0; i < paketler.length; i++) _paketKarti(paketler[i], i),
+        // FAZ 2.30: satış uzak anahtarla geçici kapatılabilir
+        if (!UzakAyar.magazaAcik)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: kartDekor(),
+            child: Text(
+                'Riva paketleri şu an geçici olarak satışa kapalı — '
+                'kısa süre içinde yeniden açılacak.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.figtree(
+                    fontSize: 12.5, color: GolrivaColors.dim, height: 1.5)),
+          )
+        else
+          for (var i = 0; i < paketler.length; i++)
+            _paketKarti(paketler[i], i),
         const SizedBox(height: 6),
         Text(
             'Satın alma $_magazaAdi üzerinden yapılır; '

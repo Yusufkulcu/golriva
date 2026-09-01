@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../data/repos.dart';
 import '../online/alig_servis.dart';
 import '../online/hata_raporu.dart';
+import '../online/uzak_ayar.dart';
 import '../theme/golriva_theme.dart';
 import '../widgets/golriva_ui.dart';
 import 'alig_detay_ekrani.dart';
@@ -245,6 +246,23 @@ class _ArkadasLigiEkraniState extends State<ArkadasLigiEkrani> {
 
   @override
   Widget build(BuildContext context) {
+    // FAZ 2.30: özellik uzak anahtarla geçici kapatılabilir (panelden)
+    if (!UzakAyar.arkadasLigiAcik) {
+      return Scaffold(
+        appBar: AppBar(backgroundColor: Colors.transparent),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Text(
+                'Arkadaş Ligi şu an geçici olarak kapalı — kısa süre '
+                'içinde yeniden açılacak.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.figtree(
+                    fontSize: 13.5, color: GolrivaColors.dim, height: 1.5)),
+          ),
+        ),
+      );
+    }
     final liste = ligler;
     return Scaffold(
       appBar: AppBar(

@@ -1,14 +1,17 @@
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'data/repos.dart';
 import 'online/auth_ekrani.dart';
 import 'online/bildirim_servis.dart';
 import 'online/hata_raporu.dart';
 import 'online/online_servis.dart';
 import 'online/supabase_ayar.dart';
+import 'online/uzak_ayar.dart';
 import 'satinalma/satinalma_servis.dart';
 import 'screens/acilis_ekrani.dart';
 import 'screens/ana_iskelet.dart';
+import 'screens/engel_ekrani.dart';
 import 'theme/golriva_theme.dart';
 
 /// Sayfa donuslerini dinlemek icin (sekmeler donuste kendini tazeler).
@@ -24,6 +27,14 @@ Future<void> main() async {
   // FAZ 2: Supabase yalnizca --dart-define ile yapilandirildiysa baslar;
   // aksi halde uygulama tamamen cevrimdisi (hot-seat) calisir.
   await OnlineServis.baslat();
+  // FAZ 2.30: UZAK AYARLAR — zorunlu minimum sürüm + açma/kapama anahtarları.
+  // Sürüm PackageInfo'dan; sunucu okunamazsa varsayılanlar (kilitlenmez).
+  try {
+    UzakAyar.mevcutSurum = (await PackageInfo.fromPlatform()).version;
+  } catch (e, s) {
+    hataBildir('main.packageInfo', e, s);
+  }
+  await UzakAyar.yukle();
   // FAZ 2.8: yakalanmamis TUM hatalar admin'e raporlanir (kullanici gormez).
   FlutterError.onError = (d) {
     FlutterError.presentError(d); // gelistirici konsolu icin
@@ -116,8 +127,23 @@ class _LoaderState extends State<_Loader> {
     }
   }
 
+  /// FAZ 2.30: bakım/güncelleme ekranındaki 'tekrar dene' — uzak ayarları
+  /// yeniden okur; engel kalktıysa normal akış sürer.
+  Future<void> _uzakYenile() async {
+    await UzakAyar.yukle();
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
+    // FAZ 2.30 — AÇILIŞ KAPILARI: bakım modu ve zorunlu minimum sürüm.
+    // Eski istemci oynamaz (yeni oyun/kural yayınlarında bozuk kalmasın).
+    if (UzakAyar.bakimModu) {
+      return EngelEkrani(bakim: true, tekrarDene: _uzakYenile);
+    }
+    if (UzakAyar.surumEski) {
+      return EngelEkrani(bakim: false, tekrarDene: _uzakYenile);
+    }
     if (hata != null) {
       return const Scaffold(
         body: Center(

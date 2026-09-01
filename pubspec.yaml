@@ -1,7 +1,7 @@
 name: golriva
 description: "GOLRIVA — Futbol Zekâsı Düellosu"
 publish_to: "none"
-version: 1.0.7+9 # +2: Play ayni versionCode'u iki kez kabul etmez
+version: 1.1.0+11 # +2: Play ayni versionCode'u iki kez kabul etmez
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -28,6 +28,9 @@ dependencies:
   firebase_messaging: ^16.4.3
   # onde gelen bildirimi + ozel sesi gostermek icin (Android kanallari)
   flutter_local_notifications: ^22.0.0
+  # FAZ 2.30 — uzak ayar: zorunlu minimum surum kapisi
+  package_info_plus: ^8.0.0   # calisan uygulamanin surumu
+  url_launcher: ^6.3.0        # GUNCELLE butonu → magaza sayfasi
 
 dev_dependencies:
   flutter_test:

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uzak Ayarlar · GolRiva</title>
+<link rel="stylesheet" href="ortak.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>if(typeof supabase==='undefined'){document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2"></scr'+'ipt>')}</script>
+<script src="ortak.js"></script>
+</head>
+<body>
+<script>
+(async function(){
+  if(!await sayfaKur({sayfa:'uzak', baslik:'Uzak Ayarlar',
+    alt:'Zorunlu minimum sürüm, bakım modu ve özellik anahtarları — istemciler açılışta okur'})) return;
+  var G = document.getElementById('govde');
+
+  // anahtar tanımları: tür + etiket + ipucu (deger metin saklanır)
+  var TANIM = [
+    ['min_surum_android','surum','Android minimum sürüm','Altındaki istemciler mağazaya yönlendirilir (örn. 1.0.10)'],
+    ['min_surum_ios','surum','iOS minimum sürüm','Altındaki istemciler App Store\'a yönlendirilir'],
+    ['bakim_modu','bool','Bakım modu','AÇIK: tüm istemciler bakım ekranında bekler (oyun yok)'],
+    ['bakim_mesaj','metin','Bakım mesajı','Bakım ekranında gösterilen metin'],
+    ['reklam_acik','bool','Reklamlar','KAPALI: ödüllü + geçiş reklamları tamamen durur'],
+    ['gecis_reklam_yuzde','sayi','Geçiş reklamı ihtimali (%)','Maç sonunda ödüllü izlenmediyse geçiş reklamı çıkma ihtimali (0-100)'],
+    ['magaza_acik','bool','Riva paketleri satışı','KAPALI: mağazada paketler yerine "geçici kapalı" notu'],
+    ['arkadas_ligi_acik','bool','Arkadaş Ligi','KAPALI: lig ekranı "geçici kapalı" notu gösterir'],
+    ['magaza_url_android','metin','Mağaza bağlantısı (Android)','GÜNCELLE butonunun açtığı Play sayfası'],
+    ['magaza_url_ios','metin','Mağaza bağlantısı (iOS)','GÜNCELLE butonunun açtığı App Store sayfası'],
+  ];
+  var deger = {};
+
+  function alan(t){
+    var k=t[0], tur=t[1], v = deger[k]===undefined ? '' : deger[k];
+    if(tur==='bool'){
+      var acik = (v==='1'||v==='true');
+      return '<button class="kucuk '+(acik?'ana':'tehlike')+'" onclick="bayrak(\''+k+'\','+(acik?0:1)+')">'+
+        (acik?'AÇIK — kapat':'KAPALI — aç')+'</button>';
+    }
+    if(tur==='sayi'){
+      return '<input id="a-'+k+'" type="number" min="0" max="100" value="'+E(v)+'" style="width:90px"> '+
+        '<button class="kucuk ana" onclick="kaydet(\''+k+'\')">Kaydet</button>';
+    }
+    return '<input id="a-'+k+'" value="'+E(v)+'" style="min-width:'+(tur==='surum'?'110px':'320px')+'"> '+
+      '<button class="kucuk ana" onclick="kaydet(\''+k+'\')">Kaydet</button>';
+  }
+
+  async function yukle(){
+    try{
+      var r = hataAt(await sb.from('uzak_ayarlar').select('anahtar, deger, guncel_at'));
+      deger = {}; var ts = {};
+      (r.data||[]).forEach(function(s){ deger[s.anahtar]=s.deger; ts[s.anahtar]=s.guncel_at; });
+    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_30_uzak_ayar.sql', e); return; }
+
+    var bakim = (deger.bakim_modu==='1'||deger.bakim_modu==='true');
+    G.innerHTML =
+      (bakim ? '<div class="kart" style="margin-bottom:14px;border-color:var(--kotu)"><div class="kart-govde">'+
+         '<b style="color:var(--kotu)">BAKIM MODU AÇIK</b> — şu an hiçbir istemci oyuna giremiyor.</div></div>' : '')+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>Sürüm kapısı & bakım</h2>'+
+        '<span class="ipucu">değişiklik, istemcilerin bir sonraki açılışında etkili olur</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Ayar</th><th>Değer</th><th>Açıklama</th><th>Son değişim</th></tr></thead><tbody>'+
+        TANIM.slice(0,4).map(function(t){ return satir(t, ts); }).join('')+
+        '</tbody></table></div></div></div>'+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>Özellik anahtarları</h2>'+
+        '<span class="ipucu">patlayan bir özelliği yeni build beklemeden buradan kapat</span></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Ayar</th><th>Değer</th><th>Açıklama</th><th>Son değişim</th></tr></thead><tbody>'+
+        TANIM.slice(4,8).map(function(t){ return satir(t, ts); }).join('')+
+        '</tbody></table></div></div></div>'+
+      '<div class="kart"><div class="kart-bas"><h2>Mağaza bağlantıları</h2></div>'+
+        '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
+        '<th>Ayar</th><th>Değer</th><th>Açıklama</th><th>Son değişim</th></tr></thead><tbody>'+
+        TANIM.slice(8).map(function(t){ return satir(t, ts); }).join('')+
+        '</tbody></table></div></div>'+
+        '<div class="kart-govde" style="border-top:1px solid var(--cizgi)"><span class="ipucu">'+
+        'Kural: yeni oyun/kural yayınında önce mağaza sürümünü çıkar, yayıldıktan sonra minimum sürümü yükselt; '+
+        'Shorebird yamaları sürüm numarasını DEĞİŞTİRMEZ — yama için minimum sürüme dokunma.</span></div></div>';
+  }
+  function satir(t, ts){
+    return '<tr><td data-bas="Ayar"><b>'+E(t[2])+'</b><div class="mono" style="opacity:.5;font-size:11px">'+E(t[0])+'</div></td>'+
+      '<td data-bas="Değer">'+alan(t)+'</td>'+
+      '<td data-bas="Açıklama" style="max-width:300px;color:var(--metin-3);font-size:12px">'+E(t[3])+'</td>'+
+      '<td data-bas="Son" class="mono">'+(ts[t[0]]?T(ts[t[0]]):'—')+'</td></tr>';
+  }
+
+  async function yaz(k, v, mesaj){
+    if(await dene(async function(){
+      hataAt(await sb.from('uzak_ayarlar').upsert({anahtar:k, deger:String(v)}));
+    }, mesaj)) yukle();
+  }
+  window.kaydet = function(k){
+    var v = document.getElementById('a-'+k).value.trim();
+    if(k.indexOf('min_surum')===0 && !/^\d+\.\d+\.\d+$/.test(v)){ toast('Sürüm a.b.c biçiminde olmalı (örn. 1.0.10)', true); return; }
+    if(k==='gecis_reklam_yuzde'){ var n=parseInt(v,10); if(isNaN(n)||n<0||n>100){ toast('0-100 arası bir sayı gir', true); return; } v=String(n); }
+    if(k.indexOf('min_surum')===0 && !confirm('Bu sürümün altındaki TÜM kullanıcılar mağazaya yönlendirilecek ve oynayamayacak. Emin misin?')) return;
+    yaz(k, v, k+' kaydedildi');
+  };
+  window.bayrak = function(k, v){
+    if(k==='bakim_modu' && v===1 && !confirm('Bakım modu AÇILACAK: tüm kullanıcılar oyundan çıkar. Emin misin?')) return;
+    yaz(k, v, k+(v?' AÇILDI':' KAPATILDI'));
+  };
+
+  yukle();
+})();
+</script>
+</body>
+</html>

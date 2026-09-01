@@ -30,7 +30,6 @@ class _AuthEkraniState extends State<AuthEkrani> {
   final kod = TextEditingController();
   final kullaniciAdi = TextEditingController();
   final referans = TextEditingController();
-  String? hata, bilgi;
   bool mesgul = false;
 
   @override
@@ -62,11 +61,42 @@ class _AuthEkraniState extends State<AuthEkrani> {
     }
   }
 
-  void _gec(_Adim a) => setState(() {
-        adim = a;
-        hata = null;
-        bilgi = null;
-      });
+  void _gec(_Adim a) => setState(() => adim = a);
+
+  /// KULLANICI İSTEĞİ: uyarılar ekranın altında (klavyenin arkasında)
+  /// kalmasın — hata ve bilgi mesajları MODAL pencerede gösterilir.
+  void _uyari(String mesaj, {bool hataMi = false}) {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        backgroundColor: GolrivaColors.card,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+                color: hataMi
+                    ? GolrivaColors.bad.withValues(alpha: .5)
+                    : GolrivaColors.edge)),
+        title: Text(hataMi ? 'Olmadı' : 'Bilgi',
+            style: GoogleFonts.bigShouldersDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.5,
+                color: hataMi ? GolrivaColors.bad : GolrivaColors.goldHi)),
+        content: Text(mesaj,
+            style: GoogleFonts.figtree(
+                fontSize: 13.5, color: GolrivaColors.ink, height: 1.5)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dctx),
+              child: const Text('TAMAM',
+                  style: TextStyle(
+                      color: GolrivaColors.goldHi,
+                      fontWeight: FontWeight.w800))),
+        ],
+      ),
+    );
+  }
 
   /// Oturum acildi: profil varsa ana sayfa, yoksa kullanici adi secimi.
   Future<void> _oturumSonrasi() async {
@@ -86,16 +116,13 @@ class _AuthEkraniState extends State<AuthEkrani> {
       (_) => false);
 
   Future<void> _calistir(Future<void> Function() is_) async {
-    setState(() {
-      mesgul = true;
-      hata = null;
-    });
+    setState(() => mesgul = true);
     try {
       await is_();
     } catch (e, s) {
       final m = '$e';
       if (mounted) {
-        setState(() => hata = e is String
+        _uyari(e is String
             ? e // bilerek firlatilan kullanici mesaji (dogrulama)
             : m.contains('Invalid login')
                 ? 'E-posta ya da şifre hatalı.'
@@ -108,7 +135,8 @@ class _AuthEkraniState extends State<AuthEkrani> {
                             : m.contains('duplicate') || m.contains('23505')
                                 ? 'Bu kullanıcı adı alınmış — başka bir tane dene.'
                                 : temizMesaj('auth._calistir', e,
-                                    'İşlem şu an tamamlanamadı — tekrar dene.', s));
+                                    'İşlem şu an tamamlanamadı — tekrar dene.', s),
+            hataMi: true);
       }
     } finally {
       if (mounted) setState(() => mesgul = false);
@@ -130,8 +158,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
             await servis.epostaKayit(eposta.text.trim(), sifre.text);
         if (sonuc == 'onay') {
           _gec(_Adim.giris);
-          setState(() => bilgi =
-              'Onay e-postası gönderildi — kutunu kontrol et, onaylayıp giriş yap.');
+          _uyari('Onay e-postası gönderildi — kutunu kontrol et, onaylayıp giriş yap.');
           return;
         }
         await servis.profilOlustur(kullaniciAdi.text.trim());
@@ -140,7 +167,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
       });
 
   /// İsteğe bağlı referans kodu — profil açıldıktan SONRA denenir,
-  /// başarısızlık girişi asla engellemez (sonuç SnackBar ile bildirilir).
+  /// başarısızlık girişi asla engellemez (sonuç modal uyarıyla bildirilir).
   Future<void> _referansUygula() async {
     final k = referans.text.trim();
     if (k.isEmpty || !mounted) return;
@@ -159,10 +186,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
               : temizMesaj('auth._referans', e,
                   'Referans kodu şu an uygulanamadı.', s);
     }
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(mesaj)));
-    }
+    if (mounted) _uyari(mesaj);
   }
 
   Future<void> _misafir() => _calistir(() async {
@@ -173,8 +197,7 @@ class _AuthEkraniState extends State<AuthEkrani> {
   Future<void> _kodGonder() => _calistir(() async {
         await servis.sifreKoduGonder(eposta.text.trim());
         _gec(_Adim.kod);
-        setState(() =>
-            bilgi = 'E-postana 6 haneli kod gönderildi (gelmezse spam kutusuna bak).');
+        _uyari('E-postana 6 haneli kod gönderildi (gelmezse spam kutusuna bak).');
       });
 
   Future<void> _sifreYenile() => _calistir(() async {
@@ -257,22 +280,6 @@ class _AuthEkraniState extends State<AuthEkrani> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: _adimIcerik()),
               ),
-              if (bilgi != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(bilgi!,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.figtree(
-                          fontSize: 12, color: GolrivaColors.ok)),
-                ),
-              if (hata != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Text(hata!,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.figtree(
-                          fontSize: 12, color: GolrivaColors.bad)),
-                ),
             ],
           ),
         ),

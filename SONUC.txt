@@ -1,0 +1,3 @@
+sonuc=success
+commit=fc4d663f9781d2038a7134a5d05802b512270edc
+run=33550621299 no=64

@@ -1,0 +1,278 @@
+
+::group::✅ Passing tests
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: veri bütünlüğü: 13k+ oyuncu, 29 kulüp, 6 lig
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: çapalar: Messi 170, CR7 188, Crouch 201
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: çapa: Alex (Alexsandro de Souza) Fenerbahçe havuzunda
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: BOS_CEZA veri tavanının üstünde (boş slot avantaj olamaz)
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: arama: min 3 harf kuralı
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: öncelik her turda el değiştirir
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: sebepli engeller: Alındı / dolu / Boy verisi yok
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: motor UI güvensiz: havuz dışı / boysuz / tekrar seçim reddedilir
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: tam oyun simülasyonu: formasyon limitleri + kazanan kısa olan
+✅ /home/runner/work/golriva/golriva/test/engine_test.dart: süre dolunca boş slot cezası toplama işlenir
+✅ /home/runner/work/golriva/golriva/test/online_test.dart: dart-define verilmeden Supabase yapilandirilmamis sayilir
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.surumKiyasla sayısal kıyas (sözlük değil): 1.0.10 > 1.0.9
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.surumKiyasla eşitlik ve eksik parça (1.1 == 1.1.0)
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.surumKiyasla +build eki yok sayılır
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.uygula metin bayraklar ve sınırlar
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.uygula boş/bozuk değer varsayılanı bozmaz
+✅ /home/runner/work/golriva/golriva/test/uzak_ayar_test.dart: UzakAyar.uygula sürüm kapısı: mevcut < min → eski
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? seed determinizmi + 2 FARKLI temiz gizem + kulup
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? kulup ipucu: bulunursa 8, yoksa 7 ipucu; liste tutarli
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? ipucu ac: soz rakibe gecer, puan azalir; ipucu tavani
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? dogru tahmin turu kapatir ve erken bilene cok puan yazar
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? yanlis tahmin kilitler; rakip solo; ikisi de yanlissa puansiz
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? sure dolumu: ipucu varsa acar, yoksa pas=kilit
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: KIM BU? tam mac simulasyonu x10 seed: skor tutarliligi
+✅ /home/runner/work/golriva/golriva/test/online_test.dart: cevrimdisi derlemede iskelet AGA CIKMADAN calisir
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: DAHA MI YUKSEK? seed determinizmi + her metrik tam 2 kez + gecerli sorular
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: DAHA MI YUKSEK? v2 es zamanli: iki taraf AYNI soruyu cevaplar, ikisi bitince ilerler
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: DAHA MI YUKSEK? tam mac simulasyonu x10 seed (es zamanli)
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SIRALA BAKALIM seed determinizmi + 4 farkli metrik + benzersiz degerler
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SIRALA BAKALIM v2 es zamanli: iki taraf AYNI turu siralar, ikisi bitince ilerler
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SIRALA BAKALIM tam mac simulasyonu x10 seed (es zamanli)
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: ORTAK KULUP AVI seed determinizmi + 5 gecerli cift (kesisim >= esik)
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: ORTAK KULUP AVI dogru isim sozu devreder; yanlis isim turu RAKIBE verir
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: ORTAK KULUP AVI ortak havuzu kurutan turu alir
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: ORTAK KULUP AVI v2 YARIS modu: yanlis kilitler, ikisi de yanilirsa tur puansiz
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: ORTAK KULUP AVI sure dolumu turu rakibe verir; tam mac x8 seed
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SL GECESI seed determinizmi + 3 GOL + 2 ASIST
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SL GECESI CAPA: CR7 140 SL golu, 50 SL asisti
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SL GECESI sec kategoriye gore katki ekler; alinan tekrar secilemez
+✅ /home/runner/work/golriva/golriva/test/faz218_motorlar_test.dart: SL GECESI tam mac simulasyonu x10 seed: etap sayimi + kazanan
+✅ /home/runner/work/golriva/golriva/test/online_test.dart: DETERMINIZM (online senkronun temeli) ayni seed → ayni kurulum (tum motorlar)
+✅ /home/runner/work/golriva/golriva/test/online_test.dart: DETERMINIZM (online senkronun temeli) hamle aynasi: iki motor ayni akisla ayni sonuca ulasir
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I seed determinizmi: ayni seed → ayni hedef + ayni ilk sira
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I hedef: top-6 toplaminin %8-45 araliginda tam onluk
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I hedefi asan YANAR: mac ANINDA biter, diger taraf direkt kazanir
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I DUR: duran bir daha oynayamaz, diger solo devam eder
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I emniyet tavani: 8 secimde otomatik DUR
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I kazanan kurali: yanan direkt kaybeder; saglamlarda mutlak yakin
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I adaylar: kor meta (deger sizmaz motor katindan), Alindi nedeni
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: BONSERVIS 21'I tam mac simulasyonu x15 seed: invaryantlar
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI seed determinizmi: ayni seed → ayni kulup sirasi
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI v4.1: draft alias alani okunur (CR7 takma adiyla aranabilir)
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI 6 tur 6 FARKLI kulup; snake oncelik degisimi
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI veto akisi: sec → pencere → vetoYap yakar, ayni secen tekrar
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI gec: bekleyen secim kesinlesir, tur ilerler
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI veto hakki bitince secimler pencereye ugramadan kesinlesir
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI sureDoldu (secim asamasi): etap bos gecer
+✅ /home/runner/work/golriva/golriva/test/faz217_motorlar_test.dart: VETO DRAFTI tam draft simulasyonu x12 seed: invaryantlar
+✅ /home/runner/work/golriva/golriva/test/gorsel_varlik_test.dart: marka SVG dosyalari mevcut ve gecerli
+✅ /home/runner/work/golriva/golriva/test/gorsel_varlik_test.dart: 10 oyun ikonu mevcut, 24x24 ve stroke 1.8 kuralinda
+✅ /home/runner/work/golriva/golriva/test/gorsel_varlik_test.dart: 14 arayuz ikonu (tasarim seti) mevcut ve 24x24 kuralinda
+✅ /home/runner/work/golriva/golriva/test/gorsel_varlik_test.dart: iOS uygulama ikonlari mevcut, dogru boyutta
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: CAPA: Mbappe 1998-12-20 → 28 Tem 2026'da 27,6 yas
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: 29 elit kulup; Wolfsburg YOK (kullanici karari)
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: sebepli engeller: pasif / dogum tarihsiz / mevki dolu / alinan
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: formasyon: 1K-2D-2O-1F zorunlu, fazlasi "dolu"
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: oncelik el degistirir: tur1 O1, tur2 O2
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: tam oyun simulasyonu x15 seed: invaryantlar + 60 ceza
+✅ /home/runner/work/golriva/golriva/test/genc_engine_test.dart: 6 tur = 6 lig (rastgele sira), havuzlar kurulabilir
+✅ /home/runner/work/golriva/golriva/test/gorsel_varlik_test.dart: iskelet: logo + arayuz SVG ikonlari cizilir
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KOR AV (Bonservis + Sari Kart) CAPA: Mbappe 180 M€, CR7 127 sari kart
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KOR AV (Bonservis + Sari Kart) hedef v3: tek genis aralik %3-65, tam onluk, erisilebilir
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KOR AV (Bonservis + Sari Kart) tam oyun simulasyonu x12 seed: invaryantlar
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KOR AV (Bonservis + Sari Kart) kap-kac + kor meta + TR arama
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: SERBEST KADRO (Mac + Milli Gol) CAPA: Messi 948 mac, CR7 146 milli gol
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: SERBEST KADRO (Mac + Milli Gol) milligol formasyonunda KALECI YOK
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: SERBEST KADRO (Mac + Milli Gol) tam oyun simulasyonu x10 seed (mac): YUKSEK kazanir
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KUPA DRAFTI 6 tur 6 FARKLI kulup; havuz disi red
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KUPA DRAFTI tam oyun simulasyonu x10 seed: YUKSEK kupa kazanir
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: BAYRAK YARISI her turda gecerli en az 3 cevap var; ulke+kulup tekrari yok
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: BAYRAK YARISI kap → yanlis secim serbest ama tur kazandirmaz → pas → bos tur
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: BAYRAK YARISI dogru cevap turu alir; 5 tur sonunda kazanan dogru
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KARIYER IKIZI referans kurallari: ilk 600, 100+ lig maci, sari verisi var
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KARIYER IKIZI yakin olan puani alir; referans yazilamaz
+✅ /home/runner/work/golriva/golriva/test/yeni_motorlar_test.dart: KARIYER IKIZI tam mac simulasyonu x8 seed: 5 soru, skor tutarli
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: CAPA: Messi/CR7 degerleri (veri asla uydurulmaz ilkesi)
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: 14 kategori var; govde/tur ayrimi dogru (MAÇI/GOLÜ iri gosterim)
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: HEDEF FORMULU v2: her kategori x her N icin erisilebilir + tam onluk
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: arama: min 3 harf, kor meta, kap-kac "Alındı"
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: TR arama: "gundogan" → İlkay Gündoğan bulunur
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: tam oyun simulasyonu x20 seed: invaryantlar
+✅ /home/runner/work/golriva/golriva/test/hedef_engine_test.dart: bitti sonrasi sec/sureDoldu etkisiz
+✅ /home/runner/work/golriva/golriva/test/tr_norm_test.dart: trNorm — Türkçe-duyarsız arama Türkçe I/İ kuralları
+✅ /home/runner/work/golriva/golriva/test/tr_norm_test.dart: trNorm — Türkçe-duyarsız arama aksan temizliği
+✅ /home/runner/work/golriva/golriva/test/tr_norm_test.dart: trNorm — Türkçe-duyarsız arama HTML norm() ile davranış eşitliği örnekleri
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok kucuk Android
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Iskelet: 4 sekme + lobide HIZLI DÜELLO ve MASALAR
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Iskelet: ARKADAŞLA → oyun secim ekrani acilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ISKELET (lobi + 4 sekme) — tum boyutlarda tasma yok tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Arkadasla: RULET + 17 oyun karti cizilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok kucuk Android
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Arkadasla: davet kur + kodla katil butonlari var
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Davet kur: oyun secimi + mod + olustur butonu
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Ligler: 7 kademe cevrimdisi yedekle cizilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARKADAŞLA OYNA — tum boyutlarda tasma yok tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Arkadaslar: cevrimdisi kibarca aciklar
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Auth: giris/kayit/misafir secenekleri cizilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Kilavuz: temel bolumler cizilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok LİGLER · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Magaza: reklam + fiyatli paketler; dokununca cokmez
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Cuzdan: sade — gecmis var, magaza/reklam/duello karti YOK
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: EN KISA KADRO
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok ARKADAŞLAR · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: KUPA DRAFTI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: EN GENÇ KADRO
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: BAYRAK YARIŞI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: HEDEFİ TUTTUR
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok DAVET KUR · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: BONSERVİS AVI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: MAÇ REKORTMENLERİ
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok KILAVUZ · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: Gecis: KARİYER İKİZİ
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: HEDEFİ TUTTUR: kor mekanik — secimden sonra deger "?" kalir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: BAYRAK YARIŞI: KAP → cevap kutusu acilir
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: SAHA GORUNUMU: bos mevkiler adlariyla sahada gorunur
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok AUTH · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/widget_test.dart: SAHA GORUNUMU: milli golde kaleci sirasi YOK
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: YENI SAYFALAR — tum boyutlarda tasma yok MAĞAZA · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN KISA KADRO · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KUPA DRAFTI · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok EN GENÇ KADRO · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BAYRAK YARIŞI · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok HEDEFİ TUTTUR · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok BONSERVİS AVI · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok SARI KART AVI · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MAÇ REKORTMENLERİ · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok MİLLİ GOL KRALLARI · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · kucuk Android
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · iPhone 14/15
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · iPhone 16 Plus
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · kucuk tablet
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: OYUN EKRANLARI — tum boyutlarda tasma yok KARİYER İKİZİ · tablet YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) EN KISA KADRO · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) EN KISA KADRO · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) KUPA DRAFTI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) KUPA DRAFTI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) EN GENÇ KADRO · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) EN GENÇ KADRO · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) HEDEFİ TUTTUR · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) HEDEFİ TUTTUR · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) BONSERVİS AVI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) BONSERVİS AVI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) SARI KART AVI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) SARI KART AVI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) MAÇ REKORTMENLERİ · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) MAÇ REKORTMENLERİ · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) MİLLİ GOL KRALLARI · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) MİLLİ GOL KRALLARI · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) KARİYER İKİZİ · iPhone SE (en kucuk)
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: ARAMA DROPDOWN acikken tasma yok (en dar + yatay) KARİYER İKİZİ · telefon YATAY
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok EN KISA KADRO
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok KUPA DRAFTI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok EN GENÇ KADRO
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok HEDEFİ TUTTUR
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok BONSERVİS AVI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok SARI KART AVI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok MAÇ REKORTMENLERİ
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok MİLLİ GOL KRALLARI
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: KLAVYE ACIK (viewInsets) tasma yok KARİYER İKİZİ
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: BAYRAK YARIŞI — KAP sonrasi cevap kutusu en dar ekranda
+✅ /home/runner/work/golriva/golriva/test/responsive_test.dart: SONUC DIYALOGU — en kucuk ekranda tasma yok
+::endgroup::
+
+🎉 273 tests passed.

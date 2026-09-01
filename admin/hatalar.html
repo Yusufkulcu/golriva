@@ -93,6 +93,7 @@
           (faz31 ? '<button class="kucuk '+(seviye==='hepsi'?'ana':'')+'" onclick="sekme(\'hepsi\')">Hepsi</button>' : '')+
           '<div class="ara-kutu" style="max-width:220px">'+IK.ara+
             '<input id="ara" placeholder="sayfa/konum filtrele…" value="'+E(sayfaFiltre)+'"></div>'+
+          '<button class="kucuk ana" onclick="raporKopyala()">Claude\'a rapor</button>'+
           (faz31 && seviye!=='hepsi' ? '<button class="kucuk" onclick="seviyeSil()">Bu seviyeyi sil</button>' : '')+
           '<button class="kucuk" onclick="temizle()">7 gün öncesini sil</button>'+
           '<button class="kucuk tehlike" onclick="tumunuSil()">Tüm hataları sil</button>'+
@@ -121,6 +122,76 @@
   }
 
   window.sekme = function(k){ seviye = k; yukle(); };
+
+  // ── CLAUDE'A RAPOR: aktif sekmedeki (ya da tum) kayitlari, sohbete
+  // yapistirilacak ozetlenmis METIN olarak panoya kopyalar. Ayni sorun
+  // gruplanir (xN), surum/platform dagilimi ve en yeni ornegin tam
+  // mesaji eklenir — teshis icin gereken her sey tek blokta.
+  window.raporKopyala = async function(){
+    var kayitlar;
+    try{
+      var q = sb.from('hata_kayitlari').select('*')
+                .order('created_at',{ascending:false}).limit(500);
+      if(seviye !== 'hepsi') q = q.eq('seviye', seviye);
+      if(sayfaFiltre) q = q.ilike('sayfa', '%'+sayfaFiltre+'%');
+      kayitlar = hataAt(await q).data || [];
+    }catch(e){ toast('Rapor alınamadı: '+(e.message||e), true); return; }
+    if(!kayitlar.length){ toast('Bu sekmede kayıt yok — rapor boş', true); return; }
+
+    function grupla(liste){
+      var g = {};
+      liste.forEach(function(x){
+        var a = x.sayfa+'§'+String(x.mesaj).split('\n')[0].slice(0,120);
+        if(!g[a]) g[a] = {n:0, x:x, surum:{}, platform:{}, ilk:x.created_at, son:x.created_at};
+        g[a].n++;
+        g[a].surum[x.surum||'?']=1; g[a].platform[x.platform||'?']=1;
+        if(x.created_at < g[a].ilk) g[a].ilk = x.created_at;
+        if(x.created_at > g[a].son){ g[a].son = x.created_at; g[a].x = x; }
+      });
+      return Object.keys(g).map(function(a){ return g[a]; })
+               .sort(function(p,q){ return q.n-p.n; });
+    }
+    function bolum(ad, liste){
+      if(!liste.length) return '';
+      var m = '\n## '+ad+' ('+liste.length+' kayıt, '+grupla(liste).length+' farklı sorun)\n';
+      grupla(liste).forEach(function(g, i){
+        m += '\n### '+(i+1)+') '+g.x.sayfa+'  ×'+g.n+'\n'+
+          '- sürüm: '+Object.keys(g.surum).join(', ')+' · platform: '+Object.keys(g.platform).join(', ')+'\n'+
+          '- ilk: '+g.ilk.slice(0,16).replace('T',' ')+' · son: '+g.son.slice(0,16).replace('T',' ')+
+          (g.x.user_id ? ' · kullanıcı: '+(adlar[g.x.user_id]&&adlar[g.x.user_id].ad||g.x.user_id.slice(0,8)) : ' · oturumsuz')+'\n'+
+          '```\n'+String(g.x.mesaj).slice(0,700)+'\n```\n';
+      });
+      return m;
+    }
+
+    var simdi = new Date().toLocaleString('tr-TR');
+    var rapor = '# GolRiva hata raporu — '+simdi+
+      (sayfaFiltre ? ' · filtre: '+sayfaFiltre : '')+'\n';
+    if(seviye === 'hepsi'){
+      ['kritik','hata','uyari','bilgi'].forEach(function(k){
+        rapor += bolum((SEV[k]||[k])[0].toUpperCase(),
+                       kayitlar.filter(function(x){return x.seviye===k;}));
+      });
+      // seviye kolonu yoksa (faz2_31 oncesi) hepsi tek bolum
+      if(rapor.length < 80) rapor += bolum('KAYITLAR', kayitlar);
+    } else {
+      rapor += bolum((SEV[seviye]||[seviye])[0].toUpperCase(), kayitlar);
+    }
+    rapor += '\n(son 500 kayıt üzerinden; admin panel → Hata Kayıtları)\n';
+
+    try{
+      await navigator.clipboard.writeText(rapor);
+      toast('Rapor panoya kopyalandı — Claude sohbetine yapıştır');
+    }catch(e){
+      // pano izni yoksa dosya olarak indir
+      var b = new Blob([rapor], {type:'text/plain;charset=utf-8'});
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = 'golriva_hata_raporu.txt';
+      a.click(); URL.revokeObjectURL(a.href);
+      toast('Pano kullanılamadı — rapor dosya olarak indirildi');
+    }
+  };
 
   window.temizle = async function(){
     if(!confirm('7 günden eski hata kayıtları silinsin mi?')) return;

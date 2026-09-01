@@ -9,7 +9,7 @@
 --   * çağıran maçın katılımcısı ve 'hazir' sinyalini göndermiş,
 --   * rakibin 'hazir' sinyali YOK,
 --   * bekleme süresi doldu: maç oluşturulduğundan / çağıranın hazır
---     anından beri en az 60 sn geçmiş (sunucu saati — istemci saati
+--     anından beri en az 15 sn geçmiş (sunucu saati — istemci saati
 --     ileri alınarak kandırılamaz),
 --   → maç çağıranın lehine hükmen kapanır (mac_sonuc → seri akışı).
 -- faz2_2 üzerine, idempotent.
@@ -35,7 +35,7 @@ begin
     where mac_id = mid and user_id = rakip and icerik->>'tip' = 'hazir';
   if rakip_hazir is not null then raise exception 'rakip bağlandı'; end if;
 
-  if now() < greatest(mc.created_at, benim_hazir) + interval '60 seconds' then
+  if now() < greatest(mc.created_at, benim_hazir) + interval '15 seconds' then
     raise exception 'süre dolmadı';
   end if;
 

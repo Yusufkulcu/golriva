@@ -216,9 +216,9 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
   bool rakipCekildi = false;
   bool cekildim = false; // VAZGEÇ onaylandi — ARTIK MACA GIRILMEZ
   bool hedefAraniyor = false;
-  // FAZ 2.29 — rakip gelmedi hakemi: rakip 60 sn içinde 'hazir' demezse
+  // FAZ 2.29 — rakip gelmedi hakemi: rakip 15 sn içinde 'hazir' demezse
   // sunucu maçı BENİM lehime hükmen kapatır (bekleyen mağdur olmaz).
-  static const int rakipBeklemeSn = 60;
+  static const int rakipBeklemeSn = 15;
   int rakipKalanSn = rakipBeklemeSn;
   bool rakipGelmedi = false; // sunucu hükmen verdi — sonuç butonları
   bool hukmenSoruluyor = false;

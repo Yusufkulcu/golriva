@@ -17,21 +17,45 @@
   document.getElementById('ust-sag').innerHTML = tazeleGostergeHtml();
   var G = document.getElementById('govde');
   var sayfaFiltre = '';
+  var seviye = 'kritik';   // aktif sekme: kritik | hata | uyari | bilgi | hepsi
+
+  var SEV = {
+    kritik:['Kritik','kotu','çökme / kod hatası — önce bunlar'],
+    hata:  ['Hata','uyari','işlev başarısız'],
+    uyari: ['Uyarı','notr','kullanıcı / cihaz kaynaklı (saat, boş alan, şifre)'],
+    bilgi: ['Bilgi','iyi','bilinen gürültü (ağ, kapanmış maç, reklam stoku)'],
+  };
+
+  async function sayim(sev, bugunISO){
+    var q = sb.from('hata_kayitlari').select('id',{count:'exact',head:true});
+    if(sev) q = q.eq('seviye', sev);
+    if(bugunISO) q = q.gte('created_at', bugunISO);
+    return hataAt(await q).count || 0;
+  }
 
   async function yukle(){
     var bugunISO = new Date(new Date().setHours(0,0,0,0)).toISOString();
-    var kayitlar, bugun = 0;
+    var kayitlar, say = {}, bugun = {}, faz31 = true;
     try{
       var q = sb.from('hata_kayitlari').select('*').order('created_at',{ascending:false}).limit(150);
+      if(seviye !== 'hepsi') q = q.eq('seviye', seviye);
       if(sayfaFiltre) q = q.ilike('sayfa', '%'+sayfaFiltre+'%');
       kayitlar = hataAt(await q).data || [];
-      bugun = hataAt(await sb.from('hata_kayitlari').select('id',{count:'exact',head:true})
-                .gte('created_at', bugunISO)).count || 0;
-    }catch(e){ G.innerHTML = sunucuEksik('supabase/faz2_8_hata.sql', e); Tazele.durdur(); return; }
+      for(var k in SEV){ say[k] = await sayim(k); bugun[k] = await sayim(k, bugunISO); }
+    }catch(e){
+      // seviye kolonu yoksa (faz2_31 çalışmamış) eski görünüme düş
+      if(String(e.message||e).indexOf('seviye')>=0){
+        faz31 = false;
+        try{
+          kayitlar = hataAt(await sb.from('hata_kayitlari').select('*')
+                       .order('created_at',{ascending:false}).limit(150)).data || [];
+        }catch(e2){ G.innerHTML = sunucuEksik('supabase/faz2_8_hata.sql', e2); Tazele.durdur(); return; }
+      } else { G.innerHTML = sunucuEksik('supabase/faz2_8_hata.sql', e); Tazele.durdur(); return; }
+    }
 
     await adlariYukle(kayitlar.filter(function(x){return x.user_id;}).map(function(x){return x.user_id;}));
 
-    // aynı sorunu grupla
+    // aynı sorunu grupla (bu sekmede)
     var sayac = {}, ilkSatir = {};
     kayitlar.forEach(function(x){
       var a = x.sayfa+'§'+String(x.mesaj).split('\n')[0];
@@ -40,18 +64,22 @@
     var gruplar = Object.keys(sayac).map(function(a){ return {a:a, n:sayac[a], x:ilkSatir[a]}; })
                     .sort(function(p,q){ return q.n-p.n; }).slice(0,6);
 
+    var sekmeler = faz31 ? Object.keys(SEV).map(function(k){
+      var s=SEV[k];
+      return '<div class="olcut" style="cursor:pointer;'+(seviye===k?'outline:2px solid var(--vurgu);':'')+'" onclick="sekme(\''+k+'\')">'+
+        '<div class="etiket"><span class="rz '+s[1]+'">'+s[0]+'</span></div>'+
+        '<div class="deger">'+S(say[k])+'</div>'+
+        '<div class="not">bugün '+S(bugun[k])+' · '+E(s[2])+'</div></div>';
+    }).join('') : '';
+
     G.innerHTML =
-      '<div class="izgara k4" style="margin-bottom:14px">'+
-        '<div class="olcut"><div class="etiket">Bugün</div><div class="deger">'+S(bugun)+'</div>'+
-          '<div class="not '+(bugun>0?'dusus':'artis')+'">'+(bugun>0?'incelenmeli':'temiz')+'</div></div>'+
-        '<div class="olcut"><div class="etiket">Son kayıtlar</div><div class="deger">'+kayitlar.length+'</div></div>'+
-        '<div class="olcut"><div class="etiket">Farklı sorun</div><div class="deger">'+Object.keys(sayac).length+'</div></div>'+
-        '<div class="olcut"><div class="etiket">Etkilenen kullanıcı</div><div class="deger">'+
-          Object.keys(kayitlar.reduce(function(t,x){ if(x.user_id) t[x.user_id]=1; return t; },{})).length+'</div></div>'+
-      '</div>'+
+      (faz31 ? '<div class="izgara k4" style="margin-bottom:14px">'+sekmeler+'</div>'
+             : '<div class="kart" style="margin-bottom:14px"><div class="kart-govde">Seviye ayrımı için '+
+               '<code>supabase/faz2_31_hata_seviye.sql</code> çalıştırılmalı — şimdilik tüm kayıtlar tek listede.</div></div>')+
 
       (gruplar.length ?
-      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>En sık tekrarlayanlar</h2>'+
+      '<div class="kart" style="margin-bottom:14px"><div class="kart-bas"><h2>En sık tekrarlayanlar'+
+        (faz31 && seviye!=='hepsi' ? ' — '+E(SEV[seviye][0]) : '')+'</h2>'+
         '<span class="ipucu">önce bunları çöz</span></div><div class="kart-govde">'+
         gruplar.map(function(g){
           return '<div class="ozet-satir"><span><b>'+E(g.x.sayfa)+'</b><br>'+
@@ -59,24 +87,30 @@
                  '<span><span class="rz '+(g.n>2?'kotu':'uyari')+'">×'+g.n+'</span></span></div>';
         }).join('')+'</div></div>' : '')+
 
-      '<div class="kart"><div class="kart-bas"><h2>Kayıtlar</h2>'+
-        '<div class="sag">'+
+      '<div class="kart"><div class="kart-bas"><h2>Kayıtlar'+
+        (faz31 ? ' · <span class="rz '+(seviye==='hepsi'?'notr':SEV[seviye][1])+'">'+(seviye==='hepsi'?'Hepsi':SEV[seviye][0])+'</span>' : '')+'</h2>'+
+        '<div class="sag" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+          (faz31 ? '<button class="kucuk '+(seviye==='hepsi'?'ana':'')+'" onclick="sekme(\'hepsi\')">Hepsi</button>' : '')+
           '<div class="ara-kutu" style="max-width:220px">'+IK.ara+
             '<input id="ara" placeholder="sayfa/konum filtrele…" value="'+E(sayfaFiltre)+'"></div>'+
-          '<button class="kucuk tehlike" onclick="temizle()">7 gün öncesini sil</button>'+
+          (faz31 && seviye!=='hepsi' ? '<button class="kucuk" onclick="seviyeSil()">Bu seviyeyi sil</button>' : '')+
+          '<button class="kucuk" onclick="temizle()">7 gün öncesini sil</button>'+
+          '<button class="kucuk tehlike" onclick="tumunuSil()">Tüm hataları sil</button>'+
         '</div></div>'+
         '<div class="kart-govde sifir"><div class="tablo-sar"><table class="duyarli"><thead><tr>'+
-        '<th>Tarih</th><th>Kullanıcı</th><th>Konum</th><th>Teknik mesaj</th><th>Sürüm</th><th>Platform</th>'+
+        '<th>Tarih</th>'+(faz31?'<th>Seviye</th>':'')+'<th>Kullanıcı</th><th>Konum</th><th>Teknik mesaj</th><th>Sürüm</th><th>Platform</th>'+
         '</tr></thead><tbody>'+
         (kayitlar.length ? kayitlar.map(function(x){
+          var sv = SEV[x.seviye] || ['?','notr',''];
           return '<tr><td data-bas="Tarih" class="mono">'+T(x.created_at)+'</td>'+
+            (faz31 ? '<td data-bas="Seviye"><span class="rz '+sv[1]+'">'+sv[0]+'</span></td>' : '')+
             '<td data-bas="Kullanıcı">'+(x.user_id ? kisiHtml(x.user_id) : '<span class="mono">oturumsuz</span>')+'</td>'+
             '<td data-bas="Konum"><b class="mono" style="color:var(--metin)">'+E(x.sayfa)+'</b></td>'+
             '<td data-bas="Mesaj" style="max-width:380px"><div class="mono" style="white-space:pre-wrap;word-break:break-word">'+
               E(x.mesaj)+'</div></td>'+
             '<td data-bas="Sürüm" class="mono">'+E(x.surum||'—')+'</td>'+
             '<td data-bas="Platform"><span class="rz notr">'+E(x.platform||'—')+'</span></td></tr>';
-        }).join('') : '<tr><td colspan="6">'+bosDurum('Hata kaydı yok — tertemiz')+'</td></tr>')+
+        }).join('') : '<tr><td colspan="7">'+bosDurum('Bu sekmede kayıt yok — tertemiz')+'</td></tr>')+
         '</tbody></table></div></div></div>';
 
     var zaman=null;
@@ -86,12 +120,28 @@
     });
   }
 
+  window.sekme = function(k){ seviye = k; yukle(); };
+
   window.temizle = async function(){
     if(!confirm('7 günden eski hata kayıtları silinsin mi?')) return;
     var sinir = new Date(Date.now()-7*24*3600*1000).toISOString();
     if(await dene(async function(){
       hataAt(await sb.from('hata_kayitlari').delete().lt('created_at', sinir));
     }, 'Eski kayıtlar silindi')) yukle();
+  };
+  window.seviyeSil = async function(){
+    var ad = (SEV[seviye]||['?'])[0];
+    if(!confirm('"'+ad+'" seviyesindeki TÜM kayıtlar silinsin mi?')) return;
+    if(await dene(async function(){
+      hataAt(await sb.from('hata_kayitlari').delete().eq('seviye', seviye));
+    }, ad+' kayıtları silindi')) yukle();
+  };
+  window.tumunuSil = async function(){
+    if(!confirm('TÜM hata kayıtları kalıcı olarak silinecek. Emin misin?')) return;
+    if(prompt('Onaylamak için SIL yaz:') !== 'SIL'){ toast('Onay eşleşmedi, iptal', true); return; }
+    if(await dene(async function(){
+      hataAt(await sb.from('hata_kayitlari').delete().gte('id', 0));
+    }, 'Tüm hata kayıtları silindi')) yukle();
   };
 
   Tazele.baslat(yukle, 30000);

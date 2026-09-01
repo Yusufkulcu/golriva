@@ -124,7 +124,9 @@ class _AuthEkraniState extends State<AuthEkrani> {
       if (mounted) {
         _uyari(e is String
             ? e // bilerek firlatilan kullanici mesaji (dogrulama)
-            : m.contains('Invalid login')
+            : m.contains('issued at future')
+                ? saatUyarisi // cihaz saati ileri (hata kayıtları)
+                : m.contains('Invalid login')
                 ? 'E-posta ya da şifre hatalı.'
                 : m.contains('already registered')
                     ? 'Bu e-posta zaten kayıtlı — GİRİŞ YAP\'ı dene.'
@@ -143,12 +145,25 @@ class _AuthEkraniState extends State<AuthEkrani> {
     }
   }
 
+  /// Alan doğrulama (hata kayıtları: 'missing email', 'requires token' —
+  /// sunucuya boş alan gitmesin, kullanıcı anlamlı mesaj görsün).
+  void _epostaGerekli() {
+    final e = eposta.text.trim();
+    if (e.isEmpty || !e.contains('@') || !e.contains('.')) {
+      throw 'Geçerli bir e-posta adresi gir.';
+    }
+  }
+
   Future<void> _giris() => _calistir(() async {
+        _epostaGerekli();
+        if (sifre.text.isEmpty) throw 'Şifreni gir.';
         await servis.epostaGiris(eposta.text.trim(), sifre.text);
         await _oturumSonrasi();
       });
 
   Future<void> _kayit() => _calistir(() async {
+        _epostaGerekli();
+        if (sifre.text.length < 6) throw 'Şifre en az 6 karakter olmalı.';
         if (sifre.text != sifre2.text) throw 'Şifreler aynı değil.';
         if (kullaniciAdi.text.trim().length < 3 ||
             kullaniciAdi.text.trim().length > 14) {
@@ -195,12 +210,15 @@ class _AuthEkraniState extends State<AuthEkrani> {
       });
 
   Future<void> _kodGonder() => _calistir(() async {
+        _epostaGerekli();
         await servis.sifreKoduGonder(eposta.text.trim());
         _gec(_Adim.kod);
         _uyari('E-postana 6 haneli kod gönderildi (gelmezse spam kutusuna bak).');
       });
 
   Future<void> _sifreYenile() => _calistir(() async {
+        if (kod.text.trim().length < 6) throw 'E-postana gelen 6 haneli kodu gir.';
+        if (sifre.text.length < 6) throw 'Yeni şifre en az 6 karakter olmalı.';
         await servis.sifreSifirla(
             eposta.text.trim(), kod.text, sifre.text);
         await _oturumSonrasi();

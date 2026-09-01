@@ -60,6 +60,14 @@ class BildirimServis {
       // Öndeyken gelen mesajı elle göster (Android otomatik göstermez).
       FirebaseMessaging.onMessage.listen(_ondeGoster);
 
+      // iOS: FCM jetonu APNs jetonu gelmeden istenirse 'apns-token-not-set'
+      // (hata kayıtları) — önce APNs'i kısa aralıklarla bekle (en çok ~5 sn).
+      if (Platform.isIOS) {
+        for (var i = 0; i < 10; i++) {
+          if (await fm.getAPNSToken() != null) break;
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
       // Jetonu al + kaydet, yenilenince tekrar kaydet.
       _token = await fm.getToken();
       await _kaydet();

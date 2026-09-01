@@ -30,7 +30,9 @@ Future<void> main() async {
   // FAZ 2.30: UZAK AYARLAR — zorunlu minimum sürüm + açma/kapama anahtarları.
   // Sürüm PackageInfo'dan; sunucu okunamazsa varsayılanlar (kilitlenmez).
   try {
-    UzakAyar.mevcutSurum = (await PackageInfo.fromPlatform()).version;
+    final bilgi = await PackageInfo.fromPlatform();
+    UzakAyar.mevcutSurum = bilgi.version;
+    uygulamaSurumu = '${bilgi.version}+${bilgi.buildNumber}'; // hata raporu etiketi
   } catch (e, s) {
     hataBildir('main.packageInfo', e, s);
   }

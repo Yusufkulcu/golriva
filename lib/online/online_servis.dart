@@ -71,7 +71,11 @@ class OnlineServis {
       final r = await _c.rpc('oturum_benim_mi', params: {'cihaz_p': cihazId});
       return (r as bool?) ?? true;
     } catch (e, s) {
-      hataBildir('online.oturumBenimMi', e, s);
+      // iOS arka plana atınca soketi kapatır ('Bad file descriptor') —
+      // bilinen gürültü, raporlanmaz; diğer hatalar raporlanır
+      if (!'$e'.contains('Bad file descriptor')) {
+        hataBildir('online.oturumBenimMi', e, s);
+      }
       return true;
     }
   }
@@ -152,17 +156,20 @@ class OnlineServis {
   }
 
   Future<OnlineProfil?> profilGetir() async {
-    if (!girisYapildi) return null;
+    // çıkış/hesap silme ANINDA çağrılırsa uid arada null olabilir
+    // (hata kayıtları: 'Null check operator') — yerel kopya ile güvenli
+    final u = uid;
+    if (!girisYapildi || u == null) return null;
     final p = await _c
         .from('profiller')
         .select('kullanici_adi, elo, lig_kod, lig_puan, created_at, avatar_url')
-        .eq('id', uid!)
+        .eq('id', u)
         .maybeSingle();
     if (p == null) return null;
     final c = await _c
         .from('cuzdanlar')
         .select('bakiye')
-        .eq('user_id', uid!)
+        .eq('user_id', u)
         .maybeSingle();
     return OnlineProfil(
         p['kullanici_adi'] as String,

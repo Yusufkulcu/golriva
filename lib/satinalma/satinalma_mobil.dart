@@ -67,22 +67,27 @@ class SatinAlmaServis {
             'Bu paket şu an satın alınamıyor — birazdan tekrar dene.')
       );
     }
-    _bekleyen = Completer();
+    // YARIŞ DÜZELTMESİ (hata kayıtları: 'Null check operator'): mağaza
+    // buyConsumable sırasında ANINDA iptal/hata teslim ederse _guncelleme
+    // _bekleyen'i sıfırlıyordu ve alttaki '!' patlıyordu. Bekleyeni YEREL
+    // değişkende tut; alan sıfırlansa da future elimizde kalır.
+    final bekle = Completer<({String? islemId, String? hata})>();
+    _bekleyen = bekle;
     try {
       await _iap.buyConsumable(
           purchaseParam:
               PurchaseParam(productDetails: cevap.productDetails.first));
     } catch (e, s) {
-      _bekleyen = null;
+      if (_bekleyen == bekle) _bekleyen = null;
+      if (bekle.isCompleted) return bekle.future; // akış zaten sonuçlandı
       return (
         islemId: null,
         hata: temizMesaj('satinalma.baslat', e,
             'Satın alma başlatılamadı — tekrar dene.', s)
       );
     }
-    return _bekleyen!.future.timeout(const Duration(minutes: 3),
-        onTimeout: () {
-      _bekleyen = null;
+    return bekle.future.timeout(const Duration(minutes: 3), onTimeout: () {
+      if (_bekleyen == bekle) _bekleyen = null;
       return (islemId: null, hata: 'Zaman aşımı — mağaza yanıt vermedi.');
     });
   }
@@ -116,7 +121,9 @@ class SatinAlmaServis {
         case PurchaseStatus.restored:
           final islemId = s.purchaseID ?? 'p${s.transactionDate ?? ''}';
           if (_bekleyen != null) {
-            _bekleyen!.complete((islemId: islemId, hata: null));
+            if (!_bekleyen!.isCompleted) {
+              _bekleyen!.complete((islemId: islemId, hata: null));
+            }
             _bekleyen = null;
           } else {
             // açılışta teslim edilen yarım işlem ya da geri yükleme:
@@ -128,16 +135,20 @@ class SatinAlmaServis {
           if (s.pendingCompletePurchase) _iap.completePurchase(s);
         case PurchaseStatus.canceled:
           if (s.pendingCompletePurchase) _iap.completePurchase(s);
-          _bekleyen?.complete((islemId: null, hata: 'Satın alma iptal edildi.'));
+          if (_bekleyen != null && !_bekleyen!.isCompleted) {
+            _bekleyen!.complete((islemId: null, hata: 'Satın alma iptal edildi.'));
+          }
           _bekleyen = null;
         case PurchaseStatus.error:
           if (s.pendingCompletePurchase) _iap.completePurchase(s);
-          _bekleyen?.complete((
-            islemId: null,
-            hata: temizMesaj('satinalma.akis',
-                s.error?.message ?? 'satin alma hatasi (detaysiz)',
-                'Satın alma tamamlanamadı — birazdan tekrar dene.')
-          ));
+          if (_bekleyen != null && !_bekleyen!.isCompleted) {
+            _bekleyen!.complete((
+              islemId: null,
+              hata: temizMesaj('satinalma.akis',
+                  s.error?.message ?? 'satin alma hatasi (detaysiz)',
+                  'Satın alma tamamlanamadı — birazdan tekrar dene.')
+            ));
+          }
           _bekleyen = null;
         case PurchaseStatus.pending:
           break; // magaza onayi bekleniyor — akis devam eder

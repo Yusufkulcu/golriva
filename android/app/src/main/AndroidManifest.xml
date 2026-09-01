@@ -38,7 +38,7 @@
              DEGISTIRILMELI (yoksa gercek gelir islenmez). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3005671929534756~9381213295" />
+            android:value="ca-app-pub-2345769438522527~3023869681" />
         <!-- FCM varsayilan bildirim kanali (uygulama kapaliyken gelen
              bildirimler bu kanala duser; sesli kanallar uygulama icinde
              ayrica olusturulur). -->

@@ -216,6 +216,13 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
   bool rakipCekildi = false;
   bool cekildim = false; // VAZGEÇ onaylandi — ARTIK MACA GIRILMEZ
   bool hedefAraniyor = false;
+  // FAZ 2.29 — rakip gelmedi hakemi: rakip 60 sn içinde 'hazir' demezse
+  // sunucu maçı BENİM lehime hükmen kapatır (bekleyen mağdur olmaz).
+  static const int rakipBeklemeSn = 60;
+  int rakipKalanSn = rakipBeklemeSn;
+  bool rakipGelmedi = false; // sunucu hükmen verdi — sonuç butonları
+  bool hukmenSoruluyor = false;
+  Timer? beklemeTimer;
   DateTime? baslangicHedefi; // yerel saate cevrilmis SUNUCU hedefi
   int? geriSayim;
   Timer? sayimTimer;
@@ -358,6 +365,39 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
     _bilgileriYukle();
     _oncekiT = Duration.zero;
     _makaraTiker.start(); // rulet dönmeye başlar
+    beklemeTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _beklemeTik());
+  }
+
+  /// FAZ 2.29: rakip bağlanmadıysa her saniye geri say; sıfırda sunucu
+  /// hakemine sor. Sunucu "süre dolmadı" derse (saat farkı) 3 sn sonra
+  /// tekrar; "rakip bağlandı" derse normal akış zaten devam eder.
+  Future<void> _beklemeTik() async {
+    if (!mounted || rakipHazir || rakipCekildi || cekildim ||
+        rakipGelmedi || baslangicHedefi != null) {
+      return;
+    }
+    if (rakipKalanSn > 0) {
+      setState(() => rakipKalanSn--);
+      return;
+    }
+    if (hukmenSoruluyor) return;
+    hukmenSoruluyor = true;
+    final kapandi = await widget.kanal.hazirlikHukmen();
+    if (!mounted || rakipHazir || cekildim) return;
+    if (kapandi) {
+      beklemeTimer?.cancel();
+      _makaraTiker.stop();
+      setState(() {
+        rakipGelmedi = true;
+        _makaraDurdu = true;
+      });
+      return;
+    }
+    // sunucu henüz onaylamadı (saat farkı vb.): 3 sn sonra yeniden sor —
+    // bu sürede kilit açık kalır ki saniyelik tikler üst üste sormasın
+    await Future.delayed(const Duration(seconds: 3));
+    hukmenSoruluyor = false;
   }
 
   Future<void> _bilgileriYukle() async {
@@ -394,6 +434,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
     if (!mounted) return;
     if (h['tip'] == 'hazir') {
       // rakibin baglandigi ANINDA gosterilir (kullanici istegi)
+      beklemeTimer?.cancel();
       setState(() => rakipHazir = true);
       _kontrol();
     } else if (h['tip'] == 'cekildi') {
@@ -465,6 +506,7 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
   @override
   void dispose() {
     sayimTimer?.cancel();
+    beklemeTimer?.cancel();
     _makaraTiker.dispose();
     // DIKKAT: kanal.kapat() YOK — kanal oyun ekranina devrediliyor.
     super.dispose();
@@ -552,7 +594,21 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    if (rakipCekildi) ...[
+                    if (rakipGelmedi) ...[
+                      Text('RAKİP GELMEDİ',
+                          style: GoogleFonts.bigShouldersDisplay(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: GolrivaColors.goldHi,
+                              letterSpacing: 1.5)),
+                      const SizedBox(height: 4),
+                      Text('Maç hükmen senin.',
+                          style: GoogleFonts.figtree(
+                              fontSize: 11.5, color: GolrivaColors.dim)),
+                      const SizedBox(height: 10),
+                      OnlineSonucButonlari(
+                          kanal: widget.kanal, kazananSeat: b.benimSiram),
+                    ] else if (rakipCekildi) ...[
                       Text('RAKİP ÇEKİLDİ',
                           style: GoogleFonts.bigShouldersDisplay(
                               fontSize: 22,
@@ -588,6 +644,19 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
                           textAlign: TextAlign.center,
                           style: GoogleFonts.figtree(
                               fontSize: 11.5, color: GolrivaColors.dim2)),
+                      const SizedBox(height: 6),
+                      // FAZ 2.29: bekleyen mağdur olmaz — açık geri sayım
+                      Text(
+                          rakipKalanSn > 0
+                              ? 'Rakip $rakipKalanSn sn içinde bağlanmazsa '
+                                  'maç hükmen senin'
+                              : 'Süre doldu — sunucu onayı bekleniyor…',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.figtree(
+                              fontSize: 10.5,
+                              color: rakipKalanSn <= 10
+                                  ? GolrivaColors.goldHi
+                                  : GolrivaColors.dim)),
                     ],
                   ]),
                 ),
@@ -629,7 +698,8 @@ class _OnlineHazirlikEkraniState extends State<OnlineHazirlikEkrani>
                     ),
                   ),
                 ],
-                if (!rakipCekildi && baslangicHedefi == null) ...[
+                if (!rakipCekildi && !rakipGelmedi &&
+                    baslangicHedefi == null) ...[
                   const SizedBox(height: 14),
                   Center(
                     child: OutlinedButton(

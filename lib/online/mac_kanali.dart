@@ -234,6 +234,29 @@ class OnlineMacKanali {
   Future<OnlineSeriDurumu> cekil() =>
       sonucBildir(bilgi.benimSiram == 0 ? 1 : 0);
 
+  /// FAZ 2.29 — HAZIRLIKTA RAKİP GELMEDİ: sunucu hakemi. Rakibin 'hazir'
+  /// sinyali yoksa ve sunucu saatine göre 60 sn dolduysa maç BENİM lehime
+  /// hükmen kapanır. Dönüş: true = kapandı (kazandım); false = henüz
+  /// değil (rakip bağlandı ya da süre dolmadı — beklemeye devam).
+  Future<bool> hazirlikHukmen() async {
+    try {
+      await _c.rpc('hazirlik_hukmen', params: {'mid': bilgi.macId});
+      return true;
+    } on PostgrestException catch (e) {
+      final m = e.message;
+      if (m.contains('rakip bağlandı') ||
+          m.contains('süre dolmadı') ||
+          m.contains('uygun durumda değil')) {
+        return false;
+      }
+      hataBildir('macKanali.hazirlikHukmen', e);
+      return false;
+    } catch (e, s) {
+      hataBildir('macKanali.hazirlikHukmen', e, s);
+      return false;
+    }
+  }
+
   /// SUNUCU-SENKRON GERI SAYIM: iki 'hazir' sinyali de sunucuya dustukten
   /// sonra ortak baslangic ani = max(hazir sunucu_ts) + 4 sn. Bu fonksiyon
   /// o ana kalan sureyi SUNUCU saatiyle hesaplar — iki cihaz da ayni mutlak
